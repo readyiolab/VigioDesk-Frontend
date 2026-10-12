@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { DevicePerformance, VitalRating, WebReport } from "./types";
 import { stageLabel } from "./stageLabel";
@@ -85,11 +84,9 @@ function DevicePanel({ title, device }: { title: string; device: DevicePerforman
 export function ReportDashboard({
   report,
   publicView,
-  actions,
 }: {
   report: WebReport;
   publicView?: boolean;
-  actions?: ReactNode;
 }) {
   const problems = keyProblems(report);
   const finished = report.status === "completed";
@@ -120,7 +117,7 @@ export function ReportDashboard({
               scores are omitted, not treated as zero.
             </p>
           ) : null}
-          {finished ? (
+          {finished && publicView ? (
             <Button type="button" className="mt-5" onClick={() => window.print()}>
               Download PDF
             </Button>
@@ -202,7 +199,6 @@ export function ReportDashboard({
           </p>
         ) : null}
 
-        {!publicView && actions ? <section aria-label="Report actions">{actions}</section> : null}
       </div>
       {finished ? <ReportPrint report={report} problems={problems} /> : null}
     </>

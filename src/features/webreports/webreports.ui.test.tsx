@@ -226,6 +226,8 @@ describe("report progress and results", () => {
     renderRoutes("/webreports/rep-1")
     expect(await screen.findByRole("heading", { name: "Mostly ready" })).toBeTruthy()
     expect(screen.getByRole("heading", { name: "Key problems" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Back to scans" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Share" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy()
     expect(screen.getByText(/Rewrite short titles/)).toBeTruthy()
     expect(screen.getAllByText("82").length).toBeGreaterThan(0)

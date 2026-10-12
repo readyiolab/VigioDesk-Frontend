@@ -38,12 +38,13 @@ export const AppLayout: React.FC = () => {
     isDiagramStudio ||
     isEsignEditor ||
     isAiStudio ||
-    isToolStudio;
-  const hideChrome = isEsignEditor || isLetterStudio || isDiagramStudio;
+    isToolStudio ||
+    isWebReport;
+  const hideChrome = isEsignEditor || isLetterStudio || isDiagramStudio || isWebReport;
   const hideFooter = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio || isWebReport;
   // Immersive panes: no decorative blobs, and the shell must fill the viewport
   // height so children using h-full / flex-1 actually stretch edge-to-edge.
-  const isImmersive = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio;
+  const isImmersive = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio || isWebReport;
   const isMarketingBleed =
     isHome ||
     isEnterprise ||

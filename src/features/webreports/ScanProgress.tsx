@@ -1,65 +1,56 @@
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { scanStepTitle } from "./stageLabel";
 import type { WebReport } from "./types";
 
 const STEPS = [
   {
     stage: "validating",
-    title: "Checking the address",
+    title: scanStepTitle("validating"),
     detail: "Confirming this is a public website that can be audited.",
   },
   {
     stage: "crawling",
-    title: "Reading public pages",
+    title: scanStepTitle("crawling"),
     detail: "Opening the site and collecting the pages in this scan.",
   },
   {
     stage: "analyzing_seo",
-    title: "Reviewing SEO",
+    title: scanStepTitle("analyzing_seo"),
     detail: "Checking titles, links, and whether pages can be indexed.",
   },
   {
     stage: "analyzing_ai_search",
-    title: "Checking AI-search readiness",
+    title: scanStepTitle("analyzing_ai_search"),
     detail: "Seeing how AI crawlers are allowed to read the site.",
   },
   {
     stage: "testing_mobile",
-    title: "Measuring mobile performance",
+    title: scanStepTitle("testing_mobile"),
     detail: "A browser measurement is in progress. This step usually takes the longest.",
   },
   {
     stage: "testing_desktop",
-    title: "Measuring desktop performance",
+    title: scanStepTitle("testing_desktop"),
     detail: "A browser measurement is in progress. This step usually takes the longest.",
   },
   {
     stage: "scoring",
-    title: "Scoring the evidence",
+    title: scanStepTitle("scoring"),
     detail: "Turning the checks into scores. Missing measurements stay out of the total.",
   },
   {
     stage: "generating_summary",
-    title: "Writing the summary",
+    title: scanStepTitle("generating_summary"),
     detail: "Summarizing what matters most on this site.",
   },
   {
     stage: "saving_results",
-    title: "Saving the report",
+    title: scanStepTitle("saving_results"),
     detail: "Storing the finished audit so you can open it again.",
   },
 ] as const;
 
-export function ScanProgress({
-  report,
-  onDelete,
-  deleting,
-}: {
-  report: WebReport;
-  onDelete: () => void;
-  deleting: boolean;
-}) {
+export function ScanProgress({ report }: { report: WebReport }) {
   const found = STEPS.findIndex((step) => step.stage === report.stage);
   const current = found === -1 ? 0 : found;
   const active = STEPS[current];
@@ -111,14 +102,6 @@ export function ScanProgress({
         })}
       </ol>
 
-      <div className="mt-8 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={onDelete} disabled={deleting}>
-          Delete
-        </Button>
-        <Button type="button" variant="ghost" asChild>
-          <Link to="/webreports/scan">Back to scans</Link>
-        </Button>
-      </div>
     </div>
   );
 }
