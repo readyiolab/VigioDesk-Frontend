@@ -16,6 +16,7 @@ export const AppLayout: React.FC = () => {
   const isLetterStudio =
     location.pathname.startsWith("/letters/") && location.pathname !== "/letters";
   const isDiagramsMarketing = location.pathname === "/diagrams";
+  const isWebReportsMarketing = location.pathname === "/webreports";
   const isDiagramStudio =
     location.pathname.startsWith("/diagrams/") && location.pathname !== "/diagrams";
   const isEsignEditor = /^\/sign\/[^/]+$/.test(location.pathname);
@@ -28,6 +29,7 @@ export const AppLayout: React.FC = () => {
     isEsignMarketing ||
     isLettersMarketing ||
     isDiagramsMarketing ||
+    isWebReportsMarketing ||
     isLetterStudio ||
     isDiagramStudio ||
     isEsignEditor ||
@@ -39,7 +41,13 @@ export const AppLayout: React.FC = () => {
   // height so children using h-full / flex-1 actually stretch edge-to-edge.
   const isImmersive = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio;
   const isMarketingBleed =
-    isHome || isEnterprise || isDesktop || isEsignMarketing || isLettersMarketing || isDiagramsMarketing;
+    isHome ||
+    isEnterprise ||
+    isDesktop ||
+    isEsignMarketing ||
+    isLettersMarketing ||
+    isDiagramsMarketing ||
+    isWebReportsMarketing;
 
   return (
     <div

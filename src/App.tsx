@@ -55,6 +55,10 @@ const DiagramsLanding = lazy(() => import("./pages/diagrams/DiagramsLanding"));
 const DiagramsListPage = lazy(() => import("./pages/diagrams/DiagramsListPage"));
 const DiagramEditorPage = lazy(() => import("./pages/diagrams/DiagramEditorPage"));
 const SharedDiagramPage = lazy(() => import("./pages/diagrams/SharedDiagramPage"));
+const WebReportsLanding = lazy(() => import("./pages/webreports/WebReportsLanding"));
+const WebReportsHome = lazy(() => import("./pages/webreports/WebReportsHome"));
+const WebReportPage = lazy(() => import("./pages/webreports/WebReportPage"));
+const SharedWebReportPage = lazy(() => import("./pages/webreports/SharedWebReportPage"));
 
 function App() {
   return (
@@ -199,6 +203,28 @@ function App() {
                   <Route path="diagrams/:id" element={<DiagramEditorPage />} />
                 </Route>
 
+                <Route path="webreports/shared/:token" element={<SharedWebReportPage />} />
+                <Route path="webreports" element={<WebReportsLanding />} />
+                <Route
+                  path="webreports/scan"
+                  element={
+                    <ProtectedRoute>
+                      <VerifiedRoute>
+                        <WebReportsHome />
+                      </VerifiedRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="webreports/:id"
+                  element={
+                    <ProtectedRoute>
+                      <VerifiedRoute>
+                        <WebReportPage />
+                      </VerifiedRoute>
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="enterprise" element={<EnterpriseByoc />} />
                 <Route path="desktop" element={<DesktopToolkit />} />
                 <Route path="security" element={<InfoPage type="security" />} />

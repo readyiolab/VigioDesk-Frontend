@@ -65,6 +65,8 @@ const PREFETCHERS: { prefix: string; load: PrefetchFn; key: string }[] = [
     key: "diagrams-landing",
     load: () => import("@/pages/diagrams/DiagramsLanding"),
   },
+  { prefix: "/webreports/scan", key: "webreports-scan", load: () => import("@/pages/webreports/WebReportsHome") },
+  { prefix: "/webreports", key: "webreports", load: () => import("@/pages/webreports/WebReportsLanding") },
   { prefix: "/esign", key: "esign", load: () => import("@/pages/esign/EsignLanding") },
   { prefix: "/desktop", key: "desktop", load: () => import("@/pages/desktop/DesktopToolkit") },
   {
