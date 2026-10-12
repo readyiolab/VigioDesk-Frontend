@@ -191,7 +191,7 @@ describe("website audit home", () => {
     await screen.findByText("No scans yet. Submit a URL to start.")
     await user.type(screen.getByLabelText("Website URL"), "https://example.com/")
     await user.click(screen.getByRole("button", { name: "Start scan" }))
-    expect((await screen.findAllByText("Scanning · validating")).length).toBeGreaterThan(0)
+    expect(await screen.findByRole("heading", { name: "Checking the address" })).toBeTruthy()
     expect(api.create.mock.calls[0][0]).toEqual({ url: "https://example.com/", maxPages: undefined, force: false })
   })
 
@@ -212,17 +212,23 @@ describe("report progress and results", () => {
       report: report({ status: "running", stage: "crawling", progress: 20, summary: { headline: null, text: null } }),
     })
     renderRoutes("/webreports/rep-1")
-    expect((await screen.findAllByText("Scanning · crawling")).length).toBeGreaterThan(0)
+    expect(await screen.findByRole("heading", { name: "Reading public pages" })).toBeTruthy()
     expect(screen.getByRole("progressbar", { name: "Scan progress" })).toBeTruthy()
     expect(screen.getByText("20%")).toBeTruthy()
+    expect(screen.getByText("Measuring mobile performance")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Back to scans" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull()
+    expect(screen.queryByText("Unavailable")).toBeNull()
   })
 
   it("shows a completed report", async () => {
     api.get.mockResolvedValue({ report: report() })
     renderRoutes("/webreports/rep-1")
     expect(await screen.findByRole("heading", { name: "Mostly ready" })).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Key problems" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy()
     expect(screen.getByText(/Rewrite short titles/)).toBeTruthy()
-    expect(screen.getByText("82")).toBeTruthy()
+    expect(screen.getAllByText("82").length).toBeGreaterThan(0)
   })
 
   it("shows a partial report without treating missing scores as zero", async () => {
@@ -234,8 +240,10 @@ describe("report progress and results", () => {
       }),
     })
     renderRoutes("/webreports/rep-1")
-    expect(await screen.findByText(/Incomplete measurement: mobile, field-data/)).toBeTruthy()
-    expect(screen.getByText("Lighthouse did not return a result.")).toBeTruthy()
+    expect((await screen.findAllByText(/Incomplete measurement: mobile, field-data/)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Lighthouse did not return a result.").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Not measured").length).toBeGreaterThan(0)
+    expect(screen.queryByText("0")).toBeNull()
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0)
   })
 

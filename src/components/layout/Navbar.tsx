@@ -126,7 +126,7 @@ export const Navbar: React.FC = () => {
     <>
       <header
         className={cn(
-          "sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",
+          "sticky top-0 z-50 w-full print:hidden transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300",
           solidNav
             ? "border-b border-border/60 bg-background/85 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl"
             : "border-b border-transparent bg-transparent"

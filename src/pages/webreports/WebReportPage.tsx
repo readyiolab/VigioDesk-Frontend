@@ -1,10 +1,9 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ApiError } from "@/services/api";
 import { ReportDashboard } from "@/features/webreports/ReportDashboard";
-import { stageLabel } from "@/features/webreports/stageLabel";
+import { ScanProgress } from "@/features/webreports/ScanProgress";
 import { useWebReport, useWebReportActions } from "@/features/webreports/queries";
 
 export default function WebReportPage() {
@@ -64,15 +63,12 @@ export default function WebReportPage() {
 
   const running = report.status === "queued" || report.status === "running";
 
+  if (running) {
+    return <ScanProgress report={report} onDelete={remove} deleting={actions.remove.isPending} />;
+  }
+
   return (
     <div>
-      {running ? (
-        <div className="mx-auto max-w-5xl px-4 pt-8">
-          <p className="text-sm font-medium">{stageLabel(report.status, report.stage)}</p>
-          <Progress value={report.progress} className="mt-2" aria-label="Scan progress" />
-          <p className="mt-2 text-xs text-muted-foreground">{report.progress}%</p>
-        </div>
-      ) : null}
       <ReportDashboard
         report={report}
         actions={

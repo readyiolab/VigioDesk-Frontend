@@ -17,6 +17,10 @@ export const AppLayout: React.FC = () => {
     location.pathname.startsWith("/letters/") && location.pathname !== "/letters";
   const isDiagramsMarketing = location.pathname === "/diagrams";
   const isWebReportsMarketing = location.pathname === "/webreports";
+  const isWebReport =
+    location.pathname.startsWith("/webreports/") &&
+    location.pathname !== "/webreports/scan" &&
+    !location.pathname.startsWith("/webreports/shared");
   const isDiagramStudio =
     location.pathname.startsWith("/diagrams/") && location.pathname !== "/diagrams";
   const isEsignEditor = /^\/sign\/[^/]+$/.test(location.pathname);
@@ -36,7 +40,7 @@ export const AppLayout: React.FC = () => {
     isAiStudio ||
     isToolStudio;
   const hideChrome = isEsignEditor || isLetterStudio || isDiagramStudio;
-  const hideFooter = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio;
+  const hideFooter = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio || isWebReport;
   // Immersive panes: no decorative blobs, and the shell must fill the viewport
   // height so children using h-full / flex-1 actually stretch edge-to-edge.
   const isImmersive = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio;
@@ -78,7 +82,7 @@ export const AppLayout: React.FC = () => {
             className={
               isFullBleed
                 ? "flex min-h-0 w-full min-w-0 flex-1 flex-col"
-                : "mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 md:px-8 lg:px-10"
+                : "mx-auto w-full max-w-7xl flex-1 px-4 py-8 print:max-w-none print:p-0 sm:px-6 md:px-8 lg:px-10"
             }
           >
             <Suspense fallback={<RouteFallback />}>

@@ -218,3 +218,26 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  .audit-print[hidden] {
+    display: block !important;
+  }
+  .audit-page {
+    break-after: page;
+    page-break-after: always;
+    height: 273mm;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .audit-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

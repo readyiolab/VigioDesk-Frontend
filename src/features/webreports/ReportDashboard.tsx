@@ -1,19 +1,21 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import type { DevicePerformance, VitalRating, WebReport } from "./types";
 import { stageLabel } from "./stageLabel";
+import { keyProblems, rateDuration } from "./reportNarrative";
+import { ReportPrint } from "./ReportPrint";
 
-const RATING_LABEL: Record<VitalRating, string> = {
+const RATING_LABEL: Record<Exclude<VitalRating, "unavailable">, string> = {
   good: "Good",
   "needs-improvement": "Needs improvement",
   poor: "Poor",
-  unavailable: "Unavailable",
 };
 
 function scoreColor(score: number | null): string {
-  if (score === null) return "text-muted-foreground";
-  if (score >= 90) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 50) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+  if (score === null) return "text-slate-400";
+  if (score >= 90) return "text-emerald-600";
+  if (score >= 50) return "text-amber-600";
+  return "text-red-600";
 }
 
 export function ScoreRing({ score, label }: { score: number | null; label: string }) {
@@ -23,8 +25,8 @@ export function ScoreRing({ score, label }: { score: number | null; label: strin
   const dash = score === null ? 0 : (value / 100) * circumference;
   return (
     <div className="flex flex-col items-center gap-2">
-      <svg viewBox="0 0 100 100" className="h-28 w-28 motion-reduce:transition-none" role="img" aria-label={`${label} score ${score === null ? "unavailable" : score}`}>
-        <circle cx="50" cy="50" r={radius} className="stroke-muted" strokeWidth="8" fill="none" />
+      <svg viewBox="0 0 100 100" className="h-28 w-28" role="img" aria-label={`${label} score ${score === null ? "not measured" : score}`}>
+        <circle cx="50" cy="50" r={radius} stroke="#E2E8F0" strokeWidth="8" fill="none" />
         <circle
           cx="50"
           cy="50"
@@ -37,56 +39,45 @@ export function ScoreRing({ score, label }: { score: number | null; label: strin
           strokeLinecap="round"
           transform="rotate(-90 50 50)"
         />
-        <text x="50" y="54" textAnchor="middle" className="fill-foreground text-xl font-semibold">
+        <text x="50" y="54" textAnchor="middle" className="fill-slate-950 text-xl font-semibold">
           {score === null ? "—" : score}
         </text>
       </svg>
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium text-slate-700">{label}</span>
     </div>
   );
 }
 
 function Metric({ name, value, unit, rating }: { name: string; value: number | null; unit: string; rating: VitalRating }) {
-  const shown = value === null ? "Unavailable" : unit === "cls" ? value.toFixed(2) : `${Math.round(value)} ${unit}`;
+  const shown = value === null ? (name.startsWith("INP") ? "Unavailable" : "Not measured") : unit === "cls" ? value.toFixed(2) : `${Math.round(value)} ${unit}`;
+  const label = value === null || rating === "unavailable" ? null : RATING_LABEL[rating];
   return (
-    <div className="rounded-xl border border-border bg-background p-3">
-      <div className="text-xs text-muted-foreground">{name}</div>
-      <div className="mt-1 text-lg font-semibold">{shown}</div>
-      <div className="text-xs">{RATING_LABEL[rating]}</div>
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="text-xs text-slate-500">{name}</div>
+      <div className="mt-1 text-lg font-semibold text-slate-950">{shown}</div>
+      {label ? <div className="text-xs text-slate-600">{label}</div> : null}
+      {name.startsWith("INP") && value === null ? <div className="text-xs text-slate-500">Field data missing</div> : null}
     </div>
   );
 }
 
 function DevicePanel({ title, device }: { title: string; device: DevicePerformance }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby={`${title}-heading`}>
-      <h3 id={`${title}-heading`} className="text-lg font-semibold">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby={`${title}-vitals`}>
+      <h3 id={`${title}-vitals`} className="text-lg font-semibold text-slate-950">
         {title}
       </h3>
-      {device.unavailableReason && device.score === null ? (
-        <p className="mt-2 text-sm text-muted-foreground">{device.unavailableReason}</p>
-      ) : null}
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Metric name="LCP" value={device.lcp} unit="ms" rating={device.ratings.lcp} />
         <Metric name="INP (field)" value={device.inp} unit="ms" rating={device.ratings.inp} />
-        <Metric name="TBT (lab)" value={device.tbt} unit="ms" rating="unavailable" />
+        <Metric name="TBT (lab)" value={device.tbt} unit="ms" rating={rateDuration(device.tbt, 200, 600)} />
         <Metric name="CLS" value={device.cls} unit="cls" rating={device.ratings.cls} />
-        <Metric name="FCP" value={device.fcp} unit="ms" rating="unavailable" />
-        <Metric name="TTFB" value={device.ttfb} unit="ms" rating="unavailable" />
+        <Metric name="FCP" value={device.fcp} unit="ms" rating={rateDuration(device.fcp, 1800, 3000)} />
+        <Metric name="TTFB" value={device.ttfb} unit="ms" rating={rateDuration(device.ttfb, 800, 1800)} />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs text-slate-500">
         INP is field data when CrUX has it. TBT is a lab diagnostic and is not a measured INP value.
       </p>
-      {device.issues.length > 0 ? (
-        <ul className="mt-3 space-y-1 text-sm">
-          {device.issues.slice(0, 4).map((issue) => (
-            <li key={issue.id}>
-              {issue.title}
-              {issue.displayValue ? ` (${issue.displayValue})` : ""}
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </section>
   );
 }
@@ -100,133 +91,131 @@ export function ReportDashboard({
   publicView?: boolean;
   actions?: ReactNode;
 }) {
-  const findings = report.seo.checks.filter((check) => check.status === "present");
+  const problems = keyProblems(report);
+  const finished = report.status === "completed";
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
-      <section className="rounded-3xl border border-border bg-card p-6">
-        <p className="truncate text-sm text-muted-foreground">{report.url}</p>
-        <div className="mt-4 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {report.summary.headline || stageLabel(report.status, report.stage)}
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {report.summary.text || "The scan is still collecting evidence."}
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {report.scannedAt ? `Completed ${new Date(report.scannedAt).toLocaleString()}` : `Status ${report.status}`}
-              {` · ${report.pagesCrawled} pages`}
-            </p>
+    <>
+      <div className="audit-screen mx-auto flex max-w-5xl flex-col gap-8 bg-[#F7F9FC] px-4 py-8 text-slate-900 print:hidden">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Readyio · WebReports</p>
+          <div className="mt-4 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+                {report.summary.headline || stageLabel(report.status, report.stage)}
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {report.summary.text || "The scan is still collecting evidence."}
+              </p>
+              <p className="mt-3 truncate text-sm text-slate-500">{report.url}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {report.scannedAt ? `Completed ${new Date(report.scannedAt).toLocaleString()}` : `Status ${report.status}`}
+                {` · ${report.pagesCrawled} pages`}
+              </p>
+            </div>
+            <ScoreRing score={report.scores.overall} label="Overall" />
           </div>
-          <ScoreRing score={report.scores.overall} label="Overall" />
-        </div>
-        {!report.completeness.complete ? (
-          <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">
-            Incomplete measurement: {report.completeness.unavailableSections.join(", ") || "some sections"}. Unavailable
-            scores are omitted, not treated as zero.
+          {!report.completeness.complete ? (
+            <p className="mt-4 text-sm text-amber-800">
+              Incomplete measurement: {report.completeness.unavailableSections.join(", ") || "some sections"}. Unavailable
+              scores are omitted, not treated as zero.
+            </p>
+          ) : null}
+          {finished ? (
+            <Button type="button" className="mt-5" onClick={() => window.print()}>
+              Download PDF
+            </Button>
+          ) : null}
+        </section>
+
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Category scores">
+          <ScoreCard label="Mobile" score={report.scores.mobile} />
+          <ScoreCard label="Desktop" score={report.scores.desktop} />
+          <ScoreCard label="SEO" score={report.scores.seo} />
+          <ScoreCard label="AI Search" score={report.scores.aiSearch} />
+        </section>
+
+        <section aria-labelledby="problems-heading">
+          <h2 id="problems-heading" className="text-xl font-semibold tracking-tight">
+            Key problems
+          </h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {problems.map((group) => (
+              <article key={group.title} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h3 className="font-semibold text-slate-950">{group.title}</h3>
+                <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                  {group.lines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {report.topFixes.length > 0 ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="fixes-heading">
+            <h2 id="fixes-heading" className="text-lg font-semibold">
+              Do these first
+            </h2>
+            <ol className="mt-3 space-y-3">
+              {report.topFixes.map((fix) => (
+                <li key={fix.rank}>
+                  <div className="font-medium text-slate-950">
+                    {fix.rank}. {fix.title}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">{fix.why}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5" aria-labelledby="ai-note">
+          <h2 id="ai-note" className="text-lg font-semibold">
+            Show up in AI answers
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Crawler access and structured data help a site be understood in AI answers. They do not guarantee inclusion.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Bot access does not guarantee inclusion in AI answers.</p>
+        </section>
+
+        <section className="rounded-3xl bg-slate-950 p-6 text-white" aria-labelledby="readyio-help">
+          <h2 id="readyio-help" className="text-lg font-semibold">
+            How Readyio can help
+          </h2>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+            <li>Rerun this audit after the fixes so the next score sits beside this one.</li>
+            <li>Share the report with the people who will change the site.</li>
+            <li>Use the same scan again when the mobile speed or structured data changes.</li>
+          </ul>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2" aria-label="Performance">
+          <DevicePanel title="Mobile vitals" device={report.performance.mobile} />
+          <DevicePanel title="Desktop vitals" device={report.performance.desktop} />
+        </section>
+
+        {report.status === "failed" && report.error ? (
+          <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+            {report.error.message}
           </p>
         ) : null}
-      </section>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Category scores">
-        <ScoreCard label="Mobile" score={report.scores.mobile} />
-        <ScoreCard label="Desktop" score={report.scores.desktop} />
-        <ScoreCard label="SEO" score={report.scores.seo} />
-        <ScoreCard label="AI Search" score={report.scores.aiSearch} />
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2" aria-label="Performance">
-        <DevicePanel title="Mobile" device={report.performance.mobile} />
-        <DevicePanel title="Desktop" device={report.performance.desktop} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="seo-heading">
-        <h2 id="seo-heading" className="text-lg font-semibold">
-          SEO health
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{findings.length} findings need attention.</p>
-        <ul className="mt-4 space-y-2">
-          {report.seo.checks
-            .filter((check) => check.status !== "absent")
-            .map((check) => (
-              <li key={check.id} className="rounded-xl border border-border p-3">
-                <details>
-                  <summary className="cursor-pointer font-medium">
-                    <span className="mr-2 rounded-full border border-border px-2 py-0.5 text-xs">{check.severity}</span>
-                    {check.title}
-                    <span className="ml-2 text-xs text-muted-foreground">{check.affectedCount}</span>
-                  </summary>
-                  <p className="mt-2 text-sm text-muted-foreground">{check.description}</p>
-                  <p className="mt-2 text-sm">{check.fix}</p>
-                </details>
-              </li>
-            ))}
-        </ul>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="ai-heading">
-        <h2 id="ai-heading" className="text-lg font-semibold">
-          AI search readiness
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bot access does not guarantee inclusion in AI answers.
-        </p>
-        <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-          {Object.entries(report.aiSearch.botAccess).map(([bot, access]) => (
-            <div key={bot} className="flex justify-between rounded-lg border border-border px-3 py-2">
-              <dt>{bot}</dt>
-              <dd>{access}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-3 text-sm">
-          llms.txt: {report.aiSearch.llmsTxt.status}. JavaScript text ratio:{" "}
-          {report.aiSearch.jsDependency.rawVsRenderedRatio === null
-            ? "unavailable"
-            : report.aiSearch.jsDependency.rawVsRenderedRatio.toFixed(2)}{" "}
-          ({report.aiSearch.jsDependency.status}).
-        </p>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="fixes-heading">
-        <h2 id="fixes-heading" className="text-lg font-semibold">
-          Top fixes
-        </h2>
-        <ol className="mt-4 space-y-3">
-          {report.topFixes.map((fix) => (
-            <li key={fix.rank} className="rounded-xl border border-border p-3">
-              <div className="font-medium">
-                {fix.rank}. {fix.title}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Impact {fix.impact} · Effort {fix.effort} · {fix.scope}
-              </p>
-              <p className="mt-2 text-sm">{fix.why}</p>
-              <p className="mt-2 text-sm">{fix.instructions}</p>
-              {fix.snippet ? (
-                <pre className="mt-2 overflow-x-auto rounded-lg bg-muted p-3 text-xs">{fix.snippet}</pre>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {report.status === "failed" && report.error ? (
-        <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          {report.error.message}
-        </p>
-      ) : null}
-
-      {!publicView && actions ? <section aria-label="Report actions">{actions}</section> : null}
-    </div>
+        {!publicView && actions ? <section aria-label="Report actions">{actions}</section> : null}
+      </div>
+      {finished ? <ReportPrint report={report} problems={problems} /> : null}
+    </>
   );
 }
 
 function ScoreCard({ label, score }: { label: string; score: number | null }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-3xl font-semibold ${scoreColor(score)}`}>{score === null ? "Unavailable" : score}</div>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="text-sm text-slate-500">{label}</div>
+      <div className={`mt-1 font-semibold ${score === null ? "text-base text-slate-400" : `text-3xl ${scoreColor(score)}`}`}>
+        {score === null ? "Not measured" : score}
+      </div>
     </div>
   );
 }
