@@ -67,7 +67,7 @@ export const Navbar: React.FC = () => {
 
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<DropdownType>(null);
-  const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Command palette / Search modal state
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);

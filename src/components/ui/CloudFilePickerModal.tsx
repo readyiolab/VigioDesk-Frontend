@@ -4,15 +4,12 @@ import {
   UploadCloud,
   HardDrive,
   Search,
-  Check,
   Link2,
-  Unlink,
   Loader2,
   FileText,
   Lock,
   ArrowRight,
   Folder,
-  RefreshCw,
   Laptop,
 } from "lucide-react";
 import { toast } from "sonner";

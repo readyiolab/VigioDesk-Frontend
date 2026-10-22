@@ -55,6 +55,7 @@ import {
   PanelRight,
   X,
   Lock,
+  HardDrive,
 } from "lucide-react";
 
 interface ToolWorkspaceProps {
