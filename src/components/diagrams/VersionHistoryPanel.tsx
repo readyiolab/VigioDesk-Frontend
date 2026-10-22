@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GitCompare, RotateCcw, Sparkles, X } from "lucide-react";
+import { GitCompare, RotateCcw, Bot, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -117,7 +117,7 @@ export function VersionHistoryPanel({
           disabled={selected.length !== 2 || diffBusy}
           onClick={() => void runDiff()}
         >
-          {diffBusy ? <Spinner className="size-3" /> : <Sparkles className="size-3" />}
+          {diffBusy ? <Spinner className="size-3" /> : <Bot className="size-3" />}
           AI diff
         </Button>
         <span className="text-[10px] text-[#94a3b8]">

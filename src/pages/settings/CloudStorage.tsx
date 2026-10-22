@@ -205,10 +205,10 @@ export default function CloudStorageSettings() {
             Your plan is currently <span className="font-semibold text-foreground">{user?.plan ?? "FREE"}</span>.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button className="rounded-full bg-sky-600 hover:bg-sky-700" onClick={() => navigate("/billing")}>
+            <Button className="rounded-xl bg-sky-600 hover:bg-sky-700" onClick={() => navigate("/billing")}>
               Upgrade to Enterprise
             </Button>
-            <Button variant="outline" className="rounded-full" onClick={() => navigate("/enterprise")}>
+            <Button variant="outline" className="rounded-xl" onClick={() => navigate("/enterprise")}>
               See how it works
             </Button>
           </div>

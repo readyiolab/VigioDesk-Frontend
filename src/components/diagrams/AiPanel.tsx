@@ -148,12 +148,12 @@ export function AiPanel({
             </>
           )}
           {mode === "generate" && (
-            <Button className="rounded-lg" disabled={busy || prompt.trim().length < 3} onClick={runGenerate}>
+            <Button className="rounded-xl" disabled={busy || prompt.trim().length < 3} onClick={runGenerate}>
               {busy ? <Spinner className="size-4" /> : "Generate"}
             </Button>
           )}
           {mode === "edit" && (
-            <Button className="rounded-lg" disabled={busy || prompt.trim().length < 2} onClick={runEdit}>
+            <Button className="rounded-xl" disabled={busy || prompt.trim().length < 2} onClick={runEdit}>
               {busy ? <Spinner className="size-4" /> : "Apply edit"}
             </Button>
           )}

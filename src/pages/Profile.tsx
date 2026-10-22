@@ -269,7 +269,7 @@ export const Profile: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">Plan status: Active</p>
               </div>
               {user.plan === "FREE" && (
-                <Button size="sm" className="rounded-lg shadow-sm" onClick={() => navigate("/billing")}>
+                <Button size="sm" className="rounded-xl shadow-sm" onClick={() => navigate("/billing")}>
                   Upgrade
                 </Button>
               )}
@@ -277,7 +277,7 @@ export const Profile: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-lg"
+                  className="rounded-xl"
                   onClick={() =>
                     navigate(user.plan === "ENTERPRISE" ? "/settings/cloud" : "/enterprise")
                   }

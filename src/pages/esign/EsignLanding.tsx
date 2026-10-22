@@ -9,6 +9,7 @@ import {
   Hash,
   Link2,
   Lock,
+  PenTool,
   ShieldCheck,
   UserRound,
   Users,
@@ -22,6 +23,35 @@ import {
   ESIGN_STAGGER,
   ESIGN_VIEWPORT,
 } from "@/components/esign/motion";
+import { EsignStatusMock } from "@/components/esign/EsignStatusMock";
+import { FaqSection } from "@/components/common/FaqSection";
+
+const ESIGN_FAQS = [
+  {
+    q: "Are electronic signatures legally binding?",
+    a: "Yes. Electronic signatures created with Vigodesk comply with the United States ESIGN Act, UETA, and the European Union eIDAS regulations. Completed documents receive an unalterable SHA-256 cryptographic seal and a comprehensive audit trail certificate admissible in court.",
+  },
+  {
+    q: "Do recipients need to install software or register an account to sign?",
+    a: "No. Signers receive a secure, private link via email. They can review, fill fields, and sign the document on any desktop or mobile browser without downloading any software or creating an account.",
+  },
+  {
+    q: "What information is recorded in the audit trail certificate?",
+    a: "Every document envelope records a full lifecycle log including recipient email addresses, IP addresses, exact timestamps for opens and signatures, field modifications, and the unique SHA-256 document fingerprint.",
+  },
+  {
+    q: "Can I set a specific signing order for multiple recipients?",
+    a: "Yes. You can configure sequential signing (e.g., Client signs first, then Manager approves) or parallel signing (all parties can review and sign simultaneously).",
+  },
+  {
+    q: "What types of documents can I send for signature?",
+    a: "You can upload standard PDF files or Microsoft Word documents (.docx). Vigodesk automatically converts Word files into secure PDF canvases ready for signature field placement.",
+  },
+  {
+    q: "How are signed documents protected after completion?",
+    a: "Once all parties sign, the document is permanently sealed with cryptographic hashes to prevent tampering. All signers receive a final PDF copy alongside the verified audit certificate.",
+  },
+];
 
 const HERO_CHECKS = [
   "Multi-recipient signing with order control",
@@ -136,127 +166,163 @@ export default function EsignLanding() {
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden bg-[#F7F9FC] text-slate-900">
-      {/* Hero */}
+      {/* ── Hero — Home Style with Vigodesk eSign Theme ──────────────── */}
       <section
         ref={heroRef}
-        className="relative w-full min-h-[min(100svh,920px)] overflow-hidden border-b border-slate-200/70 -mt-14 sm:-mt-16"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#EEF4FB] via-[#F7F9FC] to-[#F7F9FC] pt-5 pb-14 sm:pt-7 sm:pb-16 lg:pt-8 lg:pb-20 border-b border-slate-200/70"
       >
+        {/* Subtle grid pattern background */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 90% 70% at 82% 10%, rgba(37,99,235,0.16), transparent 52%), radial-gradient(ellipse 55% 45% at 8% 88%, rgba(14,165,233,0.1), transparent 50%), radial-gradient(ellipse 40% 30% at 42% 48%, rgba(255,255,255,0.85), transparent 70%), linear-gradient(165deg, #F7F9FC 0%, #E8EEF8 42%, #F7F9FC 100%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          className="pointer-events-none absolute inset-0 opacity-[0.25]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(100,116,139,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,0.18) 1px, transparent 1px)",
-            backgroundSize: "68px 68px",
-            maskImage: "radial-gradient(ellipse 75% 65% at 50% 40%, black, transparent)",
+              "linear-gradient(rgba(59,130,246,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.12) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%)",
           }}
         />
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 top-28 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl"
-          animate={{ y: [0, 18, 0], opacity: [0.35, 0.55, 0.35] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 bottom-20 h-72 w-72 rounded-full bg-sky-300/25 blur-3xl"
-          animate={{ y: [0, -22, 0], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-        />
 
-        <div className="relative mx-auto grid min-h-[min(100svh,920px)] max-w-6xl items-center gap-6 px-4 pb-14 pt-28 sm:gap-8 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-2 lg:gap-8 lg:px-8">
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: ESIGN_EASE }}
-          >
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200/80 backdrop-blur-sm">
-              <FileSignature className="h-3.5 w-3.5" />
-              eSign · PDFToolkit
-            </p>
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
-            <h1 className="font-heading mt-6 text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.05] lg:text-[3.25rem]">
-              Send, sign, and verify
-            </h1>
+            {/* LEFT COLUMN: Copy & CTA Buttons */}
+            <motion.div
+              className="relative z-10 lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: ESIGN_EASE }}
+            >
+              {/* Pill Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-blue-700 shadow-xs mb-5 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">
+                <FileSignature className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span>vigodesk.com · eSign Studio</span>
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
+                  Popular
+                </span>
+              </div>
 
-            <p className="mt-4 max-w-xl text-balance text-xl font-medium tracking-tight text-slate-700 sm:text-2xl sm:leading-snug">
-              Legally binding signatures with a full audit trail
-            </p>
+              {/* Main Headline */}
+              <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.35rem] xl:text-[3.75rem] dark:text-white">
+                Legally-Binding <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">Contracts &amp; eSignatures</span> in Seconds
+              </h1>
 
-            <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">
-              Collect signatures without leaving PDFToolkit. Recipients sign in order, every open
-              and signature is logged, and the finished PDF is sealed with a SHA-256 hash.
-            </p>
+              {/* Subheading */}
+              <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
+                Collect legally enforceable digital signatures, enforce sequential signer workflows, and seal every completed agreement with an unalterable SHA-256 cryptographic audit trail. Free of per-envelope fees.
+              </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button
-                size="lg"
-                className="h-12 cursor-pointer rounded-full bg-blue-600 px-8 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-transform hover:scale-[1.02] hover:bg-blue-700"
-                onClick={startEsign}
-              >
-                Start eSign
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 cursor-pointer rounded-full border-slate-200/90 bg-white/80 px-8 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white"
-                onClick={() => scrollToId("how-it-works")}
-              >
-                See how it works
-              </Button>
-            </div>
-
-            <ul className="mt-9 space-y-3">
-              {HERO_CHECKS.map((item, i) => (
-                <motion.li
-                  key={item}
-                  className="flex items-center gap-3 text-sm font-medium text-slate-700"
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.28 + i * 0.07, duration: 0.4, ease: ESIGN_EASE }}
+              {/* Dual Action Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
+                <Button
+                  size="lg"
+                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={startEsign}
                 >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm shadow-blue-600/25">
-                    <Check className="h-3.5 w-3.5" strokeWidth={2.75} />
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span>Start signing free</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
-                  {item}
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
+                </Button>
 
-          <motion.div
-            className="relative w-full"
-            style={{ y: mockY }}
-            initial={{ opacity: 0, x: 28 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.85, delay: 0.14, ease: ESIGN_EASE }}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-400/30 via-sky-500/15 to-transparent blur-2xl lg:-inset-6"
-            />
-            <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden sm:rounded-[1.5rem] lg:aspect-auto lg:min-h-[28rem] xl:min-h-[30rem]">
-              <img
-                src="/esign.png"
-                alt="eSign with PDFToolkit — send, collect signatures, and seal documents with an audit trail"
-                width={1600}
-                height={1200}
-                className="h-full w-full object-contain object-center drop-shadow-[0_28px_60px_rgba(15,23,42,0.28)]"
-                decoding="async"
-                fetchPriority="high"
-              />
-            </div>
-          </motion.div>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
+                  onClick={() => navigate("/billing")}
+                >
+                  Plans &amp; pricing
+                </Button>
+              </div>
+
+              {/* Checkmark Highlights */}
+              <ul className="mt-9 space-y-3">
+                {HERO_CHECKS.map((item, i) => (
+                  <motion.li
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.28 + i * 0.07, duration: 0.4, ease: ESIGN_EASE }}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-xs shadow-blue-600/25">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* RIGHT COLUMN: Elevated Visual Composition with Swooping Wave & Live Mock */}
+            <motion.div
+              className="relative lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: ESIGN_EASE }}
+            >
+              <div className="relative mx-auto flex w-full max-w-[560px] items-center justify-center">
+
+                {/* 1. Organic Swooping Wave Background */}
+                <div
+                  aria-hidden
+                  className="absolute -right-4 -bottom-6 top-6 h-[88%] w-[96%] rounded-[45%_55%_48%_52%/40%_45%_55%_60%] bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 shadow-[0_30px_90px_-20px_rgba(37,99,235,0.45)] sm:-right-8"
+                />
+
+                {/* Secondary ambient glow */}
+                <div
+                  aria-hidden
+                  className="absolute right-8 -top-4 h-56 w-56 rounded-full bg-gradient-to-br from-sky-400/40 to-blue-500/10 blur-2xl"
+                />
+
+                {/* 2. Main Live Mockup */}
+                <div className="relative z-10 w-full pt-4">
+                  <EsignStatusMock className="mx-auto w-full max-w-[480px] drop-shadow-[0_20px_45px_rgba(15,23,42,0.22)]" />
+                </div>
+
+                {/* 3. Floating Card 1: Verified Signature Tag (Top Left) */}
+                <motion.div
+                  className="absolute left-0 top-10 sm:-left-6 sm:top-14 z-20 flex items-center gap-3.5 rounded-2xl border border-white/90 bg-white/95 p-3 px-4 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-2 w-14 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-1.5 w-9 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
+                  <div className="flex items-center gap-1.5 font-heading text-lg font-bold italic text-blue-600 dark:text-blue-400">
+                    <span>Jane</span>
+                    <PenTool className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </motion.div>
+
+                {/* 4. Floating Card 2: Cryptographic Seal Badge (Bottom Right) */}
+                <motion.div
+                  className="absolute -bottom-4 right-0 sm:-bottom-6 sm:right-2 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3.5 px-4 shadow-[0_25px_65px_-15px_rgba(15,23,42,0.28)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.45 }}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">SHA-256 Tamper Sealed</span>
+                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-600 dark:text-emerald-400">
+                        100% Valid
+                      </span>
+                    </div>
+                    <p className="font-mono text-[10px] text-slate-500 dark:text-slate-400">Hash: 8f4b2a9e...3d1c98</p>
+                  </div>
+                </motion.div>
+
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </section>
 
@@ -524,6 +590,15 @@ export default function EsignLanding() {
           </motion.div>
         </div>
       </section>
+
+      {/* ── eSign FAQs ────────────────────────────────────────────────────── */}
+      <FaqSection
+        variant="dark"
+        badge="eSign & Legal Signatures"
+        title="Frequently asked questions about eSign"
+        subtitle="Clear answers on electronic signature legality, security, multi-party routing, and audit records."
+        faqs={ESIGN_FAQS}
+      />
 
       <AuthModal
         isOpen={authOpen}

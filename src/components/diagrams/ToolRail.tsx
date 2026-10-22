@@ -11,7 +11,7 @@ import {
   PenTool,
   Plus,
   Redo2,
-  Sparkles,
+  Wand2,
   Square,
   Table2,
   Trash2,
@@ -491,7 +491,7 @@ export function ToolRail({
               onAiGenerate?.();
             }}
           >
-            <Sparkles className="size-3.5" />
+            <Wand2 className="size-3.5" />
           </RailBtn>
 
           <ToolbarMenu id="layout" label="Layout" shortcut="Ctrl+L" icon={<LayoutTemplate className="size-3.5" />}>

@@ -8,7 +8,7 @@ import {
   PanelLeft,
   PanelRight,
   RefreshCw,
-  Sparkles,
+  Bot,
   Upload,
   X,
 } from "lucide-react";
@@ -165,7 +165,7 @@ export function AiDocPanel({
               accent ?? "from-primary/20 to-primary/5"
             )}
           >
-            <Sparkles className="size-6 text-primary" />
+            <Bot className="size-6 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
@@ -332,7 +332,7 @@ export function AiDocPanel({
                 toneBar
               )}
             >
-              <Sparkles className="size-4" />
+              <Bot className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{title.replace(" with AI", "")}</p>
@@ -409,7 +409,7 @@ export function AiDocPanel({
             ) : isWorking ? (
               <div className="mx-auto flex max-w-md flex-col items-center gap-3 pt-16 text-center">
                 <div className="relative flex size-14 items-center justify-center">
-                  <Sparkles className="size-6 text-primary" />
+                  <Bot className="size-6 text-primary" />
                   <span
                     className="absolute inset-0 animate-ping rounded-full border-2 border-primary/25"
                     style={{ animationDuration: "2s" }}
@@ -440,7 +440,7 @@ export function AiDocPanel({
               disabled={isWorking || outOfCredits}
               size="lg"
               className={cn(
-                "h-11 flex-1 rounded-full text-white shadow-sm",
+                "h-11 flex-1 rounded-xl text-white shadow-sm",
                 tone === "sky"
                   ? "bg-sky-600 hover:bg-sky-700"
                   : "bg-fuchsia-600 hover:bg-fuchsia-700"
@@ -451,7 +451,7 @@ export function AiDocPanel({
               ) : result ? (
                 <RefreshCw className="size-4" />
               ) : (
-                <Sparkles className="size-4" />
+                <Bot className="size-4" />
               )}
               {isWorking ? "Working…" : result ? `${actionLabel} again` : actionLabel}
             </Button>

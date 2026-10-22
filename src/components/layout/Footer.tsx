@@ -24,14 +24,11 @@ export const Footer: React.FC = () => {
           {/* Brand Info & Newsletter */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight text-foreground leading-none">
-                  PDF<span className="text-foreground">Toolkit</span>
-                </span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground mt-1">
-                  Enterprise PDF OS
-                </span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="vigodesk.com"
+                className="h-14 sm:h-16 w-auto object-contain transition-transform duration-200 group-hover:scale-105 dark:drop-shadow-[0_0_1px_rgba(255,255,255,0.7)] dark:brightness-110"
+              />
             </Link>
 
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm font-medium">

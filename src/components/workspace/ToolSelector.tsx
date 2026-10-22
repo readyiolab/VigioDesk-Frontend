@@ -11,6 +11,33 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "../ui/button";
+import { FaqSection } from "@/components/common/FaqSection";
+const WORKSPACE_FAQS = [
+  {
+    q: "What is the maximum file size for PDF processing in the workspace?",
+    a: "Free accounts support files up to 50 MB per document. Pro and Enterprise accounts support high-resolution documents up to 500 MB per file with multithreaded processing.",
+  },
+  {
+    q: "Are my uploaded files private and protected from third parties?",
+    a: "Yes. Many utilities (like page organizing, rotation, and reordering) run locally inside your browser sandbox. For server-accelerated tasks like OCR and compression, files are encrypted with AES-256 and automatically deleted after 60 minutes.",
+  },
+  {
+    q: "Can I convert scanned paper documents and images to text?",
+    a: "Yes. Our OCR (Optical Character Recognition) tool extracts text from scanned PDF contracts, receipts, and photos across 20+ languages, producing searchable and copyable text.",
+  },
+  {
+    q: "Can I password protect or remove passwords from PDF files?",
+    a: "Yes. Use the Protect tool to apply 256-bit AES encryption with custom user and owner passwords. If you own a password-protected file, you can remove restrictions using the Unlock tool.",
+  },
+  {
+    q: "Do workspace tools work on mobile browsers?",
+    a: "Yes. The entire Vigodesk workspace is fully responsive. You can upload, edit, compress, and sign documents seamlessly on iOS (Safari) and Android (Chrome) devices.",
+  },
+  {
+    q: "How do I download or access processed files?",
+    a: "Once a job finishes, click the Download button to save the result immediately. If you have an active account, your recent files are also accessible from the History tab.",
+  },
+];
 
 export const ToolSelector: React.FC = () => {
   const navigate = useNavigate();
@@ -216,6 +243,16 @@ export const ToolSelector: React.FC = () => {
           </Button>
         </div>
       )}
+
+      {/* ── Workspace & Tools FAQs ── */}
+      <div className="mt-16">
+        <FaqSection
+          badge="Toolkit Help"
+          title="Frequently asked questions about PDF tools"
+          subtitle="Answers about supported file sizes, AES encryption, OCR languages, and batch processing."
+          faqs={WORKSPACE_FAQS}
+        />
+      </div>
 
     </div>
   );

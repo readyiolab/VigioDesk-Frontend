@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StudioSkeleton } from "@/components/letters/StudioPageHeader";
 import { toast } from "sonner";
-import { Loader2, Sparkles, ChevronDown, Eye, RefreshCw } from "lucide-react";
+import { Loader2, ChevronDown, Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   tipTapDocToPlainText,
@@ -468,7 +468,6 @@ export default function TemplatesPage() {
               className="h-9 rounded-xl text-indigo-700"
               onClick={() => setAiOpen((v) => !v)}
             >
-              <Sparkles className="mr-1 size-3.5" />
               Write with AI
             </Button>
           </div>

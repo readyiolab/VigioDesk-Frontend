@@ -84,7 +84,7 @@ export function ShareDialog({ open, onClose, organizationId, diagramId }: Props)
               <option value="EDIT">Can edit</option>
             </select>
           </div>
-          <Button onClick={create} disabled={busy} className="rounded-lg">
+          <Button onClick={create} disabled={busy} className="rounded-xl">
             {busy ? <Spinner className="size-4" /> : "Create link"}
           </Button>
         </div>

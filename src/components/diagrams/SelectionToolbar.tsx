@@ -4,7 +4,7 @@ import {
   Link2,
   Lock,
   MoreHorizontal,
-  Sparkles,
+  Wand2,
   Trash2,
   Boxes,
   Palette,
@@ -83,7 +83,7 @@ export function SelectionToolbar({
               setMoreOpen(false);
             }}
           >
-            <Sparkles className="size-3.5 text-amber-500" />
+            <Wand2 className="size-3.5 text-blue-500" />
             <span className="text-[11px]">AI Edit</span>
           </Tb>
           {aiOpen ? (

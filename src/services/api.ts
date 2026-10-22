@@ -336,6 +336,11 @@ export const apiService = {
   getCloudIntegrations: () =>
     apiFetch("/cloud/integrations", { method: "GET" }),
 
+  getCloudOAuthUrl: (provider: string, redirectUri?: string) =>
+    apiFetch(`/cloud/oauth/${provider}${redirectUri ? `?redirectUri=${encodeURIComponent(redirectUri)}` : ""}`, {
+      method: "GET",
+    }),
+
   connectCloud: (provider: string, accountEmail: string, accessToken?: string) =>
     apiFetch("/cloud/connect", {
       method: "POST",
@@ -345,8 +350,31 @@ export const apiService = {
   disconnectCloud: (provider: string) =>
     apiFetch("/cloud/disconnect", { method: "POST", body: JSON.stringify({ provider }) }),
 
-  getCloudFiles: (provider: string) =>
-    apiFetch(`/cloud/files?provider=${provider}`, { method: "GET" }),
+  getCloudFiles: (provider: string, folderId?: string, search?: string) => {
+    const params = new URLSearchParams({ provider });
+    if (folderId) params.append("folderId", folderId);
+    if (search) params.append("search", search);
+    return apiFetch(`/cloud/files?${params.toString()}`, { method: "GET" });
+  },
+
+  downloadCloudFileBlob: async (provider: string, fileId: string, fileName?: string): Promise<File> => {
+    const token = localStorage.getItem("saas_jwt_token");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE_URL}/cloud/download/${provider}/${fileId}`, {
+      headers,
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to download cloud file: ${res.statusText}`);
+    }
+
+    const blob = await res.blob();
+    const finalName = fileName || `${provider}_file_${fileId}.pdf`;
+    return new File([blob], finalName, { type: blob.type || "application/pdf" });
+  },
 
   syncCloudWorkspace: () => apiFetch("/cloud/sync", { method: "POST" }),
 

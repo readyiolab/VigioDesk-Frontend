@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   Gauge,
   ScanSearch,
   Search,
   Share2,
   ShieldCheck,
-  Sparkles,
+  Bot,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { FaqSection } from "@/components/common/FaqSection";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const VIEWPORT = { once: true, amount: 0.25 } as const;
@@ -53,7 +55,7 @@ const FEATURES = [
     body: "Titles, descriptions, headings, canonicals, sitemap, robots, and indexability conflicts.",
   },
   {
-    icon: Sparkles,
+    icon: Bot,
     title: "AI-search readiness",
     body: "Named AI crawlers, llms.txt, JavaScript-rendered text, structure, and trust signals.",
   },
@@ -74,6 +76,33 @@ const FEATURES = [
   },
 ] as const;
 
+const WEBREPORT_FAQS = [
+  {
+    q: "What metrics are measured during a Web Report audit?",
+    a: "Each audit runs simulated lab and field checks for both mobile and desktop profiles: Core Web Vitals (Largest Contentful Paint, Cumulative Layout Shift, Interaction to Next Paint), page payload size, server response time, technical SEO tags, and AI search engine discoverability.",
+  },
+  {
+    q: "What is the AI-Search Readiness audit?",
+    a: "AI-Search readiness assesses how effectively generative AI agents (like ChatGPT, Perplexity, Claude, and Gemini) can discover and interpret your site. We audit robots.txt bot directives, llms.txt declarations, structured schema markup, and JavaScript rendering dependencies.",
+  },
+  {
+    q: "Can I share audit reports with clients or external teams?",
+    a: "Yes. You can generate a secure read-only public share link for any completed audit report. Recipients can interact with the performance graphs, recommendations, and diagnostic breakdowns without having to log in.",
+  },
+  {
+    q: "How many daily site scans are included in my plan?",
+    a: "Free accounts can run up to 3 site audits per day. Pro plans include 30 daily scans with deeper crawl depth and priority queues. Enterprise plans include up to 100 daily scans with scheduled monitoring.",
+  },
+  {
+    q: "Can I scan password-protected pages or localhost staging sites?",
+    a: "No. For security and anti-abuse safeguards, our automated cloud scanners only inspect publicly accessible HTTP and HTTPS URLs. Requests pointing to private IP addresses (RFC 1918), localhost servers, or cloud metadata endpoints are rejected before any crawl.",
+  },
+  {
+    q: "How do I fix the issues highlighted in my Web Report?",
+    a: "Each report ranks issues by practical impact and provides concrete guidance: image compression recommendations, caching header improvements, unused CSS/JS reduction, and meta tag corrections.",
+  },
+];
+
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -93,136 +122,172 @@ export default function WebReportsLanding() {
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden bg-[#F7F9FC] text-slate-900">
+      {/* ── Hero — Home Style with Vigodesk WebReports Theme ──────────────── */}
       <section
         ref={heroRef}
-        className="relative w-full min-h-[min(100svh,920px)] overflow-hidden border-b border-slate-200/70 -mt-14 sm:-mt-16"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#EEF4FB] via-[#F7F9FC] to-[#F7F9FC] pt-5 pb-14 sm:pt-7 sm:pb-16 lg:pt-8 lg:pb-20 border-b border-slate-200/70"
       >
+        {/* Subtle grid pattern background */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 60% at 88% 8%, rgba(37,99,235,0.22), transparent 55%), radial-gradient(ellipse 50% 40% at 6% 90%, rgba(16,185,129,0.16), transparent 52%), radial-gradient(ellipse 40% 30% at 50% 40%, rgba(255,255,255,0.9), transparent 70%), linear-gradient(165deg, #F7F9FC 0%, #E7EEF9 48%, #F7F9FC 100%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.4]"
+          className="pointer-events-none absolute inset-0 opacity-[0.25]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(100,116,139,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,0.16) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-            maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black, transparent)",
+              "linear-gradient(rgba(59,130,246,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.12) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%)",
           }}
         />
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-blue-400/25 blur-3xl"
-          animate={{ y: [0, 18, 0], opacity: [0.35, 0.6, 0.35] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 bottom-16 h-80 w-80 rounded-full bg-emerald-300/25 blur-3xl"
-          animate={{ y: [0, -20, 0], opacity: [0.3, 0.55, 0.3] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-        />
 
-        <div className="relative mx-auto grid min-h-[min(100svh,920px)] max-w-6xl items-center gap-8 px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-2 lg:gap-10 lg:px-8">
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE }}
-          >
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200/80 backdrop-blur-sm">
-              <ScanSearch className="h-3.5 w-3.5" />
-              WebReports · Website audit
-            </p>
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
-            <h1 className="font-heading mt-6 text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.05] lg:text-[3.25rem]">
-              Audit any public website
-            </h1>
-
-            <p className="mt-4 max-w-xl text-balance text-xl font-medium tracking-tight text-slate-700 sm:text-2xl sm:leading-snug">
-              Performance, SEO, and AI-search readiness in one report.
-            </p>
-
-            <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">
-              Submit a URL and get a scored report with the fixes that matter. Missing measurements stay unavailable — they are never treated as zero.
-            </p>
-
+            {/* LEFT COLUMN: Copy & CTA Buttons */}
             <motion.div
-              className="mt-8 flex flex-wrap items-center gap-3"
-              initial={{ opacity: 0, y: 12 }}
+              className="relative z-10 lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.18, ease: EASE }}
+              transition={{ duration: 0.65, ease: EASE }}
             >
-              <Button
-                size="lg"
-                className="h-12 cursor-pointer rounded-full bg-blue-600 px-8 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-                onClick={() => navigate(scanPath)}
-              >
-                {ctaLabel}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 cursor-pointer rounded-full border-slate-200/90 bg-white/80 px-8 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white"
-                onClick={() => scrollToId("how")}
-              >
-                See how it works
-              </Button>
-            </motion.div>
+              {/* Pill Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 shadow-xs mb-5 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <Gauge className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>vigodesk.com · WebReports</span>
+                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
+                  SEO &amp; Performance
+                </span>
+              </div>
 
-            <ul className="mt-8 space-y-2.5">
-              {HERO_CHECKS.map((item, i) => (
-                <motion.li
-                  key={item}
-                  className="flex items-center gap-2.5 text-sm font-medium text-slate-600"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.28 + i * 0.06, duration: 0.35, ease: EASE }}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                    <CheckCircle2 className="h-3 w-3" strokeWidth={2.75} />
-                  </span>
-                  {item}
-                </motion.li>
-              ))}
-            </ul>
+              {/* Main Headline */}
+              <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.35rem] xl:text-[3.75rem] dark:text-white">
+                Turn Any Public URL into an <span className="bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-emerald-400">Executive Audit Report</span>
+              </h1>
 
-            {user?.plan === "FREE" && (
-              <p className="mt-6 text-xs text-slate-500">
-                Free includes 3 scans a day. Upgrade to Pro for 30.
+              {/* Subheading */}
+              <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
+                Inspect Core Web Vitals, technical SEO health, and generative AI search crawler indexability in seconds. Get prioritized fixes and share read-only links with stakeholders.
               </p>
-            )}
-          </motion.div>
 
-          <motion.div className="relative mx-auto w-full max-w-lg lg:max-w-none" style={{ y: mockY }}>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-blue-500/25 via-sky-400/10 to-emerald-400/20 blur-2xl"
-            />
-            <motion.div
-              className="absolute -left-3 top-10 z-20 hidden rounded-2xl border border-white/80 bg-white/90 px-3 py-2 shadow-lg shadow-slate-900/10 backdrop-blur-md sm:block"
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">LCP</p>
-              <p className="text-sm font-bold text-emerald-600">2.1s · Good</p>
+              {/* Dual Action Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
+                <Button
+                  size="lg"
+                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={() => navigate(scanPath)}
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span>{ctaLabel}</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
+                  onClick={() => navigate("/billing")}
+                >
+                  Plans &amp; pricing
+                </Button>
+              </div>
+
+              {/* Checkmark Highlights */}
+              <ul className="mt-9 space-y-3">
+                {HERO_CHECKS.map((item, i) => (
+                  <motion.li
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.28 + i * 0.07, duration: 0.4, ease: EASE }}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-xs shadow-blue-600/25">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+
+              {user?.plan === "FREE" && (
+                <p className="mt-6 text-xs text-slate-500">
+                  Free includes 3 scans a day. Upgrade to Pro for 30.
+                </p>
+              )}
             </motion.div>
+
+            {/* RIGHT COLUMN: Elevated Visual Composition with Swooping Wave & Live Mock */}
             <motion.div
-              className="absolute -right-2 bottom-16 z-20 hidden rounded-2xl border border-white/80 bg-white/90 px-3 py-2 shadow-lg shadow-slate-900/10 backdrop-blur-md sm:block"
-              animate={{ y: [0, 7, 0] }}
-              transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+              className="relative lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: EASE }}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">AI bots</p>
-              <p className="text-sm font-bold text-blue-700">GPTBot allowed</p>
+              <div className="relative mx-auto flex w-full max-w-[560px] items-center justify-center">
+
+                {/* 1. Organic Swooping Wave Background */}
+                <div
+                  aria-hidden
+                  className="absolute -right-4 -bottom-6 top-6 h-[88%] w-[96%] rounded-[45%_55%_48%_52%/40%_45%_55%_60%] bg-gradient-to-tr from-blue-600 via-indigo-600 to-emerald-500 shadow-[0_30px_90px_-20px_rgba(16,185,129,0.35)] sm:-right-8"
+                />
+
+                {/* Secondary ambient glow */}
+                <div
+                  aria-hidden
+                  className="absolute right-8 -top-4 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-400/40 to-blue-500/10 blur-2xl"
+                />
+
+                {/* 2. Main Live Mockup */}
+                <div className="relative z-10 w-full pt-4">
+                  <ReportMock />
+                </div>
+
+                {/* 3. Floating Card 1: Score Badge (Top Left) */}
+                <motion.div
+                  className="absolute left-0 top-10 sm:-left-6 sm:top-12 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3 px-4 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <Gauge className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Audit Score</span>
+                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-600">
+                        88 / 100
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Mobile 80 · Desktop 90</p>
+                  </div>
+                </motion.div>
+
+                {/* 4. Floating Card 2: AI Bots Allowed Badge (Bottom Right) */}
+                <motion.div
+                  className="absolute -bottom-4 right-0 sm:-bottom-6 sm:right-2 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3.5 px-4 shadow-[0_25px_65px_-15px_rgba(15,23,42,0.28)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.45 }}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">AI Crawlers Ready</span>
+                      <span className="rounded-full bg-blue-500/10 px-1.5 py-0.2 text-[8px] font-bold text-blue-600">
+                        Verified
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">GPTBot, ClaudeBot &amp; Perplexity</p>
+                  </div>
+                </motion.div>
+
+              </div>
             </motion.div>
-            <ReportMock />
-          </motion.div>
+
+          </div>
         </div>
       </section>
 
@@ -307,6 +372,14 @@ export default function WebReportsLanding() {
         </div>
       </section>
 
+      {/* ── Web Reports & SEO/Performance FAQs ── */}
+      <FaqSection
+        badge="Web Audits & SEO"
+        title="Frequently asked questions about Web Reports"
+        subtitle="Learn more about performance metrics, Core Web Vitals, AI-search crawlers, and report sharing."
+        faqs={WEBREPORT_FAQS}
+      />
+
       <section className="px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-16 text-center text-white shadow-2xl shadow-blue-950/20 sm:px-12">
           <div
@@ -327,7 +400,7 @@ export default function WebReportsLanding() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button
                 size="lg"
-                className="h-12 cursor-pointer rounded-full bg-white px-8 font-semibold text-slate-950 hover:bg-slate-100"
+                className="h-12 cursor-pointer rounded-xl bg-white px-8 font-semibold text-slate-950 hover:bg-slate-100"
                 onClick={() => navigate(scanPath)}
               >
                 {ctaLabel}
@@ -336,7 +409,7 @@ export default function WebReportsLanding() {
               <Button
                 variant="outline"
                 size="lg"
-                className="h-12 cursor-pointer rounded-full border-white/20 bg-white/5 px-8 font-semibold text-white hover:bg-white/10 hover:text-white"
+                className="h-12 cursor-pointer rounded-xl border-white/20 bg-white/5 px-8 font-semibold text-white hover:bg-white/10 hover:text-white"
                 onClick={() => navigate("/billing")}
               >
                 View plans

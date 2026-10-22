@@ -5,7 +5,7 @@ import {
   Circle,
   GitBranch,
   Network,
-  Sparkles,
+  Wand2,
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -130,8 +130,8 @@ export function LayoutMenu({
         onClick={() => onLayout("orthogonal")}
       />
       <Item
-        label="Magic Cleanup ✨"
-        icon={<Sparkles className="size-3.5 text-amber-500" />}
+        label="Auto Cleanup"
+        icon={<Wand2 className="size-3.5 text-blue-500" />}
         onClick={() => onMagicCleanup?.() ?? onLayout("magic-cleanup")}
       />
       <Sep />

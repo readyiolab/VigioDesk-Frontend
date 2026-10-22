@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { apiService } from "@/services/api";
 
 interface CloudProvider {
-  id: "gdrive" | "dropbox" | "onedrive" | "box";
+  id: "gdrive" | "dropbox" | "onedrive" | "sharepoint" | "box";
   name: string;
   connected: boolean;
   email: string | null;
@@ -39,7 +39,7 @@ interface CloudFile {
   name: string;
   size: string;
   updatedAt: string;
-  providerId: "gdrive" | "dropbox" | "onedrive" | "box";
+  providerId: "gdrive" | "dropbox" | "onedrive" | "sharepoint" | "box";
   providerName: string;
   type: "pdf" | "docx" | "xlsx";
 }
@@ -52,6 +52,7 @@ export const CloudIntegrationsHub: React.FC = () => {
     const savedGDrive = localStorage.getItem("cloud_conn_gdrive");
     const savedDropbox = localStorage.getItem("cloud_conn_dropbox");
     const savedOneDrive = localStorage.getItem("cloud_conn_onedrive");
+    const savedSharePoint = localStorage.getItem("cloud_conn_sharepoint");
 
     return [
       {
@@ -89,6 +90,18 @@ export const CloudIntegrationsHub: React.FC = () => {
         lastSync: savedOneDrive ? "1 hour ago" : "Not connected",
         filesCount: savedOneDrive ? 310 : 0,
         scopes: ["Files.ReadWrite", "User.Read"],
+      },
+      {
+        id: "sharepoint",
+        name: "SharePoint Library",
+        connected: savedSharePoint ? true : false,
+        email: savedSharePoint || null,
+        accentColor: "text-teal-500",
+        iconBg: "bg-teal-500/10 border-teal-500/20",
+        storageUsed: savedSharePoint ? "45 GB / 5 TB" : "0 GB",
+        lastSync: savedSharePoint ? "30 mins ago" : "Not connected",
+        filesCount: savedSharePoint ? 480 : 0,
+        scopes: ["Sites.Read.All", "Files.Read.All"],
       },
       {
         id: "box",
@@ -361,7 +374,7 @@ export const CloudIntegrationsHub: React.FC = () => {
       </div>
 
       {/* Provider Status Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {providers.map((p) => (
           <div
             key={p.id}

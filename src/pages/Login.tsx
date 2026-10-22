@@ -1,5 +1,4 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AuthForm } from "../components/auth/AuthForm";
 
@@ -14,10 +13,14 @@ export const Login: React.FC = () => {
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-md"
       >
-        <div className="mb-6 text-center">
-          <p className="text-lg font-bold tracking-tight">
-            PDF<span className="text-primary">Toolkit</span>
-          </p>
+        <div className="mb-6 flex justify-center">
+          <Link to="/">
+            <img
+              src="/logo.png"
+              alt="vigodesk.com"
+              className="h-14 sm:h-16 w-auto object-contain transition-transform duration-200 hover:scale-105 dark:drop-shadow-[0_0_1px_rgba(255,255,255,0.7)] dark:brightness-110"
+            />
+          </Link>
         </div>
         <div className="rounded-2xl border border-border bg-card/90 p-6 sm:p-8 shadow-lg shadow-primary/5 backdrop-blur-sm">
           <AuthForm

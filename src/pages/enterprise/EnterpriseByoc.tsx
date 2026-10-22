@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   Building2,
+  Check,
   CheckCircle2,
   Cloud,
   HeartPulse,
@@ -26,6 +27,34 @@ import {
 } from "@/components/byoc/motion";
 import { ProviderLogo } from "@/components/byoc/ProviderLogo";
 import { cn } from "@/lib/utils";
+import { FaqSection } from "@/components/common/FaqSection";
+
+const ENTERPRISE_FAQS = [
+  {
+    q: "Which cloud storage providers does Vigodesk Enterprise support?",
+    a: "Vigodesk currently supports native Bring Your Own Cloud (BYOC) integration with Amazon Web Services (AWS S3), Microsoft Azure Blob Storage, Cloudflare R2, Google Cloud Storage (GCS), and self-hosted S3-compatible systems like MinIO.",
+  },
+  {
+    q: "How does Bring Your Own Cloud (BYOC) ensure document privacy?",
+    a: "Under BYOC, your browser uploads and downloads PDF files directly to and from your own private cloud bucket using short-lived signed URLs. Vigodesk servers orchestrate the workflow metadata and cryptographic verification, but never store or inspect your raw document bytes.",
+  },
+  {
+    q: "How is CORS verified between the browser and our private bucket?",
+    a: "During bucket setup under Settings → Cloud storage, our automated probe checks reachability, write permissions, and browser Cross-Origin Resource Sharing (CORS). Configuration cannot be saved until CORS is proven working, ensuring zero broken uploads.",
+  },
+  {
+    q: "Can we enforce our own data retention, encryption keys, and residency policies?",
+    a: "Yes, completely. Because files reside in your cloud bucket, your organization retains full control over KMS/SSE encryption keys, lifecycle auto-deletion rules, legal holds, and geographical region compliance (e.g. EU data residency).",
+  },
+  {
+    q: "Can we switch cloud storage providers in the future?",
+    a: "Yes. You can switch or rebind storage providers at any time. Existing completed jobs and past eSign certificates remain accessible under immutable reference links.",
+  },
+  {
+    q: "Does Vigodesk provide custom SLAs and enterprise support?",
+    a: "Yes. Enterprise accounts include a 99.95% uptime service level agreement (SLA), priority ticket routing with sub-hour emergency response times, and a dedicated technical account manager.",
+  },
+];
 
 const STEPS = [
   {
@@ -124,98 +153,189 @@ export default function EnterpriseByoc() {
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden bg-[#F7F9FC] text-slate-900">
-      {/* Hero */}
+      {/* ── Elevated Hero — Nitro & Vigodesk Theme ── */}
       <section
         ref={heroRef}
-        className="relative w-full overflow-hidden border-b border-slate-200/70 -mt-14 sm:-mt-16"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#EEF4FB] via-[#F7F9FC] to-[#F7F9FC] pt-8 pb-16 sm:pt-10 sm:pb-20 lg:pt-12 lg:pb-24 border-b border-slate-200/70"
       >
+        {/* Subtle grid background pattern with radial mask */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
           style={{
-            background:
-              "radial-gradient(ellipse 70% 55% at 18% 20%, rgba(14,165,233,0.12), transparent 55%), radial-gradient(ellipse 45% 40% at 40% 90%, rgba(37,99,235,0.07), transparent 50%), linear-gradient(165deg, #F7F9FC 0%, #EEF4FB 42%, #F7F9FC 100%)",
+            backgroundImage:
+              "linear-gradient(rgba(100,116,139,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,0.18) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
+            maskImage: "radial-gradient(ellipse 80% 65% at 50% 35%, black, transparent)",
           }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pb-14 pt-28 sm:gap-8 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:pb-20">
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: BYOC_EASE }}
-          >
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200">
-              <Cloud className="h-3.5 w-3.5" />
-              Enterprise · Your own cloud
-            </p>
-            <h1 className="font-heading mt-5 text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl sm:leading-[1.1] lg:text-[2.75rem] xl:text-5xl">
-              Your PDFs stay in your bucket. We never keep the bytes.
-            </h1>
-            <p className="mt-4 max-w-xl text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">
-              Connect AWS, Azure, Cloudflare R2, GCS, or MinIO. Browser uploads go straight to your
-              storage. Auth, jobs, and signing metadata stay on PDFToolkit.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button
-                size="lg"
-                className="h-12 cursor-pointer rounded-full bg-blue-600 px-8 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-                onClick={() => navigate(primaryPath)}
-              >
-                {primaryLabel}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 cursor-pointer rounded-full border-slate-200 bg-white/80 px-8 text-sm font-semibold text-slate-700 hover:bg-white"
-                onClick={() =>
-                  document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                See how it works
-              </Button>
-            </div>
-            <AnimatedChecks
-              className="mt-9"
-              variant="light"
-              items={[
-                "Presigned PUT — files never transit our disk",
-                "CORS verified before Save",
-                "Operators never see your raw credentials",
-              ]}
-            />
-            <ProviderChips variant="light" className="mt-8" />
-          </motion.div>
+        {/* Ambient background glows */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-sky-400/20 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-12 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl"
+        />
 
-          <motion.div
-            className="relative w-full"
-            style={{ y: diagramY }}
-            initial={{ opacity: 0, x: 28 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.75, delay: 0.12, ease: BYOC_EASE }}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-sky-400/25 via-blue-500/10 to-transparent blur-2xl lg:-inset-6"
-            />
-            <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden sm:rounded-[1.5rem] lg:aspect-auto lg:min-h-[28rem] xl:min-h-[30rem]">
-              <img
-                src="/image.png"
-                alt="Your storage, secure processing, files stay in your cloud — AWS, Azure, Google Cloud"
-                width={1600}
-                height={1200}
-                className="h-full w-full object-contain object-center p-1 sm:p-2"
-                decoding="async"
-                fetchPriority="high"
-              />
-            </div>
-          </motion.div>
-        </div>
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
+            
+            {/* LEFT COLUMN: Clean, Left-Aligned High-Impact Copy */}
+            <motion.div
+              className="relative z-10 lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: BYOC_EASE }}
+            >
+              {/* Pill Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-sky-700 shadow-xs mb-5 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-400">
+                <Cloud className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                <span>vigodesk.com · Cloud Storage &amp; BYOK</span>
+                <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
+                  Enterprise
+                </span>
+              </div>
 
-        <div className="relative border-t border-slate-200/60 bg-white/50 py-10 backdrop-blur-sm sm:py-12">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <ByocFlowDiagram variant="light" />
+              {/* Main Headline */}
+              <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.25rem] xl:text-[3.65rem] dark:text-white">
+                Your PDFs Stay in Your Cloud. <span className="bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 bg-clip-text text-transparent">Zero Raw File Retention.</span>
+              </h1>
+
+              {/* Subheading */}
+              <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
+                Connect AWS S3, Azure Blob, Cloudflare R2, Google Cloud Storage, or MinIO. Browser uploads stream directly to your private bucket via presigned signed URLs. Auth, jobs, and audit seals stay verified without ever caching your files.
+              </p>
+
+              {/* Dual Action Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
+                <Button
+                  size="lg"
+                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-sky-600 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={() => navigate(primaryPath)}
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span>{primaryLabel}</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
+                  onClick={() =>
+                    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })
+                  }
+                >
+                  See how it works
+                </Button>
+              </div>
+
+              {/* Checkmark Highlights */}
+              <ul className="mt-9 space-y-3">
+                {[
+                  "Presigned PUT — files never transit or touch our disks",
+                  "Strict CORS pre-flight validation before activation",
+                  "Customer-managed keys (AWS KMS / SSE / Azure Customer Key)",
+                ].map((item, i) => (
+                  <motion.li
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.28 + i * 0.07, duration: 0.4, ease: BYOC_EASE }}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white shadow-xs shadow-sky-600/25">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
+
+              {/* Supported Providers Rail */}
+              <div className="mt-8 pt-6 border-t border-slate-200/80">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                  Supported Cloud Providers
+                </p>
+                <ProviderChips variant="light" />
+              </div>
+            </motion.div>
+
+            {/* RIGHT COLUMN: Elevated Visual Composition with Swooping Wave & Live Architecture Flow */}
+            <motion.div
+              className="relative lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: BYOC_EASE }}
+            >
+              <div className="relative mx-auto flex w-full max-w-[580px] items-center justify-center">
+
+                {/* 1. Organic Swooping Wave Background */}
+                <div
+                  aria-hidden
+                  className="absolute -right-4 -bottom-6 top-6 h-[88%] w-[96%] rounded-[45%_55%_48%_52%/40%_45%_55%_60%] bg-gradient-to-tr from-sky-500 via-blue-600 to-indigo-700 shadow-[0_30px_90px_-20px_rgba(14,165,233,0.45)] sm:-right-8"
+                />
+
+                {/* Secondary ambient glow */}
+                <div
+                  aria-hidden
+                  className="absolute right-8 -top-4 h-56 w-56 rounded-full bg-gradient-to-br from-sky-400/40 to-blue-500/10 blur-2xl"
+                />
+
+                {/* 2. Main Live Mockup: ByocFlowDiagram */}
+                <div className="relative z-10 w-full pt-4">
+                  <ByocFlowDiagram variant="light" className="shadow-[0_30px_80px_-25px_rgba(15,23,42,0.35)]" />
+                </div>
+
+                {/* 3. Floating Card 1: Direct Presigned Stream (Top Left) */}
+                <motion.div
+                  className="absolute left-0 top-10 sm:-left-6 sm:top-12 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3 px-4 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-sky-500/20 dark:bg-sky-500/10 dark:text-sky-400">
+                    <Cloud className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Direct Presigned PUT</span>
+                      <span className="rounded-full bg-sky-500/10 px-1.5 py-0.2 text-[8px] font-bold text-sky-600">
+                        Zero Bytes Stored
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Browser → S3 / Azure direct upload</p>
+                  </div>
+                </motion.div>
+
+                {/* 4. Floating Card 2: KMS / Encryption Verification (Bottom Right) */}
+                <motion.div
+                  className="absolute -bottom-4 right-0 sm:-bottom-6 sm:right-2 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3.5 px-4 shadow-[0_25px_65px_-15px_rgba(15,23,42,0.28)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.45 }}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Full Data Residency</span>
+                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-600">
+                        KMS / SSE
+                      </span>
+                    </div>
+                    <p className="font-mono text-[10px] text-slate-500">Region: Customer Specified</p>
+                  </div>
+                </motion.div>
+
+              </div>
+            </motion.div>
+
           </div>
         </div>
       </section>
@@ -496,6 +616,15 @@ export default function EnterpriseByoc() {
           </motion.div>
         </div>
       </section>
+
+      {/* ── Enterprise BYOC FAQs ─────────────────────────────────────────── */}
+      <FaqSection
+        variant="dark"
+        badge="Enterprise & Cloud Storage"
+        title="Frequently asked questions about BYOC"
+        subtitle="Learn how Vigodesk connects securely to your private cloud bucket with strict data residency."
+        faqs={ENTERPRISE_FAQS}
+      />
     </div>
   );
 }

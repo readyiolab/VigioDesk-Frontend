@@ -204,7 +204,7 @@ function SharedDiagramInner() {
                 {saving ? "Saving…" : "Unsaved changes. Click here to save."}
               </button>
             )}
-            <Button size="sm" className="h-7 rounded-md text-xs" onClick={() => void save()} disabled={saving}>
+            <Button size="sm" className="h-7 rounded-xl text-xs" onClick={() => void save()} disabled={saving}>
               Save
             </Button>
           </div>

@@ -17,6 +17,7 @@ import { ErrorScreen } from "@/components/ui/error-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { PageZoomModal } from "@/components/workspace/PageZoomModal";
+import { CloudFilePickerModal } from "@/components/ui/CloudFilePickerModal";
 import { Button } from "@/components/ui/button";
 
 import { SplitSettings } from "./tools/SplitSettings";
@@ -144,6 +145,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
   const [pdfToJpgDpi, setPdfToJpgDpi] = useState("150");
   const [ocrLanguages, setOcrLanguages] = useState("eng");
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [isAddMoreCloudOpen, setIsAddMoreCloudOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("controls");
   const [singlePdfUrl, setSinglePdfUrl] = useState<string | null>(null);
@@ -569,14 +571,25 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
                   </SortableContext>
                 </DndContext>
                 {tool.multiple && !isProcessing && (
-                  <button
-                    type="button"
-                    onClick={addMoreFiles}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 px-4 py-3 text-xs font-medium text-white/50 transition hover:border-emerald-500/40 hover:bg-white/5 hover:text-white/80"
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    Drop more files or click to browse
-                  </button>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={addMoreFiles}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 px-4 py-3 text-xs font-medium text-white/50 transition hover:border-emerald-500/40 hover:bg-white/5 hover:text-white/80 cursor-pointer"
+                    >
+                      <UploadCloud className="h-4 w-4" />
+                      Add more files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddMoreCloudOpen(true)}
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-xs font-medium text-white/70 transition hover:border-emerald-500/40 hover:bg-white/10 hover:text-white cursor-pointer"
+                      title="Add from Cloud Storage"
+                    >
+                      <HardDrive className="h-4 w-4 text-emerald-400" />
+                      <span>Cloud</span>
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -739,6 +752,16 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
         pages={pdfPreviews.previews}
         activeIndex={zoomIndex}
         onOpenChange={setZoomIndex}
+      />
+
+      <CloudFilePickerModal
+        isOpen={isAddMoreCloudOpen}
+        onClose={() => setIsAddMoreCloudOpen(false)}
+        onFilesSelected={(files) => fileUpload.addFiles(files)}
+        accept={tool.accept}
+        multiple={true}
+        toolName={tool.name}
+        onOpenDeviceFilePicker={addMoreFiles}
       />
     </div>
   );

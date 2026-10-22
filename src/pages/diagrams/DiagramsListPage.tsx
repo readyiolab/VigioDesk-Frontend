@@ -65,7 +65,7 @@ export default function DiagramsListPage() {
         <Button
           onClick={() => void createDiagram()}
           disabled={createMutation.isPending || !orgId && listQuery.isFetching}
-          className="rounded-lg"
+          className="rounded-xl"
         >
           {createMutation.isPending ? <Spinner className="size-4" /> : <Plus className="size-4" />}
           New diagram
@@ -127,7 +127,7 @@ export default function DiagramsListPage() {
           {!loading && diagrams.length === 0 && (
             <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-white px-6 py-16 text-center">
               <p className="text-sm text-[#64748b]">No diagrams yet.</p>
-              <Button className="mt-4 rounded-lg" onClick={() => void createDiagram()}>
+              <Button className="mt-4 rounded-xl" onClick={() => void createDiagram()}>
                 Create your first diagram
               </Button>
             </div>
@@ -162,7 +162,7 @@ export default function DiagramsListPage() {
             <div className="mt-6 flex justify-center">
               <Button
                 variant="outline"
-                className="rounded-lg"
+                className="rounded-xl"
                 disabled={listQuery.isFetchingNextPage}
                 onClick={() => void listQuery.fetchNextPage()}
               >

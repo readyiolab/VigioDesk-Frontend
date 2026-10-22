@@ -3,7 +3,7 @@ export const SITE_URL = (
   import.meta.env.VITE_SITE_URL || "https://pdf.zuvigo.com"
 ).replace(/\/$/, "");
 
-export const SITE_NAME = "PDFToolkit";
+export const SITE_NAME = "vigodesk.com";
 
 export interface SeoConfig {
   title: string;

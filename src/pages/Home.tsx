@@ -20,10 +20,12 @@ import {
   Monitor,
   Scissors,
   ShieldCheck,
-  Sparkles,
+  Bot,
   Users,
   WifiOff,
   Check,
+  PenTool,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ByocFlowDiagram } from "@/components/byoc/ByocFlowDiagram";
@@ -39,23 +41,32 @@ import {
 import { EsignStatusMock } from "@/components/esign/EsignStatusMock";
 import { ONLINE_PLANS } from "@/lib/pricing";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { FaqSection } from "@/components/common/FaqSection";
 
 const FAQS = [
   {
-    q: "Are eSignatures legally binding?",
-    a: "Yes. Every document signed through eSign includes a cryptographic SHA-256 hash and a full audit trail record.",
+    q: "What document solutions does Vigodesk offer?",
+    a: "Vigodesk offers a complete, browser-first document platform. It brings together 25+ PDF productivity tools (converting, merging, splitting, compressing, and OCR), legally binding eSignatures with audit trails, AES-256 password security, and generative AI for instant document summaries and Q&A.",
   },
   {
-    q: "Can I store PDFs in my own cloud?",
-    a: "Yes — on Enterprise you connect AWS, Azure, Cloudflare R2, Google Cloud, or MinIO. Uploads and signed documents land in your bucket; we keep metadata and auth on our side. You control retention, encryption keys, and region.",
+    q: "What are the main features of Vigodesk PDF?",
+    a: "Vigodesk PDF provides full lifecycle document processing: bidirectional conversion between PDF and Office formats (Word, Excel, PowerPoint, JPG, PNG), page organization, crisp compression, watermark overlays, metadata cleanup, and password encryption — all without installing heavy desktop software.",
   },
   {
-    q: "Are my documents kept private and secure?",
-    a: "Yes. Files go to encrypted private cloud storage and are accessible only via short-lived signed links. Stateless tool files are purged automatically after 60 minutes. Enterprise teams can also connect their own AWS, Azure, R2, GCS, or MinIO bucket.",
+    q: "What AI tools does Vigodesk offer for PDF & eSign workflows?",
+    a: "Vigodesk AI tools include AI Summarize (instant executive briefs and action items), Ask PDF (grounded conversational Q&A on contracts and reports), Explain PDF (translating dense clauses into plain language), and high-accuracy OCR scanning that turns scanned paperwork into editable text.",
   },
   {
-    q: "How does AI summarization work?",
-    a: "We parse your PDF’s text layer with high-speed OCR and LLM embeddings to produce concise executive summaries — without training on your data.",
+    q: "How does Vigodesk keep my data private and secure?",
+    a: "We believe privacy should be non-negotiable. Client-side tools execute directly inside your browser sandbox so files never leave your device. For server-accelerated tasks, documents are encrypted with AES-256 in transit and at rest, guarded by short-lived signed tokens, and automatically deleted after 60 minutes.",
+  },
+  {
+    q: "What compliance and legal standards does Vigodesk meet?",
+    a: "Vigodesk eSign signatures are legally binding under the US ESIGN Act, UETA, and European eIDAS regulations. Every signed agreement includes a cryptographic SHA-256 seal, timestamp, and tamper-evident audit trail certificate. Enterprise plans also support custom cloud storage (AWS S3, Azure, Cloudflare R2, GCP) for complete data residency compliance.",
+  },
+  {
+    q: "Can my team use Vigodesk without installing software?",
+    a: "Yes. Vigodesk runs seamlessly across modern desktop and mobile browsers (Chrome, Edge, Safari, Firefox). For teams working in air-gapped environments or requiring offline local processing, a lightweight Vigodesk Desktop companion app is also available.",
   },
 ];
 
@@ -64,7 +75,7 @@ const HERO_RAIL = [
   { id: "split", label: "Split", icon: Scissors },
   { id: "compress", label: "Compress", icon: Minimize2 },
   { id: "esign", label: "eSign", icon: FileSignature },
-  { id: "ai", label: "AI", icon: Sparkles },
+  { id: "ai", label: "AI", icon: Bot },
   { id: "protect", label: "Protect", icon: Lock },
 ] as const;
 
@@ -119,7 +130,6 @@ function scrollToId(id: string) {
 export const Home: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [toolCategory, setToolCategory] = useState("All");
   const [activeTool, setActiveTool] = useState<(typeof HERO_RAIL)[number]["id"]>("esign");
   const byocSectionRef = useRef<HTMLElement>(null);
@@ -169,514 +179,456 @@ export const Home: React.FC = () => {
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden bg-[#F7F9FC] text-slate-900">
-      {/* ── Hero — software stage (not marketing highlights) ──────────────── */}
+      {/* ── Hero — Nitro style with Vigodesk Theme ──────────────── */}
       <section
         ref={heroRef}
-        className="relative w-full min-h-[min(100svh,980px)] overflow-hidden -mt-14 sm:-mt-16"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#EEF4FB] via-[#F7F9FC] to-[#F7F9FC] pt-5 pb-14 sm:pt-7 sm:pb-16 lg:pt-8 lg:pb-20"
       >
+        {/* Subtle grid pattern background */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 55% at 50% 0%, rgba(37,99,235,0.14), transparent 55%), radial-gradient(ellipse 50% 40% at 100% 80%, rgba(14,165,233,0.1), transparent 50%), linear-gradient(180deg, #EEF3FA 0%, #F7F9FC 42%, #F7F9FC 100%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[55%] opacity-[0.35]"
+          className="pointer-events-none absolute inset-0 opacity-[0.25]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(100,116,139,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,0.16) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage: "linear-gradient(180deg, black, transparent)",
+              "linear-gradient(rgba(59,130,246,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.12) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%)",
           }}
         />
 
-        <div className="relative mx-auto grid min-h-[min(100svh,980px)] max-w-6xl items-center gap-8 px-4 pb-14 pt-28 sm:gap-10 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-[0.95fr_1.05fr] lg:gap-8 lg:px-8">
-          {/* Content */}
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, ease }}
-          >
-            <h1 className="font-heading text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.05] md:text-[3.35rem]">
-              PDF<span className="text-blue-600">Toolkit</span>
-            </h1>
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
-            <p className="mt-4 max-w-lg text-balance text-xl font-medium tracking-tight text-slate-700 sm:text-2xl sm:leading-snug">
-              Document workflows that stay fast, private, and simple
-            </p>
+            {/* LEFT COLUMN: Copy & CTA Buttons */}
+            <motion.div
+              className="relative z-10 lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease }}
+            >
 
-            <p className="mt-4 max-w-md text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">
-              Convert, edit, sign, and understand PDFs in one calm workspace — built for teams that
-              care about speed and privacy.
-            </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button
-                size="lg"
-                className="h-12 cursor-pointer rounded-full bg-blue-600 px-8 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-transform hover:scale-[1.02] hover:bg-blue-700"
-                onMouseEnter={warmNav(primaryPath)}
-                onFocus={warmNav(primaryPath)}
-                onClick={() => navigate(primaryPath)}
-              >
-                {primaryCta}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 cursor-pointer rounded-full border-slate-200 bg-white/90 px-7 text-sm font-semibold text-slate-700 shadow-sm hover:bg-white"
-                onClick={() => scrollToId("tools")}
-              >
-                Browse tools
-              </Button>
-            </div>
+              {/* Main Headline */}
+              <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.5rem] xl:text-[4rem] dark:text-white">
+                Work Smarter with Every <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">Document, Contract</span> &amp; PDF
+              </h1>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm">
-              <button
-                type="button"
-                onClick={() => scrollToId("esign")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-blue-700 transition-colors hover:bg-blue-50"
-              >
-                <FileSignature className="h-3.5 w-3.5" />
-                eSign
-              </button>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => scrollToId("byoc")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-sky-800 transition-colors hover:bg-sky-50"
-              >
-                <Cloud className="h-3.5 w-3.5" />
-                Your cloud
-              </button>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => scrollToId("letters")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-indigo-800 transition-colors hover:bg-indigo-50"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                Letters
-              </button>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => navigate("/diagrams")}
-                onMouseEnter={warmNav("/diagrams")}
-                onFocus={warmNav("/diagrams")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-violet-800 transition-colors hover:bg-violet-50"
-              >
-                <GitBranch className="h-3.5 w-3.5" />
-                Diagrams
-              </button>
-              <span className="text-slate-300" aria-hidden>
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => scrollToId("desktop")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-blue-800 transition-colors hover:bg-blue-50"
-              >
-                <Monitor className="h-3.5 w-3.5" />
-                Desktop
-              </button>
-            </div>
+              {/* Subheading */}
+              <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
+                Effortlessly convert, edit, eSign, and extract AI intelligence in one unified workspace. Built for professionals and teams who demand speed, simplicity, and rock-solid privacy.
+              </p>
 
-            <ul className="mt-8 space-y-2.5">
-              {[
-                "Encrypted processing with short-lived file links",
-                "Legally binding eSign with SHA-256 audit trail",
-                "Enterprise option: keep files in your own cloud",
-              ].map((item, i) => (
-                <motion.li
-                  key={item}
-                  className="flex items-center gap-2.5 text-sm font-medium text-slate-600"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.28 + i * 0.06, duration: 0.35, ease }}
+              {/* CTA Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
+                  onClick={() => navigate("/billing")}
+                  onMouseEnter={warmNav("/billing")}
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                    <Check className="h-3 w-3" strokeWidth={2.75} />
-                  </span>
-                  {item}
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
+                  Plans & pricing
+                </Button>
 
-          {/* Immersive app UI — the unique visual */}
-          <motion.div
-            className="relative mx-auto w-full max-w-xl lg:max-w-none"
-            style={{ y: heroStageY }}
-            initial={{ opacity: 0, y: 36 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.12, ease }}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-x-4 -bottom-6 top-8 rounded-[2rem] bg-gradient-to-b from-blue-600/18 via-sky-200/30 to-transparent blur-3xl sm:-inset-x-6"
-            />
-
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-[#0B1220] shadow-[0_40px_100px_-30px_rgba(15,23,42,0.55)] ring-1 ring-white/10 sm:rounded-3xl">
-              {/* App chrome */}
-              <div className="flex items-center gap-3 border-b border-white/10 bg-slate-950/80 px-3 py-2.5 sm:px-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
-                </div>
-                <div className="hidden min-w-0 flex-1 items-center justify-center sm:flex">
-                  <div className="flex w-full max-w-sm items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 ring-1 ring-white/10">
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className="truncate text-[11px] font-medium text-slate-300">
-                      workspace · PDFToolkit
-                    </span>
-                    <span className="ml-auto inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 ring-1 ring-emerald-400/20">
-                      <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
-                      Live
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
+                <Button
+                  size="lg"
+                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
                   onClick={() => navigate(primaryPath)}
-                  className="ml-auto cursor-pointer rounded-lg bg-blue-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-md shadow-blue-600/30 hover:bg-blue-500 sm:ml-0"
+                  onMouseEnter={warmNav(primaryPath)}
                 >
-                  Open
-                </button>
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span>Start your free trial</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Button>
               </div>
 
-              <div className="grid grid-cols-[52px_1fr] sm:grid-cols-[64px_1fr_220px]">
-                {/* Icon rail */}
-                <aside className="flex flex-col items-center gap-1.5 border-r border-white/10 bg-slate-950/60 py-3">
-                  {HERO_RAIL.map((tool) => {
-                    const Icon = tool.icon;
-                    const on = tool.id === activeTool;
-                    return (
-                      <button
-                        key={tool.id}
-                        type="button"
-                        title={tool.label}
-                        onClick={() => setActiveTool(tool.id)}
-                        className={cn(
-                          "relative flex h-10 w-10 cursor-pointer flex-col items-center justify-center rounded-xl transition-colors",
-                          on
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                            : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {on && (
-                          <motion.span
-                            layoutId="hero-rail-dot"
-                            className="absolute -right-0.5 top-1 h-1.5 w-1.5 rounded-full bg-sky-300"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </aside>
 
-                {/* Canvas */}
-                <div className="relative min-h-[320px] bg-gradient-to-br from-slate-900 via-[#0F172A] to-slate-950 p-4 sm:min-h-[380px] sm:p-5">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 text-blue-300 ring-1 ring-blue-400/30">
-                        <ActiveIcon className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <AnimatePresence mode="wait">
-                          <motion.p
-                            key={activePanel.title}
-                            className="text-sm font-semibold text-white"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.25 }}
-                          >
-                            {activePanel.title}
-                          </motion.p>
-                        </AnimatePresence>
-                        <p className="mt-0.5 text-[11px] text-slate-400">{activePanel.meta}</p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-300 ring-1 ring-white/10">
-                      {HERO_RAIL.find((t) => t.id === activeTool)?.label}
-                    </span>
-                  </div>
 
-                  {/* Document surface */}
-                  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl shadow-black/40">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-                      <p className="text-[11px] font-semibold text-slate-500">Preview</p>
-                      <p className="text-[10px] font-medium text-slate-400">Page 1 of 12</p>
-                    </div>
-                    <div className="grid gap-3 bg-slate-50/80 p-4 sm:grid-cols-[1fr_0.9fr]">
-                      <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200/80">
-                        <div className="h-2 w-2/3 rounded-full bg-slate-200" />
-                        <div className="space-y-1.5">
-                          {[100, 92, 88, 95, 70, 85, 78].map((w, i) => (
-                            <div
-                              key={i}
-                              className="h-1.5 rounded-full bg-slate-100"
-                              style={{ width: `${w}%` }}
-                            />
-                          ))}
-                        </div>
-                        {activeTool === "esign" && (
-                          <motion.div
-                            className="mt-3 rounded-lg border border-dashed border-blue-300 bg-blue-50/60 px-3 py-2"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          >
-                            <p className="text-[9px] font-semibold uppercase tracking-wide text-blue-700">
-                              Sign here
-                            </p>
-                            <p className="font-heading mt-1 text-lg italic font-semibold text-slate-800">
-                              A. Rivera
-                            </p>
-                          </motion.div>
-                        )}
-                        {activeTool === "ai" && (
-                          <motion.div
-                            className="mt-3 rounded-lg bg-fuchsia-50 px-3 py-2 ring-1 ring-fuchsia-100"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          >
-                            <p className="flex items-center gap-1 text-[10px] font-semibold text-fuchsia-700">
-                              <Sparkles className="h-3 w-3" />
-                              Summary
-                            </p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-                              Policy renews Q3. Two clauses need legal review before send.
-                            </p>
-                          </motion.div>
-                        )}
-                      </div>
-                      <div className="hidden space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200/80 sm:block">
-                        <div className="h-2 w-1/2 rounded-full bg-slate-200" />
-                        <div className="space-y-1.5">
-                          {[90, 80, 96, 72, 88, 64].map((w, i) => (
-                            <div
-                              key={i}
-                              className="h-1.5 rounded-full bg-slate-100"
-                              style={{ width: `${w}%` }}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          {[1, 2, 3].map((n) => (
-                            <div
-                              key={n}
-                              className="aspect-[3/4] flex-1 rounded-md bg-gradient-to-b from-slate-50 to-slate-100 ring-1 ring-slate-200/70"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={activePanel.tone}
-                      className="mt-3 text-[11px] font-medium text-slate-400"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      {activePanel.tone}
-                    </motion.p>
-                  </AnimatePresence>
+            </motion.div>
+
+            {/* RIGHT COLUMN: Visual Composition matching Nitro (Blue Theme) */}
+            <motion.div
+              className="relative lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.15, ease }}
+            >
+              <div className="relative mx-auto flex w-full max-w-[560px] items-center justify-center">
+
+                {/* 1. Organic Swooping Wave Background (Theme Royal Blue & Indigo) */}
+                <div
+                  aria-hidden
+                  className="absolute -right-4 -bottom-6 top-6 h-[88%] w-[96%] rounded-[45%_55%_48%_52%/40%_45%_55%_60%] bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 shadow-[0_30px_90px_-20px_rgba(37,99,235,0.45)] sm:-right-8"
+                />
+
+                {/* Secondary accent wave curve for depth */}
+                <div
+                  aria-hidden
+                  className="absolute right-8 -top-4 h-56 w-56 rounded-full bg-gradient-to-br from-sky-400/40 to-blue-500/10 blur-2xl"
+                />
+
+                {/* 2. Hero Professional Image */}
+                <div className="relative z-10 w-full  pt-4">
+                  <img
+                    src="/images/hero-character.jpg"
+                    alt="vigodesk.com - Modern Document Productivity"
+                    className="relative z-10 mx-auto w-full max-w-[480px] lg:max-w-[520px] object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.18)] select-none mix-blend-multiply dark:mix-blend-normal"
+                  />
                 </div>
 
-                {/* Inspector */}
-                <aside className="hidden border-l border-white/10 bg-slate-950/40 p-4 sm:block">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Inspector
-                  </p>
-                  <div className="mt-3 space-y-2.5">
-                    <div className="rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                      <p className="text-[10px] text-slate-400">Status</p>
-                      <p className="mt-1 text-xs font-semibold text-white">Ready</p>
+                {/* 3. Floating UI Card: eSign Signature Badge (Top Left) */}
+                <motion.div
+                  className="absolute left-0 top-12 sm:-left-6 sm:top-16 z-20 flex items-center gap-3.5 rounded-2xl border border-white/90 bg-white/95 p-3 px-4 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-2 w-14 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-1.5 w-9 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
+                  <div className="flex items-center gap-1.5 font-heading text-lg font-bold italic text-blue-600 dark:text-blue-400">
+                    <span>Jane</span>
+                    <PenTool className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </motion.div>
+
+
+
+                {/* 5. Floating UI Card: Document Editor & Annotation (Bottom Right) */}
+                <motion.div
+                  className="absolute -bottom-4 right-0 sm:-bottom-6 sm:right-2 z-20 w-64 sm:w-76 rounded-2xl border border-white/90 bg-white/95 p-3.5 shadow-[0_25px_65px_-15px_rgba(15,23,42,0.28)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.45 }}
+                >
+                  <div className="relative rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/70">
+
+                    {/* Bounding box selection */}
+                    <div className="relative rounded-lg border-2 border-orange-500 bg-orange-500/5 p-2">
+                      <span className="absolute -left-1 -top-1 h-2 w-2 rounded-xs bg-orange-500" />
+                      <span className="absolute -right-1 -top-1 h-2 w-2 rounded-xs bg-orange-500" />
+                      <span className="absolute -bottom-1 -left-1 h-2 w-2 rounded-xs bg-orange-500" />
+                      <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-xs bg-orange-500" />
+
+                      {/* Yellow Note Tag */}
+                      <div className="absolute -left-2 -top-5 flex items-center gap-1 rounded-md bg-amber-400 px-2 py-0.5 text-[9px] font-extrabold text-slate-950 shadow-md">
+                        <span>Contract terms approved</span>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1">
+                        <div className="h-1.5 w-full rounded-full bg-slate-300 dark:bg-slate-600" />
+                        <div className="h-1.5 w-4/5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        <div className="h-1.5 w-2/3 rounded-full bg-slate-300 dark:bg-slate-600" />
+                      </div>
+
+                      {/* Cursor pointer icon */}
+                      <div className="absolute -bottom-2 -right-2 text-slate-900 dark:text-white drop-shadow-md">
+                        <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                          <path d="M4 0l16 12.279-6.951 1.17 4.325 8.817-3.596 1.734-4.35-8.879-5.428 5.879z" />
+                        </svg>
+                      </div>
                     </div>
-                    <div className="rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                      <p className="text-[10px] text-slate-400">Integrity</p>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-emerald-300">
-                        <Hash className="h-3 w-3" />
-                        SHA-256
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                      <p className="text-[10px] text-slate-400">Storage</p>
-                      <p className="mt-1 text-xs font-semibold text-sky-300">
-                        Platform · or BYOC
-                      </p>
+
+                    <div className="mt-2.5 space-y-1">
+                      <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-1.5 w-3/5 rounded-full bg-slate-200 dark:bg-slate-800" />
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    className="mt-4 h-9 w-full cursor-pointer rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500"
-                    onClick={() => navigate(primaryPath)}
-                  >
-                    Run tool
-                  </Button>
-                </aside>
+                </motion.div>
+
+
+
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+
+          </div>
         </div>
       </section>
 
-      {/* ── Tools ──────────────────────────────────────────────────────────── */}
-      <section
-        id="tools"
-        className="relative w-full scroll-mt-20 border-t border-slate-200/70 bg-white py-20 sm:py-28"
-      >
+      {/* ── Document Capabilities / Pillars (Nitro-style 4 Cards) ────── */}
+      <section className="relative w-full border-t border-slate-200/70 bg-[#F7F9FC] py-16 sm:py-20 lg:py-24 dark:border-border/60 dark:bg-background">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+
+          {/* Section Header */}
+          <div className="max-w-3xl mb-12 sm:mb-16">
+            <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15] dark:text-white">
+              Every document capability you need, in one platform
+            </h2>
+            <p className="mt-4 text-base font-normal leading-relaxed text-slate-600 sm:text-lg dark:text-slate-300">
+              Vigodesk brings PDF editing, eSign, redaction, and intelligent automation together in one platform, so you spend less time managing tools and more time getting work done.
+            </p>
+          </div>
+
+          {/* 4 Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            {/* Card 1: PDF Tools Suite */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-7 sm:p-8 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-blue-500/15 dark:text-blue-400">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  Vigodesk PDF Tools
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                  Complete browser-first PDF suite to merge, split, compress, convert Office &amp; images, watermark, and protect documents.
+                </p>
+              </div>
+              <div className="pt-8">
+                <button
+                  type="button"
+                  onClick={() => scrollToId("tools")}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                >
+                  <span>Explore PDF Tools</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Card 2: Vigodesk Sign */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-7 sm:p-8 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-indigo-500/15 dark:text-indigo-400">
+                  <FileSignature className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  Vigodesk Sign
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                  Simple, secure eSigning for contracts and NDAs. Send documents, collect signatures, and download verified SHA-256 audit trails.
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/esign"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Explore Vigodesk Sign</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 3: AI Document Intelligence */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-7 sm:p-8 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-fuchsia-50 text-fuchsia-600 ring-1 ring-fuchsia-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-fuchsia-500/15 dark:text-fuchsia-400">
+                  <Bot className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  Vigodesk AI Suite
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                  Summarize dense reports, chat directly with long contracts, and explain complex clauses in simple plain language with AI.
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/ai/summarize"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Explore AI Tools</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 4: Cloud & BYOC Storage */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-7 sm:p-8 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-sky-500/15 dark:text-sky-400">
+                  <Cloud className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  Cloud &amp; BYOC Storage
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                  Connect Google Drive, Dropbox, and OneDrive, or point Vigodesk to your private AWS S3 and Azure Blob buckets for complete data control.
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/enterprise"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Explore Cloud &amp; BYOC</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+
+
+
+
+      {/* ── Workflow Productivity Benchmark (Data & Time Lost Section) ── */}
+      <section className="relative w-full overflow-hidden bg-slate-950 py-20 sm:py-28 text-white">
+        {/* Ambient atmospheric gradients */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-slate-50/80 to-transparent"
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 50% at 80% 30%, rgba(37,99,235,0.25), transparent 60%), radial-gradient(ellipse 50% 60% at 20% 80%, rgba(79,70,229,0.2), transparent 50%)",
+          }}
         />
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-                Toolkit
-              </p>
-              <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                Every PDF tool you need
+
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-10">
+
+            {/* LEFT COLUMN: Vigodesk Problem & Solution Framing */}
+            <div className="lg:col-span-5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-blue-400 mb-5">
+                Workflow Productivity Audit
+              </span>
+              <h2 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-[2.65rem] lg:leading-[1.15]">
+                How much time is your team spending on repetitive PDF tasks?
               </h2>
-              <p className="mt-3 text-base leading-relaxed text-slate-500 sm:text-lg">
-                Merge, compress, convert, protect, and more — pick a tool and start in seconds.
+              <p className="mt-5 text-base sm:text-lg leading-relaxed text-slate-300 font-normal">
+                Manual document handoffs, switching between single-purpose converters, and chasing signatures slow down high-performing teams. Vigodesk gives you 25+ browser-first tools to edit, convert, redact, and eSign in seconds.
               </p>
-            </div>
-            <Button
-              variant="outline"
-              className="h-10 w-fit cursor-pointer rounded-full border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => navigate("/workspace")}
-              onMouseEnter={warmNav("/workspace")}
-              onFocus={warmNav("/workspace")}
-            >
-              Open all tools
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          <div className="mt-8 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {HOME_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setToolCategory(cat)}
-                className={cn(
-                  "shrink-0 cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all",
-                  toolCategory === cat
-                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/15"
-                    : "border border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <motion.div
-            className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.045 } },
-            }}
-          >
-            {filteredTools.map((tool) => {
-              const Icon = tool.icon;
-              const ai = isAiTool(tool.id);
-              const featured = tool.id === "esign";
-
-              return (
-                <motion.div
-                  key={tool.id}
-                  variants={{
-                    hidden: { opacity: 0, y: 18 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: { duration: 0.45, ease },
-                    },
-                  }}
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Button
+                  size="lg"
+                  className="h-12 cursor-pointer rounded-xl bg-blue-600 px-7 text-sm sm:text-base font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-500 active:scale-95"
+                  onClick={() => scrollToId("tools")}
                 >
-                  <Link
-                    to={getToolRoute(tool)}
-                    onMouseEnter={() => prefetchRoute(getToolRoute(tool))}
-                    onFocus={() => prefetchRoute(getToolRoute(tool))}
-                    className={cn(
-                      "group relative flex h-full flex-col overflow-hidden rounded-2xl border p-5 transition-all duration-300",
-                      featured
-                        ? "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-sky-50 shadow-md shadow-blue-600/10 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-600/15"
-                        : "border-slate-200/90 bg-[#F8FAFC] hover:-translate-y-1 hover:border-slate-300 hover:bg-white hover:shadow-xl hover:shadow-slate-900/8"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100",
-                        tool.gradient
-                      )}
-                    />
-                    <div className="relative flex items-start justify-between gap-3">
-                      <div
-                        className={cn(
-                          "flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-105",
-                          tool.accent
-                        )}
-                      >
-                        <Icon className={cn("h-5 w-5", tool.accentText)} />
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {featured && (
-                          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                            Popular
-                          </span>
-                        )}
-                        {ai && (
-                          <span className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-600 ring-1 ring-fuchsia-500/20">
-                            AI
-                          </span>
-                        )}
-                      </div>
+                  Explore All 25+ Tools
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-12 cursor-pointer rounded-xl border border-white/20 bg-white/5 px-6 text-sm sm:text-base font-medium text-white transition-all hover:bg-white/10 active:scale-95"
+                  onClick={() => scrollToId("esign")}
+                >
+                  See eSign Demo
+                </Button>
+              </div>
+            </div>
+
+            {/* CENTER COLUMN: Vertical Stacked Percentage Bar */}
+            <div className="lg:col-span-3 flex items-center justify-center">
+              <div className="flex items-stretch gap-4 sm:gap-6 w-full max-w-xs">
+
+                {/* The Stacked Bar Pillar */}
+                <div className="relative flex flex-col w-12 sm:w-14 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 shrink-0 h-[360px] sm:h-[400px]">
+                  {/* Segment 1: 9% */}
+                  <div className="h-[9%] w-full bg-slate-700 transition-colors hover:brightness-125" title="9% - Under 2 hours weekly" />
+                  {/* Segment 2: 25% */}
+                  <div className="h-[25%] w-full bg-slate-600 transition-colors hover:brightness-125" title="25% - 3 to 5 hours weekly" />
+                  {/* Segment 3: 31% - Highlighted Primary */}
+                  <div className="h-[31%] w-full bg-gradient-to-b from-blue-500 to-indigo-600 relative transition-colors hover:brightness-125" title="31% - 6 to 10 hours weekly (Most Common Bottleneck)">
+                    <span className="absolute inset-0 bg-white/15 animate-pulse pointer-events-none" />
+                  </div>
+                  {/* Segment 4: 17% */}
+                  <div className="h-[17%] w-full bg-blue-700 transition-colors hover:brightness-125" title="17% - 11 to 15 hours weekly" />
+                  {/* Segment 5: 14% */}
+                  <div className="h-[18%] w-full bg-indigo-900 transition-colors hover:brightness-125" title="14% - 16+ hours weekly" />
+                </div>
+
+                {/* Tick Indicators & Labels */}
+                <div className="flex flex-col justify-between py-1 text-xs select-none">
+                  {/* Tick 1 */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-px bg-slate-500" />
+                    <div>
+                      <p className="font-extrabold text-white text-sm">9%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Under 2 hrs / wk</p>
                     </div>
-                    <div className="relative mt-4 flex-1">
-                      <h3 className="text-[15px] font-semibold tracking-tight text-slate-900 group-hover:text-blue-700">
-                        {tool.name}
-                      </h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                        {tool.desc}
-                      </p>
+                  </div>
+                  {/* Tick 2 */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-px bg-slate-500" />
+                    <div>
+                      <p className="font-extrabold text-white text-sm">25%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">3–5 hrs / wk</p>
                     </div>
-                    <div className="relative mt-5 flex items-center justify-between border-t border-slate-200/70 pt-3.5">
-                      <span className="text-[11px] font-medium text-slate-400">
-                        {tool.categories[1]}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600">
-                        Open
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </span>
+                  </div>
+                  {/* Tick 3 - Highlighted */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-0.5 bg-blue-500" />
+                    <div className="rounded-lg bg-blue-500/20 px-2.5 py-1 border border-blue-500/40">
+                      <p className="font-extrabold text-blue-400 text-base leading-none">31%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-blue-200 font-bold mt-0.5">6–10 hrs (Average)</p>
                     </div>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+                  </div>
+                  {/* Tick 4 */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-px bg-slate-500" />
+                    <div>
+                      <p className="font-extrabold text-white text-sm">17%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">11–15 hrs / wk</p>
+                    </div>
+                  </div>
+                  {/* Tick 5 */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-px bg-slate-500" />
+                    <div>
+                      <p className="font-extrabold text-white text-sm">14%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">16+ hrs / wk</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: The Vigodesk Value Card */}
+            <div className="lg:col-span-4">
+              <div className="relative rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-950/80 via-slate-900/90 to-slate-950 p-7 sm:p-9 shadow-2xl backdrop-blur-xl">
+
+                {/* Stat Highlight */}
+                <div className="mb-4">
+                  <span className="font-serif text-4xl sm:text-5xl font-black text-white tracking-tight">
+                    5+ hours
+                  </span>
+                  <span className="block font-serif text-2xl sm:text-3xl text-blue-400 font-normal mt-1">
+                    saved per user / week
+                  </span>
+                </div>
+
+                <p className="text-sm sm:text-base leading-relaxed text-slate-300 font-normal">
+                  Teams using Vigodesk eliminate app-switching and cumbersome desktop installs. Convert, compress, extract text with OCR, and sign agreements directly in your browser.
+                </p>
+
+                {/* Vigodesk Core Advantages */}
+                <div className="mt-6 space-y-2.5 border-t border-white/10 pt-5 text-xs text-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 font-bold text-[11px]">✓</span>
+                    <span><strong>Instant Processing:</strong> Zero queue client-side speed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 font-bold text-[11px]">✓</span>
+                    <span><strong>Legally Binding eSign:</strong> Complete audits &amp; signature logs</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 font-bold text-[11px]">✓</span>
+                    <span><strong>Zero Data Retention:</strong> Strict privacy &amp; auto-deletion</span>
+                  </div>
+                </div>
+
+                {/* Footnote */}
+                <div className="mt-6 border-t border-white/10 pt-4 text-[11px] text-slate-400">
+                  <p className="font-semibold text-slate-300">Measured across active Vigodesk productivity workflows</p>
+                  <p className="text-slate-400 mt-0.5">Vigodesk Efficiency Benchmark, 2026</p>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 
@@ -734,7 +686,7 @@ export const Home: React.FC = () => {
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full bg-blue-600 px-7 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
+                  className="h-12 cursor-pointer rounded-xl bg-blue-600 px-7 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
                   onClick={() => navigate("/esign")}
                   onMouseEnter={warmNav("/esign")}
                   onFocus={warmNav("/esign")}
@@ -745,7 +697,7 @@ export const Home: React.FC = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="h-12 cursor-pointer rounded-xl border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   onClick={() => navigate(user ? "/sign" : "/esign")}
                   onMouseEnter={warmNav(user ? "/sign" : "/esign")}
                   onFocus={warmNav(user ? "/sign" : "/esign")}
@@ -865,7 +817,7 @@ export const Home: React.FC = () => {
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full bg-sky-500 px-7 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-500/25 hover:bg-sky-400"
+                  className="h-12 cursor-pointer rounded-xl bg-sky-500 px-7 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-500/25 hover:bg-sky-400"
                   onClick={() => navigate(byocPath)}
                 >
                   {byocCta}
@@ -874,7 +826,7 @@ export const Home: React.FC = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full border-slate-600 bg-transparent px-7 text-sm font-semibold text-slate-100 hover:bg-white/5 hover:text-white"
+                  className="h-12 cursor-pointer rounded-xl border-slate-600 bg-transparent px-7 text-sm font-semibold text-slate-100 hover:bg-white/5 hover:text-white"
                   onClick={() => navigate("/billing")}
                   onMouseEnter={warmNav("/billing")}
                   onFocus={warmNav("/billing")}
@@ -983,7 +935,7 @@ export const Home: React.FC = () => {
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full bg-indigo-600 px-7 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-700"
+                  className="h-12 cursor-pointer rounded-xl bg-indigo-600 px-7 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-700"
                   onClick={() => navigate("/letters")}
                   onMouseEnter={warmNav("/letters")}
                   onFocus={warmNav("/letters")}
@@ -994,7 +946,7 @@ export const Home: React.FC = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="h-12 cursor-pointer rounded-xl border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   onClick={() => navigate(user ? "/letters/studio" : "/login")}
                   onMouseEnter={warmNav(user ? "/letters/studio" : "/login")}
                   onFocus={warmNav(user ? "/letters/studio" : "/login")}
@@ -1110,7 +1062,7 @@ export const Home: React.FC = () => {
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full bg-blue-600 px-7 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
+                  className="h-12 cursor-pointer rounded-xl bg-blue-600 px-7 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
                   onClick={() => navigate("/desktop")}
                   onMouseEnter={warmNav("/desktop")}
                   onFocus={warmNav("/desktop")}
@@ -1122,17 +1074,17 @@ export const Home: React.FC = () => {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="h-12 cursor-pointer rounded-xl border-slate-200 bg-white px-7 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   <a href={DOWNLOAD_MAILTO}>Download for Windows</a>
                 </Button>
                 <Button
                   variant="ghost"
                   size="lg"
-                  className="h-12 cursor-pointer rounded-full px-5 text-sm font-semibold text-slate-600"
+                  className="h-12 cursor-pointer rounded-xl px-5 text-sm font-semibold text-slate-600"
                   onClick={() => navigate("/diagrams")}
-                onMouseEnter={warmNav("/diagrams")}
-                onFocus={warmNav("/diagrams")}
+                  onMouseEnter={warmNav("/diagrams")}
+                  onFocus={warmNav("/diagrams")}
                 >
                   Diagram Studio online
                 </Button>
@@ -1147,133 +1099,156 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
-      <section className="w-full border-t border-slate-200/70 bg-white py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-            Pricing
-          </p>
-          <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Simple pricing
-          </h2>
-          <p className="mx-auto mt-3 max-w-lg text-base text-slate-500 sm:text-lg">
-            Start free. Upgrade when you need unlimited tools, larger files, and priority processing.
-          </p>
 
-          <div className="mx-auto mt-14 grid max-w-4xl gap-5 text-left sm:grid-cols-3">
-            {ONLINE_PLANS.map((plan) => (
-              <div
-                key={plan.id}
-                className={cn(
-                  "relative flex flex-col rounded-3xl border p-6 transition-transform hover:-translate-y-0.5",
-                  plan.featured
-                    ? "border-blue-500/40 bg-slate-900 text-white shadow-2xl shadow-blue-600/20"
-                    : "border-slate-200 bg-[#F8FAFC] shadow-sm"
-                )}
-              >
-                {plan.featured && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-md">
-                    Best value
-                  </span>
-                )}
-                <p
-                  className={cn(
-                    "text-sm font-semibold",
-                    plan.featured ? "text-blue-300" : "text-slate-500"
-                  )}
-                >
-                  {plan.name}
-                </p>
-                <p className="mt-3 text-4xl font-bold tracking-tight">
-                  {plan.price}
-                  {plan.period && (
-                    <span
-                      className={cn(
-                        "text-sm font-normal",
-                        plan.featured ? "text-slate-400" : "text-slate-400"
-                      )}
-                    >
-                      /{plan.period}
-                    </span>
-                  )}
-                </p>
-                <p
-                  className={cn(
-                    "mt-3 flex-1 text-sm leading-relaxed",
-                    plan.featured ? "text-slate-300" : "text-slate-500"
-                  )}
-                >
-                  {plan.blurb}
-                </p>
-                <Button
-                  variant={plan.featured ? "secondary" : "outline"}
-                  className={cn(
-                    "mt-7 h-11 w-full cursor-pointer rounded-full text-sm font-semibold",
-                    plan.featured
-                      ? "bg-white text-slate-900 hover:bg-slate-100"
-                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                  )}
-                  onClick={() => navigate(plan.path)}
-                >
-                  {plan.cta}
-                </Button>
-              </div>
-            ))}
+
+      {/* ── FAQs about Vigodesk (Minimal Clean Line-Divided Accordion) ── */}
+      <FaqSection
+        badge="General & Product"
+        title="FAQs about Vigodesk"
+        subtitle="Quick answers about Vigodesk PDF tools, eSign legal compliance, generative AI, and enterprise data privacy."
+        faqs={FAQS}
+      />
+
+      {/* ── Next Steps / Choose Your Path (3 Cards CTA Section) ─────────── */}
+      <section className="relative w-full border-t border-slate-200/80 bg-gradient-to-b from-white via-slate-50/50 to-blue-50/30 py-20 sm:py-28 dark:border-border/70 dark:bg-background">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+
+          {/* Section Header */}
+          <div className="mx-auto max-w-2xl text-center mb-12 sm:mb-16">
+            <h2 className=" text-3xl sm:text-4xl lg:text-[2.85rem] font-bold tracking-tight text-slate-900 dark:text-white">
+              See what Vigodesk can do for you
+            </h2>
+            <p className="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300 font-normal">
+              Take the next step toward friction-free, secure document workflows today.
+            </p>
           </div>
 
-          <Link
-            to="/billing#compare"
-            className="mt-10 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
-          >
-            Compare all plans
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          {/* 3 Action Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+
+            {/* Card 1: Contact Sales */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-8 sm:p-9 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-blue-500/15 dark:text-blue-400">
+                  <MessageSquare className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                  Contact sales
+                </h3>
+                <p className="text-base leading-relaxed text-slate-600 dark:text-slate-300">
+                  Talk to our document specialists about enterprise volume, custom API integrations, and private BYOC cloud storage tailored to your team.
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/enterprise"
+                  className="inline-flex items-center gap-1.5 text-base font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Get in touch</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 2: Free Trial */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-8 sm:p-9 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-indigo-500/15 dark:text-indigo-400">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                  Free trial
+                </h3>
+                <p className="text-base leading-relaxed text-slate-600 dark:text-slate-300">
+                  Try Vigodesk's full PDF and eSign capabilities to convert, compress, redact, and sign contracts effortlessly — free for 14 days!
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/billing"
+                  className="inline-flex items-center gap-1.5 text-base font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Start your free trial</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Card 3: Become a Partner */}
+            <div className="group flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-8 sm:p-9 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-xl dark:border-border/70 dark:bg-card">
+              <div>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-500/15 transition-transform duration-300 group-hover:scale-110 dark:bg-sky-500/15 dark:text-sky-400">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="font-heading text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                  Become a partner
+                </h3>
+                <p className="text-base leading-relaxed text-slate-600 dark:text-slate-300">
+                  Explore OEM, reseller, and solution partner opportunities to embed Vigodesk's high-speed document tools directly into your platforms.
+                </p>
+              </div>
+              <div className="pt-8">
+                <Link
+                  to="/enterprise"
+                  className="inline-flex items-center gap-1.5 text-base font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
+                >
+                  <span>Partner with Vigodesk today</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
-      {/* ── FAQ ────────────────────────────────────────────────────────────── */}
-      <section className="w-full border-t border-slate-200/70 bg-[#F7F9FC] py-20 sm:py-28">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-heading text-center text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            FAQ
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-center text-sm text-slate-500">
-            Quick answers about privacy, your cloud storage, AI, and eSignatures.
-          </p>
-          <div className="mt-10 space-y-3">
-            {FAQS.map((item, i) => {
-              const open = openFaq === i;
-              return (
-                <div
-                  key={item.q}
-                  className={cn(
-                    "overflow-hidden rounded-2xl border bg-white transition-shadow",
-                    open
-                      ? "border-blue-200 shadow-md shadow-blue-600/5"
-                      : "border-slate-200 shadow-sm"
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(open ? null : i)}
-                    className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50/80"
-                  >
-                    <span>{item.q}</span>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200",
-                        open && "rotate-180 text-blue-600"
-                      )}
-                    />
-                  </button>
-                  {open && (
-                    <div className="border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-500">
-                      {item.a}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {/* ── High-Impact Conversion CTA Section ───────────────────────────── */}
+      <section className="relative w-full overflow-hidden bg-slate-950 py-20 sm:py-24 text-white">
+        {/* Glow & Atmospheric ambient backdrop */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(37,99,235,0.32), transparent 70%), radial-gradient(ellipse 40% 40% at 20% 20%, rgba(79,70,229,0.22), transparent 60%)",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="relative mx-auto max-w-4xl text-center">
+
+
+
+            <h2 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+              Ready to simplify your document workflows?
+            </h2>
+
+            <p className="mt-5 text-base sm:text-lg leading-relaxed text-slate-300 max-w-2xl mx-auto font-normal">
+              Experience the fastest way to edit, convert, eSign, and protect contracts and PDFs. Join modern teams working smarter with Vigodesk.
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+              <Button
+                size="lg"
+                className="h-13 cursor-pointer rounded-xl bg-blue-600 px-8 text-base font-bold text-white shadow-xl shadow-blue-600/35 transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-95"
+                onClick={() => scrollToId("tools")}
+              >
+                Start Using Tools Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-13 cursor-pointer rounded-xl border-2 border-white/20 bg-white/5 px-8 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white hover:text-slate-950 active:scale-95"
+                onClick={() => navigate("/enterprise")}
+              >
+                Talk to Sales
+              </Button>
+            </div>
+
+
+
           </div>
         </div>
       </section>

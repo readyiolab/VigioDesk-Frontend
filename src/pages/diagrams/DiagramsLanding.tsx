@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   Download,
   GitBranch,
@@ -11,7 +12,7 @@ import {
   Share2,
   ShieldCheck,
   Shapes,
-  Sparkles,
+  Bot,
   Wand2,
   WifiOff,
   KeyRound,
@@ -19,6 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { OFFLINE_PRODUCTS } from "@/lib/pricing";
+import { FaqSection } from "@/components/common/FaqSection";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const VIEWPORT = { once: true, amount: 0.25 } as const;
@@ -80,6 +82,33 @@ const FEATURES = [
   },
 ] as const;
 
+const DIAGRAMS_FAQS = [
+  {
+    q: "What types of diagrams can I design in Diagram Studio?",
+    a: "Diagram Studio supports the full spectrum of technical and visual modeling: system architecture, cloud topology (AWS, Azure, Google Cloud, Kubernetes), flowcharts, UML class and sequence diagrams, ER databases, mind maps, network infrastructure, and wireframes.",
+  },
+  {
+    q: "How does AI text-to-diagram generation work?",
+    a: "Simply describe your workflow or infrastructure in plain natural language (e.g., 'A microservices auth flow with Redis session caching and PostgreSQL'). AI automatically arranges the shapes, labels, and smart connectors. You can also chat to modify nodes, add decision branches, or convert sketch images into editable diagrams.",
+  },
+  {
+    q: "Which file formats can I export my diagrams to?",
+    a: "You can export single pages or complete canvas workspaces to high-resolution PNG (with optional transparency), scalable vector graphics (SVG), or printable vector PDF. You can also export raw XML to backup or migrate your diagrams.",
+  },
+  {
+    q: "Can I share diagrams with external clients or colleagues?",
+    a: "Yes. Vigodesk allows you to generate secure view-only or collaborative editing links. Anyone with the link can view or edit directly in their browser without installing plugins, and you can revoke access at any time.",
+  },
+  {
+    q: "Can I import existing Draw.io (.drawio) or XML diagram files?",
+    a: "Yes. Diagram Studio uses standard open XML schema compatible with popular diagramming platforms like draw.io and diagrams.net, allowing you to drag and drop existing XML diagrams and resume work instantly.",
+  },
+  {
+    q: "Are my proprietary diagrams and architectural designs kept private?",
+    a: "All diagrams are encrypted with AES-256 and scoped strictly to your authenticated workspace or organization. Vigodesk never shares your system schematics or trains public AI models on your private designs.",
+  },
+];
+
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -99,103 +128,166 @@ export default function DiagramsLanding() {
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden bg-[#F7F9FC] text-slate-900">
+      {/* ── Hero — Home Style with Vigodesk Diagram Studio Theme ──────────────── */}
       <section
         ref={heroRef}
-        className="relative w-full min-h-[min(100svh,920px)] overflow-hidden border-b border-slate-200/70 -mt-14 sm:-mt-16"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#EEF4FB] via-[#F7F9FC] to-[#F7F9FC] pt-5 pb-14 sm:pt-7 sm:pb-16 lg:pt-8 lg:pb-20 border-b border-slate-200/70"
       >
+        {/* Subtle grid pattern background */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 90% 70% at 82% 10%, rgba(37,99,235,0.16), transparent 52%), radial-gradient(ellipse 55% 45% at 8% 88%, rgba(14,165,233,0.1), transparent 50%), linear-gradient(165deg, #F7F9FC 0%, #E8EEF8 42%, #F7F9FC 100%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          className="pointer-events-none absolute inset-0 opacity-[0.25]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(100,116,139,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(100,116,139,0.18) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-            maskImage: "radial-gradient(ellipse 75% 65% at 50% 40%, black, transparent)",
+              "linear-gradient(rgba(59,130,246,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.12) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%)",
           }}
         />
 
-        <div className="relative mx-auto grid min-h-[min(100svh,920px)] max-w-6xl items-center gap-8 px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-2 lg:gap-10 lg:px-8">
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE }}
-          >
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200/80 backdrop-blur-sm">
-              <GitBranch className="h-3.5 w-3.5" />
-              Diagram Studio · Flowcharts & architecture
-            </p>
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
-            <h1 className="font-heading mt-6 text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.05] lg:text-[3.25rem]">
-              Diagram Studio
-            </h1>
-
-            <p className="mt-4 max-w-xl text-balance text-xl font-medium tracking-tight text-slate-700 sm:text-2xl sm:leading-snug">
-              Draw flowcharts, UML, and architecture maps — with AI when you want a head start.
-            </p>
-
-            <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">
-              A draw.io-style editor inside your workspace: shapes, connectors, versions, export, and
-              share links — all org-scoped.
-            </p>
-
+            {/* LEFT COLUMN: Copy & CTA Buttons */}
             <motion.div
-              className="mt-8 flex flex-wrap items-center gap-3"
-              initial={{ opacity: 0, y: 12 }}
+              className="relative z-10 lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.18, ease: EASE }}
+              transition={{ duration: 0.65, ease: EASE }}
             >
-              <Button
-                size="lg"
-                className="h-12 cursor-pointer rounded-full bg-blue-600 px-8 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-                onClick={() => navigate(studioPath)}
-              >
-                {ctaLabel}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 cursor-pointer rounded-full border-slate-200/90 bg-white/80 px-8 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white"
-                onClick={() => scrollToId("how")}
-              >
-                See how it works
-              </Button>
+              {/* Pill Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-blue-700 shadow-xs mb-5 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">
+                <Shapes className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span>vigodesk.com · Diagram Studio</span>
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
+                  Architecture &amp; Flowcharts
+                </span>
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.35rem] xl:text-[3.75rem] dark:text-white">
+                Design, Generate &amp; Export <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">Technical Architecture</span> &amp; Flowcharts
+              </h1>
+
+              {/* Subheading */}
+              <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
+                A fluid, draw.io-compatible canvas powered by AI text-to-diagram prompting, comprehensive cloud shape libraries, and high-fidelity vector PDF &amp; SVG export.
+              </p>
+
+              {/* Dual Action Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
+                <Button
+                  size="lg"
+                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={() => navigate(studioPath)}
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span>{ctaLabel}</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
+                  onClick={() => navigate("/billing")}
+                >
+                  Plans &amp; pricing
+                </Button>
+              </div>
+
+              {/* Checkmark Highlights */}
+              <ul className="mt-9 space-y-3">
+                {HERO_CHECKS.map((item, i) => (
+                  <motion.li
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.28 + i * 0.07, duration: 0.4, ease: EASE }}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-xs shadow-blue-600/25">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </motion.li>
+                ))}
+              </ul>
             </motion.div>
 
-            <ul className="mt-8 space-y-2.5">
-              {HERO_CHECKS.map((item, i) => (
-                <motion.li
-                  key={item}
-                  className="flex items-center gap-2.5 text-sm font-medium text-slate-600"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.28 + i * 0.06, duration: 0.35, ease: EASE }}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                    <CheckCircle2 className="h-3 w-3" strokeWidth={2.75} />
-                  </span>
-                  {item}
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
+            {/* RIGHT COLUMN: Elevated Visual Composition with Swooping Wave & Live Mock */}
+            <motion.div
+              className="relative lg:col-span-6 xl:col-span-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: EASE }}
+            >
+              <div className="relative mx-auto flex w-full max-w-[560px] items-center justify-center">
 
-          <motion.div className="relative mx-auto w-full max-w-lg lg:max-w-none" style={{ y: mockY }}>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-500/20 to-sky-500/10 blur-2xl"
-            />
-            <DiagramStudioMock />
-          </motion.div>
+                {/* 1. Organic Swooping Wave Background */}
+                <div
+                  aria-hidden
+                  className="absolute -right-4 -bottom-6 top-6 h-[88%] w-[96%] rounded-[45%_55%_48%_52%/40%_45%_55%_60%] bg-gradient-to-tr from-blue-600 via-sky-600 to-indigo-600 shadow-[0_30px_90px_-20px_rgba(37,99,235,0.45)] sm:-right-8"
+                />
+
+                {/* Secondary ambient glow */}
+                <div
+                  aria-hidden
+                  className="absolute right-8 -top-4 h-56 w-56 rounded-full bg-gradient-to-br from-sky-400/40 to-blue-500/10 blur-2xl"
+                />
+
+                {/* 2. Main Live Mockup */}
+                <div className="relative z-10 w-full pt-4">
+                  <DiagramStudioMock />
+                </div>
+
+                {/* 3. Floating Card 1: AI Prompt Chip (Top Left) */}
+                <motion.div
+                  className="absolute left-0 top-10 sm:-left-6 sm:top-12 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3 px-4 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-500/20 dark:bg-violet-500/10 dark:text-violet-400">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">AI Flow Generation</span>
+                      <span className="rounded-full bg-violet-500/10 px-1.5 py-0.2 text-[8px] font-bold text-violet-600">
+                        1.4s
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Auto-routes connectors &amp; nodes</p>
+                  </div>
+                </motion.div>
+
+                {/* 4. Floating Card 2: Vector PDF & SVG Badge (Bottom Right) */}
+                <motion.div
+                  className="absolute -bottom-4 right-0 sm:-bottom-6 sm:right-2 z-20 flex items-center gap-3 rounded-2xl border border-white/90 bg-white/95 p-3.5 px-4 shadow-[0_25px_65px_-15px_rgba(15,23,42,0.28)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.45 }}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20 dark:bg-blue-500/10 dark:text-blue-400">
+                    <Download className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Vector Export</span>
+                      <span className="rounded-full bg-blue-500/10 px-1.5 py-0.2 text-[8px] font-bold text-blue-600">
+                        HD Vector
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">PDF, SVG &amp; Transparent PNG</p>
+                  </div>
+                </motion.div>
+
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </section>
 
@@ -385,6 +477,14 @@ export default function DiagramsLanding() {
         </div>
       </section>
 
+      {/* ── Diagrams & Architecture FAQs ── */}
+      <FaqSection
+        badge="Diagrams & Canvas"
+        title="Frequently asked questions about Diagram Studio"
+        subtitle="Common questions about visual diagramming, AI structure generation, format export, and secure collaboration."
+        faqs={DIAGRAMS_FAQS}
+      />
+
       <section className="border-t border-slate-200/70 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
@@ -476,7 +576,7 @@ function DiagramStudioMock() {
               Valid?
             </div>
             <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[8px] font-medium text-slate-500 ring-1 ring-slate-200">
-              <Sparkles className="size-2.5 text-blue-600" />
+              <Bot className="size-2.5 text-blue-600" />
               AI ready
             </div>
           </div>
