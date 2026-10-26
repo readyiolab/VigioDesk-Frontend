@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { type Job } from "../services/api";
 import { apiService } from "../services/api";
@@ -9,6 +10,7 @@ import { Download, AlertCircle, Clock, CheckCircle2, ChevronRight, ChevronLeft, 
 import { cn } from "@/lib/utils";
 
 export const History: React.FC = () => {
+  const navigate = useNavigate();
   const { user, refreshProfile, loading } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,23 +25,39 @@ export const History: React.FC = () => {
       );
       setJobs(sortedJobs);
     }
-  }, [user]);
+  }, [user?.jobs]);
 
-  // Set up polling if there are any processing/queued jobs
+  const updateJobs = useCallback(async () => {
+    try {
+      const data = await apiService.getProfile();
+      if (data.user?.jobs) {
+        const sorted = [...data.user.jobs].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setJobs(sorted);
+      }
+    } catch {
+      /* ignore polling error */
+    }
+  }, []);
+
+  // Set up polling if there are any processing/queued jobs (tab visibility aware, without thrashing global auth)
   useEffect(() => {
     const hasActiveJobs = jobs.some(j => j.status === "QUEUED" || j.status === "PROCESSING");
     
     if (hasActiveJobs) {
       const interval = setInterval(() => {
-        refreshProfile();
+        if (typeof document !== "undefined" && document.visibilityState !== "hidden") {
+          void updateJobs();
+        }
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [jobs, refreshProfile]);
+  }, [jobs, updateJobs]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await refreshProfile();
+    await Promise.all([updateJobs(), refreshProfile()]);
     setTimeout(() => setIsRefreshing(false), 500); // UI feedback
   };
 
@@ -78,7 +96,7 @@ export const History: React.FC = () => {
             description="Your processed documents will appear here. Start using our tools to see your history."
             action={{
               label: "Explore Tools",
-              onClick: () => window.location.href = "/workspace"
+              onClick: () => navigate("/workspace")
             }}
           />
         </div>

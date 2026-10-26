@@ -9,34 +9,44 @@ async function resolveOrgId(userId?: string | null): Promise<string> {
 
 export function useBrands(userId?: string | null, enabled = true) {
   const orgId = useOrgStore((s) => s.getOrgIdForUser(userId));
+  const qc = useQueryClient();
 
   return useQuery({
     queryKey: letterKeys.brands(orgId ?? "pending"),
     enabled,
     queryFn: async () => {
       const oid = await resolveOrgId(userId);
-      if (oid !== orgId) setOrgId(oid, { userId });
       const { brands } = await lettersApi.listBrands(oid);
-      return { orgId: oid, brands };
+      const data = { orgId: oid, brands };
+      if (oid !== orgId) {
+        setOrgId(oid, { userId });
+        qc.setQueryData(letterKeys.brands(oid), data);
+      }
+      return data;
     },
   });
 }
 
 export function useTemplates(userId?: string | null, enabled = true) {
   const orgId = useOrgStore((s) => s.getOrgIdForUser(userId));
+  const qc = useQueryClient();
 
   return useQuery({
     queryKey: letterKeys.templates(orgId ?? "pending"),
     enabled,
     queryFn: async () => {
       const oid = await resolveOrgId(userId);
-      if (oid !== orgId) setOrgId(oid, { userId });
       let { templates } = await lettersApi.listTemplates(oid);
       if (!templates.length) {
         const seeded = await lettersApi.seedTemplates(oid);
         templates = seeded.templates;
       }
-      return { orgId: oid, templates };
+      const data = { orgId: oid, templates };
+      if (oid !== orgId) {
+        setOrgId(oid, { userId });
+        qc.setQueryData(letterKeys.templates(oid), data);
+      }
+      return data;
     },
   });
 }
@@ -85,15 +95,20 @@ export function useCreateBrand(userId?: string | null) {
 
 export function useBatches(userId?: string | null, enabled = true) {
   const orgId = useOrgStore((s) => s.getOrgIdForUser(userId));
+  const qc = useQueryClient();
 
   return useQuery({
     queryKey: letterKeys.batches(orgId ?? "pending"),
     enabled,
     queryFn: async () => {
       const oid = await resolveOrgId(userId);
-      if (oid !== orgId) setOrgId(oid, { userId });
       const { batches } = await lettersApi.listBatches(oid);
-      return { orgId: oid, batches };
+      const data = { orgId: oid, batches };
+      if (oid !== orgId) {
+        setOrgId(oid, { userId });
+        qc.setQueryData(letterKeys.batches(oid), data);
+      }
+      return data;
     },
   });
 }

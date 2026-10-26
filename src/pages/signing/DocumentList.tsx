@@ -102,44 +102,70 @@ export default function DocumentList() {
     totalPages: number;
   } | null>(null);
 
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Debounce search input and reset page to 1
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Load signing stats independently to avoid repeated stats re-queries on search/page
+  const loadStats = useCallback(async () => {
+    try {
+      const s = await signingApi.getStats();
+      setStats(s);
+    } catch {
+      // Non-critical background stats
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mainTab === "documents") {
+      void loadStats();
+    }
+  }, [mainTab, loadStats]);
+
   const load = useCallback(async () => {
+    setIsLoading(true);
     try {
       if (mainTab === "templates") {
         const data = await signingApi.listTemplates();
         setTemplates(data.templates ?? []);
         setPagination(null);
       } else {
-        const [list, s] = await Promise.all([
-          signingApi.listDocuments({
-            status: status === "ALL" ? undefined : status,
-            search: search || undefined,
-            page,
-            limit: 20,
-          }),
-          signingApi.getStats(),
-        ]);
+        const list = await signingApi.listDocuments({
+          status: status === "ALL" ? undefined : status,
+          search: debouncedSearch || undefined,
+          page,
+          limit: 20,
+        });
         setDocuments(list.documents ?? []);
         setPagination(list.pagination ?? null);
-        setStats(s);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't load your documents.");
     } finally {
       setIsLoading(false);
     }
-  }, [status, search, mainTab, page]);
+  }, [status, debouncedSearch, mainTab, page]);
 
-  // Reset to first page when filters change.
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  const handleTabChange = (v: "documents" | "templates") => {
+    setMainTab(v);
     setPage(1);
-  }, [status, search, mainTab]);
+  };
 
-  // Debounced so typing in the search box doesn't fire a request per keystroke.
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(load, search && mainTab === "documents" ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [load, search, mainTab, page]);
+  const handleStatusChange = (v: SignDocumentStatus | "ALL") => {
+    setStatus(v);
+    setPage(1);
+  };
 
   const handleUpload = async (file: File, mode: "normal" | "self") => {
     const isDocx = isSigningDocxFile(file);
@@ -348,7 +374,7 @@ export default function DocumentList() {
         </div>
       )}
 
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "documents" | "templates")}>
+      <Tabs value={mainTab} onValueChange={(v) => handleTabChange(v as "documents" | "templates")}>
         <TabsList>
           <TabsTrigger value="documents" className="text-xs">
             Documents
@@ -363,7 +389,7 @@ export default function DocumentList() {
       {mainTab === "documents" && (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={status} onValueChange={(v) => setStatus(v as SignDocumentStatus | "ALL")}>
+            <Tabs value={status} onValueChange={(v) => handleStatusChange(v as SignDocumentStatus | "ALL")}>
               <TabsList>
                 {STATUS_TABS.map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value} className="text-xs">

@@ -79,10 +79,13 @@ const PREFETCHERS: { prefix: string; load: PrefetchFn; key: string }[] = [
 
 function matchersFor(path: string) {
   const normalized = path.split("?")[0] || "/";
-  return PREFETCHERS.filter((p) => {
+  const matches = PREFETCHERS.filter((p) => {
     if (p.prefix === "/") return normalized === "/";
     return normalized === p.prefix || normalized.startsWith(`${p.prefix}/`);
   });
+  if (matches.length === 0) return [];
+  const maxLen = Math.max(...matches.map((m) => m.prefix.length));
+  return matches.filter((m) => m.prefix.length === maxLen);
 }
 
 export function prefetchRoute(path: string): void {

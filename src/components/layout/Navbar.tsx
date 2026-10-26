@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/button";
@@ -36,9 +36,12 @@ import {
 } from "lucide-react";
 import { useTheme } from "../theme-provider";
 import { TOOLS, TOOL_CATEGORIES, getToolRoute } from "@/lib/design-tokens";
-import { AuthModal } from "../auth/AuthModal";
 import { cn } from "@/lib/utils";
 import { prefetchHandlers, prefetchRoute } from "@/lib/routePrefetch";
+
+const AuthModal = lazy(() =>
+  import("../auth/AuthModal").then((m) => ({ default: m.AuthModal }))
+);
 
 const TOOL_GROUPS = TOOL_CATEGORIES.filter((cat) => cat !== "All")
   .map((cat) => ({
@@ -91,8 +94,15 @@ export const Navbar: React.FC = () => {
 
   // Scroll effect
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
+    let last = window.scrollY > 12;
+    setScrolled(last);
+    const onScroll = () => {
+      const next = window.scrollY > 12;
+      if (next !== last) {
+        last = next;
+        setScrolled(next);
+      }
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -1309,11 +1319,15 @@ export const Navbar: React.FC = () => {
       )}
 
       {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        defaultTab={authModalTab}
-      />
+      {isAuthModalOpen && (
+        <Suspense fallback={null}>
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            defaultTab={authModalTab}
+          />
+        </Suspense>
+      )}
     </>
   );
 };

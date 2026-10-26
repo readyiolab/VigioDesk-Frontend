@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { lettersApi } from "@/services/lettersApi";
-import { LetterEditor } from "@/components/letters/LetterEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StudioSkeleton } from "@/components/letters/StudioPageHeader";
+
+const LetterEditor = lazy(() =>
+  import("@/components/letters/LetterEditor").then((m) => ({ default: m.LetterEditor }))
+);
 import { toast } from "sonner";
 import { Loader2, ChevronDown, Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -592,13 +595,21 @@ export default function TemplatesPage() {
                   )}
                 </div>
               ) : (
-                <LetterEditor
-                  key={`${selectedId || "new"}-${editorKey}`}
-                  content={content}
-                  onChange={setContent}
-                  paper
-                  fontFamily={fontFamily}
-                />
+                <Suspense
+                  fallback={
+                    <div className="flex min-h-[420px] items-center justify-center">
+                      <StudioSkeleton className="h-8 w-8 rounded-full" />
+                    </div>
+                  }
+                >
+                  <LetterEditor
+                    key={`${selectedId || "new"}-${editorKey}`}
+                    content={content}
+                    onChange={setContent}
+                    paper
+                    fontFamily={fontFamily}
+                  />
+                </Suspense>
               )}
             </div>
           </div>

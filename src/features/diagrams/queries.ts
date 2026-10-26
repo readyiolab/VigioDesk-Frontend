@@ -29,6 +29,7 @@ export async function withOrgRetry<T>(
 
 export function useDiagramList(folderId?: string | null, userId?: string | null) {
   const orgId = useOrgStore((s) => s.getOrgIdForUser(userId));
+  const qc = useQueryClient();
 
   return useInfiniteQuery({
     queryKey: diagramKeys.list(orgId ?? "pending", folderId),
@@ -42,15 +43,22 @@ export function useDiagramList(folderId?: string | null, userId?: string | null)
             : Promise.resolve({ folders: [] as Awaited<ReturnType<typeof diagramsApi.listFolders>>["folders"] }),
         ])
       );
-      if (oid !== orgId) {
-        setOrgId(oid, { userId });
-      }
-      return {
+      const pageData = {
         orgId: oid,
         diagrams: result[0].diagrams,
         folders: result[1].folders,
         pagination: result[0].pagination,
       };
+      if (oid !== orgId) {
+        setOrgId(oid, { userId });
+        if (pageParam === 1) {
+          qc.setQueryData(diagramKeys.list(oid, folderId), {
+            pages: [pageData],
+            pageParams: [1],
+          });
+        }
+      }
+      return pageData;
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.pagination;

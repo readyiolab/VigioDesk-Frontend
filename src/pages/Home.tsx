@@ -70,51 +70,6 @@ const FAQS = [
   },
 ];
 
-const HERO_RAIL = [
-  { id: "merge", label: "Merge", icon: GitMerge },
-  { id: "split", label: "Split", icon: Scissors },
-  { id: "compress", label: "Compress", icon: Minimize2 },
-  { id: "esign", label: "eSign", icon: FileSignature },
-  { id: "ai", label: "AI", icon: Bot },
-  { id: "protect", label: "Protect", icon: Lock },
-] as const;
-
-const HERO_PANELS: Record<
-  (typeof HERO_RAIL)[number]["id"],
-  { title: string; meta: string; tone: string }
-> = {
-  merge: {
-    title: "Merge three contracts",
-    meta: "Contract_A.pdf · B.pdf · C.pdf",
-    tone: "Combining pages in order…",
-  },
-  split: {
-    title: "Split by page ranges",
-    meta: "Vendor_Agreement.pdf · 12 pages",
-    tone: "Extracting pages 1–4, 5–8…",
-  },
-  compress: {
-    title: "Compress for email",
-    meta: "Board_Pack.pdf · 28 MB → ~4 MB",
-    tone: "Optimizing images without wrecking text…",
-  },
-  esign: {
-    title: "Send for signature",
-    meta: "Vendor_Agreement.pdf · 3 recipients",
-    tone: "Waiting on A. Rivera · SHA-256 seal ready",
-  },
-  ai: {
-    title: "Summarize this PDF",
-    meta: "Q3_Policy.pdf · grounded answers only",
-    tone: "Key terms, risks, and next actions…",
-  },
-  protect: {
-    title: "Password protect",
-    meta: "HR_Offer.pdf · AES encryption",
-    tone: "Locking file before share…",
-  },
-};
-
 const HOME_CATEGORIES = ["All", ...TOOL_CATEGORIES.filter((c) => c !== "All")];
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -131,7 +86,6 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [toolCategory, setToolCategory] = useState("All");
-  const [activeTool, setActiveTool] = useState<(typeof HERO_RAIL)[number]["id"]>("esign");
   const byocSectionRef = useRef<HTMLElement>(null);
   const desktopSectionRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -151,23 +105,11 @@ export const Home: React.FC = () => {
   const desktopMockY = useTransform(desktopScrollY, [0, 1], [18, -18]);
   const heroStageY = useTransform(heroScrollY, [0, 1], [16, -16]);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setActiveTool((prev) => {
-        const idx = HERO_RAIL.findIndex((t) => t.id === prev);
-        return HERO_RAIL[(idx + 1) % HERO_RAIL.length].id;
-      });
-    }, 3200);
-    return () => window.clearInterval(id);
-  }, []);
-
   const primaryCta = user ? "Open workspace" : "Start free";
   const primaryPath = "/workspace";
   const warmNav = (path: string) => () => prefetchRoute(path);
   const byocPath = user?.plan === "ENTERPRISE" ? "/settings/cloud" : "/enterprise";
   const byocCta = user?.plan === "ENTERPRISE" ? "Open cloud storage" : "Use your own cloud";
-  const activePanel = HERO_PANELS[activeTool];
-  const ActiveIcon = HERO_RAIL.find((t) => t.id === activeTool)?.icon ?? FileSignature;
 
   const filteredTools = useMemo(
     () =>

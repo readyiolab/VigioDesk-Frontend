@@ -30,9 +30,10 @@ export function usePdfPreviews(file: File | null, maxPages: number = 8): PdfPrev
     setPreviews([]);
 
     const generatePreviews = async () => {
+      let pdf: Awaited<ReturnType<typeof loadPdfDocument>> | null = null;
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await loadPdfDocument(arrayBuffer);
+        pdf = await loadPdfDocument(arrayBuffer);
 
         if (cancelled) return;
 
@@ -48,6 +49,7 @@ export function usePdfPreviews(file: File | null, maxPages: number = 8): PdfPrev
         // Page 1 is shown large (hero preview) so it renders sharper; the
         // rest are small filmstrip thumbnails and render faster at a lower scale.
         const renderPage = async (pageNum: number) => {
+          if (!pdf || cancelled) return;
           const page = await pdf.getPage(pageNum);
           const viewport = page.getViewport({ scale: pageNum === 1 ? 1.4 : 0.9 });
           const canvas = document.createElement("canvas");
@@ -67,10 +69,10 @@ export function usePdfPreviews(file: File | null, maxPages: number = 8): PdfPrev
 
         // All pages render concurrently rather than one-at-a-time.
         await Promise.all(Array.from({ length: numPages }, (_, i) => renderPage(i + 1)));
-        pdf.destroy();
       } catch (err) {
         console.error("PDF preview generation error:", err);
       } finally {
+        pdf?.destroy();
         if (!cancelled) {
           setIsLoading(false);
         }

@@ -43,10 +43,26 @@ async function renderPdfFirstPage(file: File): Promise<string | null> {
 export function useFileThumbnails(files: File[]): (string | undefined)[] {
   const [thumbs, setThumbs] = useState<(string | undefined)[]>([]);
   const cacheRef = useRef(new Map<File, string>());
-  const objectUrlsRef = useRef<Set<string>>(new Set());
+  const objectUrlsRef = useRef<Map<File, string>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
+
+    // Prune removed files and revoke their Object URLs immediately to prevent memory leaks
+    const currentFiles = new Set(files);
+    for (const [file, url] of objectUrlsRef.current.entries()) {
+      if (!currentFiles.has(file)) {
+        URL.revokeObjectURL(url);
+        objectUrlsRef.current.delete(file);
+        cacheRef.current.delete(file);
+      }
+    }
+    for (const file of cacheRef.current.keys()) {
+      if (!currentFiles.has(file)) {
+        cacheRef.current.delete(file);
+      }
+    }
+
     setThumbs(files.map((file) => cacheRef.current.get(file)));
 
     files.forEach((file, idx) => {
@@ -64,7 +80,7 @@ export function useFileThumbnails(files: File[]): (string | undefined)[] {
 
       if (file.type.startsWith("image/")) {
         const url = URL.createObjectURL(file);
-        objectUrlsRef.current.add(url);
+        objectUrlsRef.current.set(file, url);
         setThumbAt(url);
       } else if (file.name.toLowerCase().endsWith(".pdf")) {
         renderPdfFirstPage(file).then((url) => url && setThumbAt(url));
@@ -76,12 +92,14 @@ export function useFileThumbnails(files: File[]): (string | undefined)[] {
     };
   }, [files]);
 
-  // Object URLs (images only — PDF thumbnails are data: URIs) are revoked once,
-  // when the hook itself unmounts, not on every list change.
+  // Clean up all remaining Object URLs on final unmount
   useEffect(() => {
-    const urls = objectUrlsRef.current;
+    const urlsMap = objectUrlsRef.current;
     return () => {
-      urls.forEach((url) => URL.revokeObjectURL(url));
+      for (const url of urlsMap.values()) {
+        URL.revokeObjectURL(url);
+      }
+      urlsMap.clear();
     };
   }, []);
 

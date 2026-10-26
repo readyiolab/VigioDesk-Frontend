@@ -71,39 +71,60 @@ async function fetchWithRetry(
   timeoutMs: number = 15000
 ): Promise<Response> {
   let lastError: Error | null = null;
+  const isIdempotent = !options.method || ["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase());
+  const maxAttempts = isIdempotent ? retries : 1;
 
-  for (let i = 0; i < retries; i++) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort(new DOMException("Request timed out.", "TimeoutError"));
+    }, timeoutMs);
+
+    const onCallerAbort = () => {
+      controller.abort(options.signal?.reason);
+    };
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        clearTimeout(timeoutId);
+        controller.abort(options.signal.reason);
+      } else {
+        options.signal.addEventListener("abort", onCallerAbort, { once: true });
+      }
+    }
+
     try {
       if (!navigator.onLine) {
         throw new Error("You appear to be offline. Please check your internet connection.");
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal,
-        });
-        return response;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
     } catch (err: any) {
       lastError = err;
-      if (err.name === "AbortError") {
+      if (options.signal?.aborted) {
+        throw err;
+      }
+      if (err.name === "AbortError" || err.name === "TimeoutError") {
         // Do not retry timeouts — that turns a 15s wait into ~45s of pain.
         throw new Error("Request timed out. Please try again.");
       }
 
-      // Only retry transient network failures
-      if (err.name !== "TypeError") {
+      // Only retry transient network failures on idempotent requests
+      if (err.name !== "TypeError" || !isIdempotent) {
         throw err;
       }
 
-      if (i < retries - 1) {
+      if (i < maxAttempts - 1) {
         await new Promise((res) => setTimeout(res, Math.pow(2, i) * 1000));
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      if (options.signal) {
+        options.signal.removeEventListener("abort", onCallerAbort);
       }
     }
   }

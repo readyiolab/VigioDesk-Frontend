@@ -317,7 +317,9 @@ describe("product page", () => {
   it("shows the audit headline and sends signed-out visitors to login", async () => {
     const user = userEvent.setup()
     renderLanding()
-    expect(screen.getByRole("heading", { name: "Audit any public website" })).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { name: /Turn Any Public URL into an Executive Audit Report/i })
+    ).toBeTruthy()
     await user.click(screen.getAllByRole("button", { name: /Start free/ })[0])
     expect(await screen.findByText("Login page")).toBeTruthy()
   })
