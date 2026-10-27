@@ -152,7 +152,7 @@ export default function WebReportsLanding() {
               {/* Pill Badge */}
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 shadow-xs mb-5 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
                 <Gauge className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>vigodesk.com · WebReports</span>
+                <span>zuvigo.com · WebReports</span>
                 <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
                   SEO &amp; Performance
                 </span>

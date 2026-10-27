@@ -56,6 +56,11 @@ export function useWebReportActions(id: string) {
     rescan: useMutation({ mutationFn: () => webreportsApi.rescan(id), onSuccess: refresh }),
     share: useMutation({ mutationFn: () => webreportsApi.share(id), onSuccess: refresh }),
     revoke: useMutation({ mutationFn: () => webreportsApi.revoke(id), onSuccess: refresh }),
+    updateBranding: useMutation({
+      mutationFn: (body: { companyName?: string | null; logoUrl?: string | null }) =>
+        webreportsApi.updateBranding(id, body),
+      onSuccess: refresh,
+    }),
     remove: useMutation({ mutationFn: () => webreportsApi.remove(id), onSuccess: refresh }),
   };
 }

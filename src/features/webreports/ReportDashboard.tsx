@@ -1,5 +1,16 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { DevicePerformance, VitalRating, WebReport, AuditCheck } from "./types";
 import { stageLabel } from "./stageLabel";
 import { keyProblems, rateDuration } from "./reportNarrative";
@@ -24,6 +35,10 @@ import {
   TrendingUp,
   SlidersHorizontal,
   FileCheck,
+  Edit3,
+  Building2,
+  Globe,
+  Save,
 } from "lucide-react";
 
 const RATING_LABEL: Record<Exclude<VitalRating, "unavailable">, string> = {
@@ -164,14 +179,52 @@ function DevicePanel({ title, device }: { title: string; device: DevicePerforman
 export function ReportDashboard({
   report,
   publicView,
+  onUpdateBranding,
+  isUpdatingBranding,
 }: {
   report: WebReport;
   publicView?: boolean;
+  onUpdateBranding?: (branding: { companyName?: string | null; logoUrl?: string | null }) => Promise<unknown>;
+  isUpdatingBranding?: boolean;
 }) {
   const problems = keyProblems(report);
   const finished = report.status === "completed";
   const [viewMode, setViewMode] = useState<"plain" | "technical">("plain");
   const [activeTab, setActiveTab] = useState<"overview" | "vitals" | "seo" | "ai" | "fixes">("overview");
+
+  // Customer branding modal state
+  const [brandingModalOpen, setBrandingModalOpen] = useState(false);
+  const [editCompanyName, setEditCompanyName] = useState(report.customerBranding?.companyName || "");
+  const [editLogoUrl, setEditLogoUrl] = useState(report.customerBranding?.logoUrl || "");
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+
+  let domain = "";
+  try {
+    domain = new URL(report.url).hostname;
+  } catch {
+    domain = report.url;
+  }
+  const customerName = report.customerBranding?.companyName || domain;
+  const customerLogo = report.customerBranding?.logoUrl;
+  const fallbackFavicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+
+  async function handleSaveBranding(e: React.FormEvent) {
+    e.preventDefault();
+    if (!onUpdateBranding) return;
+    try {
+      setIsSavingBranding(true);
+      await onUpdateBranding({
+        companyName: editCompanyName.trim() || null,
+        logoUrl: editLogoUrl.trim() || null,
+      });
+      toast.success("Customer branding updated successfully.");
+      setBrandingModalOpen(false);
+    } catch {
+      toast.error("Failed to update branding.");
+    } finally {
+      setIsSavingBranding(false);
+    }
+  }
 
   // Non-technical interpretations
   const mobileLcp = report.performance.mobile.lcp;
@@ -212,13 +265,69 @@ export function ReportDashboard({
     <>
       <div className="audit-screen mx-auto flex w-full max-w-5xl flex-col gap-4 bg-slate-50 px-3.5 py-4 text-slate-900 print:hidden sm:px-6 sm:py-6">
         
-        {/* Executive Banner */}
+        {/* ── SECTION 1 & 2: DUAL BRANDED COVER & EXECUTIVE BANNER ── */}
         <section className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          
+          {/* Dual Branded Header: Zuvigo.com on left, Customer Logo on right */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            {/* Left: Official Zuvigo.com Branding */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-700 via-indigo-600 to-violet-600 text-white shadow-sm ring-1 ring-black/5">
+                <Sparkles className="h-6 w-6 stroke-2" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black tracking-tight text-slate-950">
+                    Zuvigo<span className="text-indigo-600">.com</span>
+                  </span>
+                  <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                    Official AI Audit
+                  </span>
+                </div>
+                <p className="text-[11px] font-semibold text-slate-500">
+                  Enterprise AI Website Intelligence
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Customer's Company Logo & Branding */}
+            <div className="flex items-center gap-3 text-right">
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-slate-900">{customerName}</span>
+                  {onUpdateBranding ? (
+                    <button
+                      type="button"
+                      onClick={() => setBrandingModalOpen(true)}
+                      className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition"
+                      title="Edit Customer Branding & Logo"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+                <span className="text-[11px] font-mono font-medium text-slate-500">{domain}</span>
+              </div>
+
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1 shadow-2xs">
+                <img
+                  src={customerLogo || fallbackFavicon}
+                  alt={customerName}
+                  className="h-full w-full object-contain rounded-xl"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = fallbackFavicon;
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Subheader: Category Pill & View Switcher */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-0.5">
               <span className="h-2 w-2 rounded-full bg-indigo-600" />
               <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">
-                Vigodesk · WebReports Studio
+                Audited by Zuvigo.com · AI Engine
               </p>
             </div>
 
@@ -678,12 +787,12 @@ export function ReportDashboard({
           </section>
         )}
 
-        {/* How Vigodesk can help (Section Required for unit tests) */}
-        <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-md sm:p-6" aria-labelledby="readyio-help">
+        {/* How Zuvigo.com can help */}
+        <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-md sm:p-6" aria-labelledby="zuvigo-help">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4.5 w-4.5 text-indigo-400" />
-            <h2 id="readyio-help" className="text-base font-bold">
-              How Vigodesk can help
+            <h2 id="zuvigo-help" className="text-base font-bold">
+              How Zuvigo.com can help
             </h2>
           </div>
           <ul className="mt-3 space-y-2 text-xs leading-relaxed text-slate-300 sm:text-sm">
@@ -702,12 +811,126 @@ export function ReportDashboard({
           </ul>
         </section>
 
+        {/* ── SECTION 12: ZUVIGO.COM BRANDING, CONTACT & FOOTER ── */}
+        <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <h3 className="mt-2.5 text-sm font-bold text-slate-900">
+            Verified by Zuvigo.com
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
+            Autonomous AI website analysis, performance telemetry, and AI engine crawler validation.
+          </p>
+          <div className="mt-3.5 flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-slate-600">
+            <span>Enterprise Support: <a href="mailto:support@zuvigo.com" className="text-indigo-600 hover:underline">support@zuvigo.com</a></span>
+            <span>•</span>
+            <span>Platform: <a href="https://zuvigo.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">https://zuvigo.com</a></span>
+          </div>
+          <p className="mt-3 text-[10px] text-slate-400">
+            © {new Date().getFullYear()} Zuvigo.com · White-Label AI Website Audit Engine
+          </p>
+        </section>
+
         {report.status === "failed" && report.error ? (
           <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3.5 text-xs text-red-800 sm:text-sm">
             {report.error.message}
           </p>
         ) : null}
       </div>
+
+      {/* ── CUSTOMER BRANDING MODAL ── */}
+      <Dialog open={brandingModalOpen} onOpenChange={setBrandingModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-950">
+              <Building2 className="h-5 w-5 text-indigo-600" />
+              Customize Customer Branding
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Configure the company logo and branding displayed on this audit report.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveBranding} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="companyName" className="text-xs font-semibold text-slate-700">
+                Customer Company Name
+              </Label>
+              <Input
+                id="companyName"
+                placeholder={domain}
+                value={editCompanyName}
+                onChange={(e) => setEditCompanyName(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="logoUrl" className="text-xs font-semibold text-slate-700">
+                Company Logo URL
+              </Label>
+              <Input
+                id="logoUrl"
+                type="url"
+                placeholder="https://example.com/logo.png"
+                value={editLogoUrl}
+                onChange={(e) => setEditLogoUrl(e.target.value)}
+                className="text-xs"
+              />
+              <p className="text-[10px] text-slate-400">
+                Direct image URL (PNG, SVG, JPG, WebP) or favicon.
+              </p>
+            </div>
+
+            {/* Live Logo Preview */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Live Header Preview
+              </span>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-1">
+                  <img
+                    src={editLogoUrl.trim() || fallbackFavicon}
+                    alt="Preview"
+                    className="h-full w-full object-contain rounded-lg"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = fallbackFavicon;
+                    }}
+                  />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">
+                    {editCompanyName.trim() || domain}
+                  </div>
+                  <div className="text-[10px] text-slate-500">{domain}</div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-4 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBrandingModalOpen(false)}
+                disabled={isSavingBranding}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={isSavingBranding}
+              >
+                <Save className="h-3.5 w-3.5" />
+                {isSavingBranding ? "Saving…" : "Save Branding"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {finished ? <ReportPrint report={report} problems={problems} /> : null}
     </>

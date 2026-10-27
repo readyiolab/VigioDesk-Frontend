@@ -104,7 +104,7 @@ export default function WebReportPage() {
             </Link>
             <span className="text-slate-300">/</span>
             <div className="flex items-center gap-1.5 font-semibold text-xs text-indigo-700 tracking-wide uppercase">
-              <span>Vigodesk WebReports</span>
+              <span>Zuvigo.com AI Audit</span>
             </div>
           </div>
           <div className="mt-1 flex items-center gap-2">
@@ -202,7 +202,15 @@ export default function WebReportPage() {
 
       {/* Main Content Area */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {running ? <ScanProgress report={report} /> : <ReportDashboard report={report} />}
+        {running ? (
+          <ScanProgress report={report} />
+        ) : (
+          <ReportDashboard
+            report={report}
+            onUpdateBranding={(b) => actions.updateBranding.mutateAsync(b)}
+            isUpdatingBranding={actions.updateBranding.isPending}
+          />
+        )}
       </div>
     </div>
   );

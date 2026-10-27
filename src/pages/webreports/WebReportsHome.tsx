@@ -369,7 +369,7 @@ export default function WebReportsHome() {
       <div className="flex flex-col gap-2 border-b border-border/60 pb-4">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
           <Gauge className="size-3.5" />
-          <span>Vigodesk WebReports · Executive Performance &amp; SEO Studio</span>
+          <span>Zuvigo.com WebReports · Executive Performance &amp; AI SEO Studio</span>
         </div>
         <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Website audit

@@ -48,6 +48,13 @@ export interface Recommendation {
   checkIds: string[];
 }
 
+export interface CustomerBranding {
+  companyName: string | null;
+  logoUrl: string | null;
+  domain: string;
+  source: 'detected' | 'custom' | 'fallback';
+}
+
 export interface WebReport {
   contractVersion: number;
   id?: string;
@@ -78,6 +85,7 @@ export interface WebReport {
   };
   topFixes: Recommendation[];
   shareToken?: string | null;
+  customerBranding?: CustomerBranding;
   error: { message: string } | null;
   cached?: boolean;
 }

@@ -28,6 +28,11 @@ export const webreportsApi = {
   revoke: (id: string) =>
     apiFetch(`/webreports/${id}/share`, { method: "DELETE" }) as Promise<{ ok: boolean }>,
 
+  updateBranding: (id: string, body: { companyName?: string | null; logoUrl?: string | null }) =>
+    apiFetch(`/webreports/${id}/branding`, { method: "PATCH", body: JSON.stringify(body) }) as Promise<{
+      report: WebReport;
+    }>,
+
   remove: (id: string) =>
     apiFetch(`/webreports/${id}`, { method: "DELETE" }) as Promise<{ ok: boolean }>,
 

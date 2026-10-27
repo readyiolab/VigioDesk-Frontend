@@ -65,7 +65,7 @@ export function ScanProgress({ report }: { report: WebReport }) {
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-ping" />
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">
-              Vigodesk Deep Audit Pipeline
+              Zuvigo.com Deep AI Audit Pipeline
             </p>
           </div>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
