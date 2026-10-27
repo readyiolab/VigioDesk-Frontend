@@ -5,7 +5,15 @@ import { shouldPollReport, webReportKeys } from "./keys";
 export function useWebReportList() {
   return useQuery({
     queryKey: webReportKeys.list(0),
-    queryFn: () => webreportsApi.list(20, 0),
+    queryFn: () => webreportsApi.list(50, 0),
+    refetchInterval: (query) => {
+      if (typeof document !== "undefined" && document.hidden) return false;
+      const reports = query.state.data?.reports || [];
+      const hasActive = reports.some(
+        (r) => r.status === "queued" || r.status === "running"
+      );
+      return hasActive ? 2500 : false;
+    },
   });
 }
 

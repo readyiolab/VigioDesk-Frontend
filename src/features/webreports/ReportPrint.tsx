@@ -10,7 +10,7 @@ export function ReportPrint({ report, problems }: { report: WebReport; problems:
   return (
     <article hidden className="audit-print text-slate-900">
       <section className="audit-page bg-[#F7F9FC] p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Readyio · WebReports</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">Vigodesk · WebReports</p>
         <h1 className="mt-4 max-w-xl text-3xl font-semibold tracking-tight text-slate-950">
           {report.summary.headline || "Website audit"}
         </h1>
@@ -37,7 +37,7 @@ export function ReportPrint({ report, problems }: { report: WebReport; problems:
       </section>
 
       <section className="audit-page bg-white p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Readyio · WebReports</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">Vigodesk · WebReports</p>
         <h2 className="mt-3 text-2xl font-semibold tracking-tight">Key problems</h2>
         <div className="mt-6 grid grid-cols-2 gap-4">
           {problems.map((group) => (
@@ -54,12 +54,12 @@ export function ReportPrint({ report, problems }: { report: WebReport; problems:
       </section>
 
       <section className="audit-page bg-[#F7F9FC] p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Readyio · WebReports</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">Vigodesk · WebReports</p>
         <h2 className="mt-3 text-2xl font-semibold tracking-tight">Show up in AI answers</h2>
         <p className="mt-4 max-w-xl text-sm leading-6 text-slate-700">
           Crawler access and structured data help a site be understood in AI answers. They do not guarantee inclusion.
         </p>
-        <h2 className="mt-8 text-2xl font-semibold tracking-tight">How Readyio can help</h2>
+        <h2 className="mt-8 text-2xl font-semibold tracking-tight">How Vigodesk can help</h2>
         <ul className="mt-4 max-w-xl space-y-3 text-sm leading-6 text-slate-700">
           <li>Rerun this audit after the fixes so the next score sits beside this one.</li>
           <li>Share the report with the people who will change the site.</li>
@@ -80,3 +80,4 @@ function ScoreTile({ label, score, featured }: { label: string; score: number | 
     </div>
   );
 }
+
