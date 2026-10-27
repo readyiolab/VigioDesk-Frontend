@@ -17,6 +17,7 @@ export const AppLayout: React.FC = () => {
     location.pathname.startsWith("/letters/") && location.pathname !== "/letters";
   const isDiagramsMarketing = location.pathname === "/diagrams";
   const isWebReportsMarketing = location.pathname === "/webreports";
+  const isWebReportsScan = location.pathname === "/webreports/scan";
   const isWebReport =
     location.pathname.startsWith("/webreports/") &&
     location.pathname !== "/webreports/scan" &&
@@ -34,6 +35,7 @@ export const AppLayout: React.FC = () => {
     isLettersMarketing ||
     isDiagramsMarketing ||
     isWebReportsMarketing ||
+    isWebReportsScan ||
     isLetterStudio ||
     isDiagramStudio ||
     isEsignEditor ||

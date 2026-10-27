@@ -139,7 +139,7 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
 
   return (
     <div
-      onClick={() => report.id && onOpen(report.id)}
+      onClick={() => report.id && window.open(`/webreports/${report.id}`, "_blank", "noopener,noreferrer")}
       className="group relative flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-4.5 transition-all duration-200 hover:border-blue-500/40 hover:shadow-md cursor-pointer sm:flex-row sm:items-center sm:justify-between"
     >
       {/* Left: Favicon & Domain info */}
@@ -160,6 +160,8 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
           <div className="flex items-center gap-2">
             <Link
               to={`/webreports/${report.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className="truncate font-semibold tracking-tight text-foreground hover:text-blue-600 hover:underline dark:hover:text-blue-400"
             >
@@ -265,14 +267,16 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
           >
             <Trash2 className="size-4" />
           </Button>
-          <Button
-            size="sm"
-            className="h-8 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 ml-1"
-            onClick={() => report.id && onOpen(report.id)}
+          <a
+            href={`/webreports/${report.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 h-8 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 ml-1 transition shadow-xs"
           >
             <span>View</span>
-            <ArrowRight className="ml-1 size-3.5" />
-          </Button>
+            <ExternalLink className="size-3.5" />
+          </a>
         </div>
       </div>
     </div>
@@ -360,9 +364,9 @@ export default function WebReportsHome() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-5 sm:px-6">
       {/* ── Studio Header ────────────────────────────────────────── */}
-      <div className="flex flex-col gap-2 border-b border-border/60 pb-6">
+      <div className="flex flex-col gap-2 border-b border-border/60 pb-4">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
           <Gauge className="size-3.5" />
           <span>Vigodesk WebReports · Executive Performance &amp; SEO Studio</span>
