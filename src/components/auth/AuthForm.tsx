@@ -270,6 +270,7 @@ export function AuthForm({
                 type="text"
                 required
                 disabled={isLoading}
+                autoComplete="name"
                 placeholder="Jane Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -287,6 +288,7 @@ export function AuthForm({
               type="email"
               required
               disabled={isLoading}
+              autoComplete="email"
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -310,6 +312,7 @@ export function AuthForm({
               type="password"
               required
               disabled={isLoading}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
