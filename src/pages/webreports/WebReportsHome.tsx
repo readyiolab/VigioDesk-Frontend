@@ -5,7 +5,6 @@ import {
   Globe,
   Gauge,
   Search,
-  Sparkles,
   ExternalLink,
   ArrowRight,
   ShieldCheck,

@@ -19,13 +19,12 @@ import {
   Smartphone,
   Monitor,
   Search,
-  Sparkles,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   Clock,
   Layers,
-  Zap,
+  Gauge,
   Bot,
   ExternalLink,
   Code,
@@ -272,8 +271,8 @@ export function ReportDashboard({
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
             {/* Left: Official Zuvigo.com Branding */}
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-700 via-indigo-600 to-violet-600 text-white shadow-sm ring-1 ring-black/5">
-                <Sparkles className="h-6 w-6 stroke-2" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm ring-1 ring-slate-800">
+                <span className="font-black text-2xl tracking-tight text-white">Z</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -410,15 +409,20 @@ export function ReportDashboard({
           ) : null}
 
           {finished && publicView ? (
-            <Button
-              type="button"
-              className="mt-4 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-              size="sm"
-              onClick={() => window.print()}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </Button>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-4">
+              <Button
+                type="button"
+                className="gap-2 bg-slate-950 hover:bg-slate-800 text-white shadow-xs font-semibold px-4"
+                size="sm"
+                onClick={() => window.print()}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
+              </Button>
+              <span className="text-[11px] font-medium text-slate-500">
+                Generate high-resolution white-label executive report
+              </span>
+            </div>
           ) : null}
         </section>
 
@@ -440,7 +444,7 @@ export function ReportDashboard({
               <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900">
-                    <Zap className="h-4 w-4 text-amber-500" />
+                    <Gauge className="h-4 w-4 text-emerald-600" />
                     <span>Customer Loading Experience</span>
                   </div>
                   <span className="text-[10px] font-bold uppercase rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">
@@ -448,8 +452,9 @@ export function ReportDashboard({
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">{speedVerdict}</p>
-                <div className="mt-2 text-[11px] font-medium text-indigo-600">
-                  💡 Business Takeaway: Faster loading keeps visitors from hitting the back button.
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-indigo-50/80 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 border border-indigo-100/60">
+                  <span className="rounded bg-indigo-600/10 px-1.5 py-0.2 text-[10px] font-bold uppercase text-indigo-700">Business Takeaway</span>
+                  <span>Faster loading keeps visitors from hitting the back button.</span>
                 </div>
               </div>
 
@@ -465,8 +470,9 @@ export function ReportDashboard({
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">{stabilityVerdict}</p>
-                <div className="mt-2 text-[11px] font-medium text-indigo-600">
-                  💡 Business Takeaway: Stable scrolling prevents shoppers from tapping the wrong button.
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-indigo-50/80 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 border border-indigo-100/60">
+                  <span className="rounded bg-indigo-600/10 px-1.5 py-0.2 text-[10px] font-bold uppercase text-indigo-700">Business Takeaway</span>
+                  <span>Stable scrolling prevents shoppers from tapping the wrong button.</span>
                 </div>
               </div>
 
@@ -482,8 +488,9 @@ export function ReportDashboard({
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">{seoVerdict}</p>
-                <div className="mt-2 text-[11px] font-medium text-indigo-600">
-                  💡 Business Takeaway: Descriptive titles help Google send you the right customers.
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-indigo-50/80 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 border border-indigo-100/60">
+                  <span className="rounded bg-indigo-600/10 px-1.5 py-0.2 text-[10px] font-bold uppercase text-indigo-700">Business Takeaway</span>
+                  <span>Descriptive titles help Google send you the right customers.</span>
                 </div>
               </div>
 
@@ -491,7 +498,7 @@ export function ReportDashboard({
               <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-semibold text-xs text-slate-900">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <Bot className="h-4 w-4 text-indigo-600" />
                     <span>AI Chatbot Readiness (ChatGPT &amp; Claude)</span>
                   </div>
                   <span className="text-[10px] font-bold uppercase rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">
@@ -499,8 +506,9 @@ export function ReportDashboard({
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">{aiVerdict}</p>
-                <div className="mt-2 text-[11px] font-medium text-indigo-600">
-                  💡 Business Takeaway: Open bot access helps AI recommend your products in modern search.
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-indigo-50/80 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 border border-indigo-100/60">
+                  <span className="rounded bg-indigo-600/10 px-1.5 py-0.2 text-[10px] font-bold uppercase text-indigo-700">Business Takeaway</span>
+                  <span>Open bot access helps AI recommend your products in modern search.</span>
                 </div>
               </div>
             </div>
@@ -530,7 +538,7 @@ export function ReportDashboard({
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
-            <Zap className="h-3.5 w-3.5" />
+            <Gauge className="h-3.5 w-3.5" />
             Core Web Vitals
           </button>
           <button
@@ -554,7 +562,7 @@ export function ReportDashboard({
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Bot className="h-3.5 w-3.5" />
             AI Search Readiness
           </button>
           {report.topFixes.length > 0 ? (
@@ -593,7 +601,7 @@ export function ReportDashboard({
           <ScoreCard
             label="AI Search"
             score={report.scores.aiSearch}
-            icon={<Sparkles className="h-4 w-4 text-purple-600" />}
+            icon={<Bot className="h-4 w-4 text-indigo-600" />}
           />
         </section>
 
@@ -813,8 +821,8 @@ export function ReportDashboard({
 
         {/* ── SECTION 12: ZUVIGO.COM BRANDING, CONTACT & FOOTER ── */}
         <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6 text-center">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
-            <Sparkles className="h-5 w-5" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white shadow-xs">
+            <span className="font-black text-sm tracking-tight text-white">Z</span>
           </div>
           <h3 className="mt-2.5 text-sm font-bold text-slate-900">
             Verified by Zuvigo.com

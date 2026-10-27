@@ -225,19 +225,47 @@
 }
 
 @media print {
+  /* Ensure parent containers allow multi-page document flow without viewport-height clipping */
+  html, body, #root, #root > div, main {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  
+  /* Hide all interactive screen chrome and unprinted views */
+  .audit-screen,
+  nav,
+  header.print\:hidden,
+  footer,
+  aside {
+    display: none !important;
+  }
+
+  /* Unhide the print report and force crisp vectors & exact backgrounds */
+  .audit-print,
   .audit-print[hidden] {
     display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    background: #ffffff !important;
   }
+
   .audit-page {
     break-after: page;
     page-break-after: always;
-    height: 273mm;
-    overflow: hidden;
+    min-height: 270mm;
+    box-sizing: border-box;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    background-color: #ffffff !important;
+    padding: 8mm 0 !important;
   }
+
   .audit-page:last-child {
     break-after: auto;
     page-break-after: auto;
   }
 }
+
