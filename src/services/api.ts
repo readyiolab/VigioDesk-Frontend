@@ -208,6 +208,12 @@ export const apiService = {
       body: JSON.stringify({ ...data, attribution: getStoredAttribution() }),
     }) as Promise<{ user: User }>,
 
+  microsoftLogin: (data: { credential: string }) =>
+    apiFetch("/auth/microsoft", {
+      method: "POST",
+      body: JSON.stringify({ ...data, attribution: getStoredAttribution() }),
+    }) as Promise<{ user: User }>,
+
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
 
   verifyEmail: (token: string) =>

@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, name: string, password: string) => Promise<void>;
   googleLogin: (data: { credential: string }) => Promise<void>;
+  microsoftLogin: (data: { credential: string }) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<User>;
   resendVerification: () => Promise<void>;
@@ -95,6 +96,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     applySession(await apiService.googleLogin(data));
   }, [applySession]);
 
+  const microsoftLogin = useCallback(async (data: { credential: string }) => {
+    clearOrgId();
+    applySession(await apiService.microsoftLogin(data));
+  }, [applySession]);
+
   const logout = useCallback(() => {
     apiService.logout().catch(() => undefined);
     clearClientSessionStorage();
@@ -125,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       googleLogin,
+      microsoftLogin,
       logout,
       refreshProfile,
       resendVerification,
@@ -137,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       googleLogin,
+      microsoftLogin,
       logout,
       refreshProfile,
       resendVerification,

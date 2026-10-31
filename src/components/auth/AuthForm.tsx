@@ -6,6 +6,10 @@ import { Spinner } from "../ui/spinner";
 import { Mail, Lock, User as UserIcon, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  acquireMicrosoftIdToken,
+  isMicrosoftLoginConfigured,
+} from "@/lib/microsoftMsal";
 
 interface AuthFormProps {
   mode: "login" | "register";
@@ -45,9 +49,10 @@ export function AuthForm({
   const [googleReady, setGoogleReady] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const { login, register, googleLogin } = useAuth();
+  const { login, register, googleLogin, microsoftLogin } = useAuth();
   const navigate = useNavigate();
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const microsoftConfigured = isMicrosoftLoginConfigured();
 
   const finish = (_opts?: { needsVerify?: boolean }) => {
     if (onSuccess) {
@@ -162,6 +167,21 @@ export function AuthForm({
 
   const alreadyRegistered = /already registered/i.test(error);
 
+  const handleMicrosoftLogin = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      const credential = await acquireMicrosoftIdToken();
+      await microsoftLogin({ credential });
+      toast.success("Signed in with Microsoft!");
+      finish();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Microsoft sign-in failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full text-left">
       <div className="mb-5 pr-8 text-center sm:mb-6">
@@ -208,27 +228,52 @@ export function AuthForm({
         </button>
       </div>
 
-      {googleClientId ? (
-        <div className="relative mb-4 min-h-[44px] w-full overflow-hidden rounded-xl">
-          <div
-            ref={googleBtnRef}
+      <div className="mb-4 space-y-2.5">
+        {googleClientId ? (
+          <div className="relative min-h-[44px] w-full overflow-hidden rounded-xl">
+            <div
+              ref={googleBtnRef}
+              className={cn(
+                "flex w-full justify-center [&>div]:w-full!",
+                isLoading && "pointer-events-none opacity-60"
+              )}
+              aria-label="Continue with Google"
+            />
+            {!googleReady && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-border bg-muted/40 text-xs text-muted-foreground">
+                Loading Google…
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {microsoftConfigured ? (
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => void handleMicrosoftLogin()}
             className={cn(
-              "flex w-full justify-center [&>div]:w-full!",
+              "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-muted/50",
               isLoading && "pointer-events-none opacity-60"
             )}
-            aria-label="Continue with Google"
-          />
-          {!googleReady && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-border bg-muted/40 text-xs text-muted-foreground">
-              Loading Google…
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className="mb-4 text-center text-[11px] text-muted-foreground">
-          Google sign-in is not configured for this build.
-        </p>
-      )}
+            aria-label="Continue with Microsoft"
+          >
+            <svg aria-hidden className="h-4 w-4 shrink-0" viewBox="0 0 21 21" fill="none">
+              <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+              <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+              <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+              <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+            </svg>
+            Continue with Microsoft
+          </button>
+        ) : null}
+
+        {!googleClientId && !microsoftConfigured ? (
+          <p className="text-center text-[11px] text-muted-foreground">
+            Social sign-in is not configured for this build.
+          </p>
+        ) : null}
+      </div>
 
       <div className="relative mb-4 flex items-center justify-center">
         <div className="w-full border-t border-border" />
