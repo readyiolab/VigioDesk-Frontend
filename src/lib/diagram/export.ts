@@ -170,11 +170,19 @@ export async function exportPng(graph: Graph, scale = 2): Promise<Blob> {
 
 export async function exportPdf(graph: Graph): Promise<Blob> {
   const png = await exportPng(graph, 2);
-  const bytes = await png.arrayBuffer();
+  return exportPdfMultiPage([png]);
+}
+
+/** Build a multi-page PDF from PNG page blobs (one PDF page each). */
+export async function exportPdfMultiPage(pngBlobs: Blob[]): Promise<Blob> {
+  if (!pngBlobs.length) throw new Error("Nothing to export");
   const pdf = await PDFDocument.create();
-  const image = await pdf.embedPng(bytes);
-  const page = pdf.addPage([image.width, image.height]);
-  page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+  for (const png of pngBlobs) {
+    const bytes = await png.arrayBuffer();
+    const image = await pdf.embedPng(bytes);
+    const page = pdf.addPage([image.width, image.height]);
+    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+  }
   const out = await pdf.save();
   return new Blob([out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer], {
     type: "application/pdf",

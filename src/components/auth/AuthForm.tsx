@@ -346,9 +346,12 @@ export function AuthForm({
           <div className="mb-1.5 flex items-center justify-between">
             <label className="block text-xs font-semibold text-foreground">Password</label>
             {mode === "login" && (
-              <span className="text-[11px] font-medium text-muted-foreground">
-                Forgot password? Contact support.
-              </span>
+              <Link
+                to="/forgot-password"
+                className="text-[11px] font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
             )}
           </div>
           <div className="relative">

@@ -6,7 +6,8 @@ import { apiService } from "../services/api";
 import { getToolById, formatFilenameFromKey } from "@/lib/design-tokens";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { Download, AlertCircle, Clock, CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, XCircle } from "lucide-react";
+import { Download, AlertCircle, Clock, CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, XCircle, FolderPlus } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const History: React.FC = () => {
@@ -72,6 +73,22 @@ export const History: React.FC = () => {
       document.body.removeChild(link);
     } catch (err) {
       console.error("Download failed:", err);
+    }
+  };
+
+  const handleSaveToAssets = async (job: Job) => {
+    if (!job.outputFile) return;
+    try {
+      await apiService.createAsset({
+        title: formatFilenameFromKey(job.outputFile) || `${job.tool} export`,
+        sourceModule: "toolkit",
+        sourceId: job.id,
+        mimeType: "application/pdf",
+        storageKey: job.outputFile,
+      });
+      toast.success("Saved to Asset Library");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not save asset");
     }
   };
 
@@ -207,19 +224,32 @@ export const History: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => canDownload ? handleDownload(job.id, job.outputFile!) : null}
-                        disabled={!canDownload}
-                        className={cn(
-                          "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-sm",
-                          canDownload
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
-                            : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                      <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                        {canDownload && (
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveToAssets(job)}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all hover:bg-muted"
+                            title="Save to Asset Library"
+                          >
+                            <FolderPlus className="h-4 w-4" />
+                            Assets
+                          </button>
                         )}
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </button>
+                        <button
+                          onClick={() => canDownload ? handleDownload(job.id, job.outputFile!) : null}
+                          disabled={!canDownload}
+                          className={cn(
+                            "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-sm",
+                            canDownload
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+                              : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <Download className="h-4 w-4" />
+                          Download
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

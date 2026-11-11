@@ -214,6 +214,18 @@ export const apiService = {
       body: JSON.stringify({ ...data, attribution: getStoredAttribution() }),
     }) as Promise<{ user: User }>,
 
+  forgotPassword: (email: string) =>
+    apiFetch("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }) as Promise<{ sent: boolean }>,
+
+  resetPassword: (token: string, password: string) =>
+    apiFetch("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }) as Promise<{ reset: boolean }>,
+
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
 
   verifyEmail: (token: string) =>
@@ -226,6 +238,15 @@ export const apiService = {
 
   // User
   getProfile: () => apiFetch("/users/me", { method: "GET" }),
+
+  getUsage: () => apiFetch("/users/me/usage", { method: "GET" }),
+
+  listAssets: () => apiFetch("/assets", { method: "GET" }),
+
+  createAsset: (body: Record<string, unknown>) =>
+    apiFetch("/assets", { method: "POST", body: JSON.stringify(body) }),
+
+  deleteAsset: (id: string) => apiFetch(`/assets/${id}`, { method: "DELETE" }),
 
   getTrackingProfile: () => apiFetch("/tracking/profile", { method: "GET" }),
 
@@ -366,6 +387,12 @@ export const apiService = {
   getCloudOAuthUrl: (provider: string, redirectUri?: string) =>
     apiFetch(`/cloud/oauth/${provider}${redirectUri ? `?redirectUri=${encodeURIComponent(redirectUri)}` : ""}`, {
       method: "GET",
+    }),
+
+  exchangeCloudOAuth: (provider: string, code: string, redirectUri?: string) =>
+    apiFetch(`/cloud/oauth/${provider}/exchange`, {
+      method: "POST",
+      body: JSON.stringify({ code, redirectUri }),
     }),
 
   connectCloud: (provider: string, accountEmail: string, accessToken?: string) =>

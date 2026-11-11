@@ -194,23 +194,16 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
     e.preventDefault();
     if (activeTab === "device") return;
 
-    const email = connectEmail.trim() || `user@${activeTab === "sharepoint" ? "organization.sharepoint" : activeTab}.com`;
     setIsConnecting(true);
-    toast.loading(`Authenticating with ${currentMeta.name}...`, { id: "oauth" });
+    toast.loading(`Opening ${currentMeta.name} sign-in…`, { id: "oauth" });
 
     try {
-      // Connect to backend
-      await apiService.connectCloud(activeTab, email).catch(() => null);
-      localStorage.setItem(`cloud_conn_${activeTab}`, email);
-
-      setConnectedMap((prev) => ({
-        ...prev,
-        [activeTab]: { email, lastSync: "Just now" },
-      }));
-
-      setIsConnecting(false);
-      setConnectEmail("");
-      toast.success(`Connected ${currentMeta.name} (${email})!`, { id: "oauth" });
+      const redirectUri = `${window.location.origin}/oauth/callback/${activeTab}`;
+      const res: any = await apiService.getCloudOAuthUrl(activeTab, redirectUri);
+      const url = res?.data?.url || res?.url;
+      if (!url) throw new Error("Could not start cloud authorization.");
+      toast.success(`Continue in the ${currentMeta.name} window`, { id: "oauth" });
+      window.location.href = url;
     } catch (err: any) {
       setIsConnecting(false);
       toast.error(err.message || `Failed to connect ${currentMeta.name}`, { id: "oauth" });

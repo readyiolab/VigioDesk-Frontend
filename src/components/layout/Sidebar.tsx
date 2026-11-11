@@ -9,6 +9,7 @@ import {
   User,
   ChevronRight,
   X,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   // sourced from TOOLS, so it appears exactly once in the sidebar.
   const mainNavItems = [
     { name: "Workspace Dashboard", path: "/workspace", icon: LayoutDashboard },
+    { name: "Asset Library", path: "/assets", icon: FolderOpen, requiresAuth: true },
     { name: "History Logs", path: "/history", icon: History, requiresAuth: true },
     { name: "Pricing & Plans", path: "/billing", icon: CreditCard },
     { name: "My Settings", path: "/profile", icon: User, requiresAuth: true },

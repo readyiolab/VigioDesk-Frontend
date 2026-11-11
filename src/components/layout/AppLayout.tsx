@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
+import { ProductSwitcher } from "./ProductSwitcher";
 import { RouteFallback } from "@/components/RouteFallback";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +74,7 @@ export const AppLayout: React.FC = () => {
       )}
 
       {!hideChrome && <Navbar />}
+      {!hideChrome && !isMarketingBleed && <ProductSwitcher />}
 
       <div
         className={cn(

@@ -18,6 +18,9 @@ const CloudStorage = lazy(() => import("./pages/settings/CloudStorage"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const CloudOAuthCallback = lazy(() => import("./pages/oauth/CloudOAuthCallback"));
 
 const DocumentList = lazy(() => import("./pages/signing/DocumentList"));
 const DocumentEditor = lazy(() => import("./pages/signing/DocumentEditor"));
@@ -59,6 +62,7 @@ const WebReportsLanding = lazy(() => import("./pages/webreports/WebReportsLandin
 const WebReportsHome = lazy(() => import("./pages/webreports/WebReportsHome"));
 const WebReportPage = lazy(() => import("./pages/webreports/WebReportPage"));
 const SharedWebReportPage = lazy(() => import("./pages/webreports/SharedWebReportPage"));
+const AssetLibraryPage = lazy(() => import("./pages/assets/AssetLibraryPage"));
 
 function App() {
   return (
@@ -86,6 +90,16 @@ function App() {
                 <Route path="login" element={<Login />} />
                 <Route path="register" element={<Register />} />
                 <Route path="verify-email" element={<VerifyEmail />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route
+                  path="oauth/callback/:provider"
+                  element={
+                    <ProtectedRoute>
+                      <CloudOAuthCallback />
+                    </ProtectedRoute>
+                  }
+                />
 
                 <Route path="history" element={
                   <ProtectedRoute>
@@ -99,6 +113,16 @@ function App() {
                     <Profile />
                   </ProtectedRoute>
                 } />
+                <Route
+                  path="assets"
+                  element={
+                    <ProtectedRoute>
+                      <VerifiedRoute>
+                        <AssetLibraryPage />
+                      </VerifiedRoute>
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="settings/cloud" element={
                   <ProtectedRoute>
                     <CloudStorage />

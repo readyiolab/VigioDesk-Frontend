@@ -53,15 +53,15 @@ const REAL_COMPARISON_CATEGORIES: CompareCategory[] = [
       { name: "Microsoft PowerPoint (.pptx) to PDF", free: true, pro: true, enterprise: true },
       { name: "Images (JPG, PNG, WebP) to PDF", free: true, pro: true, enterprise: true },
       { name: "PDF to JPG image extraction", free: true, pro: true, enterprise: true },
-      { name: "High-accuracy OCR (Searchable text from scans)", free: "Basic (10 pgs)", pro: "Unlimited", enterprise: "Unlimited" },
+      { name: "High-accuracy OCR (Searchable text from scans)", free: "Basic", pro: "Included", enterprise: "Included" },
     ],
   },
   {
     title: "AI Document Intelligence",
     rows: [
-      { name: "AI Summarize (Instant executive brief)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "Unlimited" },
-      { name: "Chat with PDF (Ask questions grounded in document)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "Unlimited" },
-      { name: "Explain PDF (Simplify complex clauses into plain English)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "Unlimited" },
+      { name: "AI Summarize (Instant executive brief)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "10,000 credits/mo" },
+      { name: "Chat with PDF (Ask questions grounded in document)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "10,000 credits/mo" },
+      { name: "Explain PDF (Simplify complex clauses into plain English)", free: "20 credits/mo", pro: "500 credits/mo", enterprise: "10,000 credits/mo" },
       { name: "Zero AI model training on your private files", free: true, pro: true, enterprise: true },
     ],
   },
@@ -69,7 +69,7 @@ const REAL_COMPARISON_CATEGORIES: CompareCategory[] = [
     title: "eSign & Digital Signatures",
     rows: [
       { name: "Sign documents electronically", free: true, pro: true, enterprise: true },
-      { name: "Send documents for multi-party signatures", free: "3 / month", pro: "Unlimited", enterprise: "Unlimited" },
+      { name: "Send documents for multi-party signatures", free: "3 / month", pro: "200 / month", enterprise: "5,000 / month" },
       { name: "Legally binding SHA-256 cryptographic seal", free: true, pro: true, enterprise: true },
       { name: "Tamper-evident Audit Trail certificate", free: false, pro: true, enterprise: true },
       { name: "Automated recipient email reminders", free: false, pro: true, enterprise: true },
@@ -78,8 +78,8 @@ const REAL_COMPARISON_CATEGORIES: CompareCategory[] = [
   {
     title: "Storage & Limits",
     rows: [
-      { name: "Daily operation limit", free: "5 operations / day", pro: "Unlimited", enterprise: "Unlimited" },
-      { name: "Maximum file size limit", free: "10 MB", pro: "100 MB", enterprise: "500 MB+" },
+      { name: "Daily operation limit", free: "5 operations / day", pro: "1,000 / day", enterprise: "10,000 / day" },
+      { name: "Maximum file size limit", free: "10 MB", pro: "100 MB", enterprise: "500 MB" },
       { name: "Document job history retention", free: "7 days", pro: "30 days", enterprise: "Custom retention" },
       { name: "Cloud drive sync (Google Drive, Dropbox, OneDrive)", free: false, pro: true, enterprise: true },
       { name: "Bring Your Own Cloud (AWS S3, Azure Blob, R2)", free: false, pro: false, enterprise: true },
@@ -95,12 +95,12 @@ const BILLING_FAQS = [
     a: "Yes. You can upgrade, downgrade, or cancel your subscription at any time directly from your account settings. There are no long-term lock-ins or cancellation penalties, and you will retain access through the end of your billing cycle.",
   },
   {
-    q: "How does the 14-day free trial work?",
-    a: "When you start a Pro trial, you get full, unrestricted access to all 25+ PDF tools, AI summarization, and unlimited eSignatures for 14 days without entering a credit card. If you choose not to upgrade, your account automatically reverts to the Free tier.",
+    q: "How does upgrading to Pro work?",
+    a: "Pro is billed monthly via secure checkout. Limits match the comparison table (1,000 PDF ops/day, 200 eSignatures/month, 500 AI credits/month). Cancel anytime; you keep Pro features through the end of the billing period, then return to Free.",
   },
   {
     q: "What happens if I exceed the daily operations limit on the Free plan?",
-    a: "The Free plan includes 5 operations every 24 hours. Your limit resets automatically each day at midnight UTC. If you need urgent access to process more files without waiting, you can upgrade to Vigodesk Pro for instant, unlimited operations.",
+    a: "The Free plan includes 5 operations every 24 hours. Your limit resets automatically each day. If you need more capacity, upgrade to Vigodesk Pro (1,000 operations/day) or Enterprise (10,000/day).",
   },
   {
     q: "What payment methods do you accept?",
@@ -144,7 +144,14 @@ export const Billing: React.FC = () => {
 
     setLoadingPlan(planName);
     try {
-      const data = await apiService.initiateCheckout("plan_N1234abc");
+      const planId =
+        (import.meta.env.VITE_RAZORPAY_PLAN_ID as string | undefined)?.trim() ||
+        "";
+      if (!planId) {
+        toast.error("Billing is not configured yet. Set VITE_RAZORPAY_PLAN_ID or contact support.");
+        return;
+      }
+      const data = await apiService.initiateCheckout(planId);
 
       const options = {
         key: data.razorpayKey,
@@ -298,7 +305,7 @@ export const Billing: React.FC = () => {
               </h3>
               
               <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                Unlimited document capabilities, full AI intelligence, and legally-binding eSignatures.
+                High-volume PDF tools, AI credits, and legally-binding eSignatures with automatic reminders.
               </p>
 
               {/* Price block */}
@@ -338,9 +345,9 @@ export const Billing: React.FC = () => {
                 </p>
                 <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
                   {[
-                    "Unlimited PDF operations & batch file processing",
+                    "1,000 PDF operations / day & batch file processing",
                     "Large files up to 100 MB per document",
-                    "Unlimited eSignatures with SHA-256 audit trail certificates",
+                    "200 eSignatures / month with SHA-256 audit trail certificates",
                     "500 AI credits / month (AI Summarize, Chat with PDF, Explain)",
                     "High-accuracy OCR text extraction for scanned documents",
                     "Cloud storage integration (Google Drive, Dropbox, OneDrive)",
@@ -402,7 +409,7 @@ export const Billing: React.FC = () => {
                   {[
                     "Bring Your Own Cloud (BYOC) — AWS S3, Azure Blob, Cloudflare R2",
                     "Custom document size limits (500 MB+ files)",
-                    "Unlimited AI credits & high-volume OCR pipelines",
+                    "10,000 AI credits / month & high-volume OCR pipelines",
                     "Centralized team admin console & seat reassignment",
                     "Offline Windows Desktop App licenses included",
                     "Custom data retention policies & compliance guarantees",

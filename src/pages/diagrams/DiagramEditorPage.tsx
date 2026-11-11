@@ -33,9 +33,10 @@ import {
   type ThemeId,
 } from "@/lib/diagram/model";
 import type { ShapeDef } from "@/lib/diagram/shapes";
-import { downloadBlob, exportPdf, exportPng, exportSvg, printSvg } from "@/lib/diagram/export";
+import { downloadBlob, exportPdf, exportPdfMultiPage, exportPng, exportSvg, printSvg } from "@/lib/diagram/export";
 import { applyThemeToPage, getTheme } from "@/lib/diagram/themes";
 import { analyzePageLocal } from "@/lib/diagram/analyzeLocal";
+import { fromDrawioXml } from "@/lib/diagram/fromDrawio";
 import {
   fromMermaid,
   toKubernetes,
@@ -44,6 +45,7 @@ import {
   toSql,
   toTerraform,
 } from "@/lib/diagram/codegen";
+import { apiService } from "@/services/api";
 import { useAuth } from "@/features/auth/useAuth";
 import {
   diagramsApi,
@@ -117,6 +119,7 @@ function DiagramEditorInner() {
   const pendingLoadRef = useRef(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [mermaidOpen, setMermaidOpen] = useState(false);
+  const drawioInputRef = useRef<HTMLInputElement>(null);
 
   const settings: DiagramSettings = doc.settings ?? {};
   const activePage = useMemo(
@@ -230,6 +233,15 @@ function DiagramEditorInner() {
       setSaving(false);
     }
   }, [orgId, diagramId, saving, syncActivePageFromCanvas, title, user?.id]);
+
+  // Autosave dirty diagrams every 30s (manual Ctrl+S still available).
+  useEffect(() => {
+    if (!dirty || !orgId || !diagramId) return;
+    const timer = window.setTimeout(() => {
+      void save();
+    }, 30_000);
+    return () => window.clearTimeout(timer);
+  }, [dirty, orgId, diagramId, save]);
 
   // Ctrl+S and shortcuts
   useEffect(() => {
@@ -513,6 +525,28 @@ function DiagramEditorInner() {
     }
   };
 
+  const doExportMultiPagePdf = async () => {
+    const canvas = canvasRef.current;
+    const graph = canvas?.getGraph();
+    if (!canvas || !graph) return;
+    const base = title.replace(/[^\w\-]+/g, "_") || "diagram";
+    try {
+      const nextDoc = syncActivePageFromCanvas();
+      const blobs: Blob[] = [];
+      for (const page of nextDoc.pages) {
+        canvas.loadPage(page, { fit: false });
+        await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+        blobs.push(await exportPng(graph, 2));
+      }
+      const restore = nextDoc.pages.find((p) => p.id === activePageId) ?? nextDoc.pages[0]!;
+      canvas.loadPage(restore, { fit: false });
+      downloadBlob(await exportPdfMultiPage(blobs), `${base}.pdf`);
+      toast.success(`Exported ${blobs.length} page PDF`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Multi-page PDF export failed");
+    }
+  };
+
   const downloadText = (filename: string, text: string, mime = "text/plain") => {
     downloadBlob(new Blob([text], { type: mime }), filename);
   };
@@ -558,6 +592,40 @@ function DiagramEditorInner() {
       toast.success(`Imported ${nodes.length} nodes from Mermaid`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Mermaid import failed");
+    }
+  };
+
+  const importDrawioFile = async (file: File) => {
+    try {
+      const xml = await file.text();
+      const imported = fromDrawioXml(xml);
+      setDoc(imported);
+      setActivePageId(imported.pages[0]!.id);
+      setDirty(true);
+      toast.success(`Imported draw.io diagram (${imported.pages[0]?.nodes.length ?? 0} shapes)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Draw.io import failed");
+    }
+  };
+
+  const exportPdfViaToolkit = async () => {
+    const graph = canvasRef.current?.getGraph();
+    if (!graph) {
+      toast.error("Canvas not ready");
+      return;
+    }
+    try {
+      toast.message("Building PDF via toolkit…");
+      const png = await exportPng(graph, 2);
+      const file = new File([png], `${(title || "diagram").replace(/\s+/g, "_")}.png`, {
+        type: "image/png",
+      });
+      const fileKey = await apiService.uploadFileDirect(file, "image/png");
+      const job = await apiService.createJob("jpgToPdf", [fileKey], {});
+      toast.success("PDF job queued — check History when ready");
+      void job;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toolkit PDF export failed");
     }
   };
 
@@ -807,6 +875,16 @@ function DiagramEditorInner() {
         { type: "item" as const, label: "Export as PNG…", onClick: () => void doExport("png") },
         { type: "item" as const, label: "Export as SVG…", onClick: () => void doExport("svg") },
         { type: "item" as const, label: "Export as PDF…", onClick: () => void doExport("pdf") },
+        {
+          type: "item" as const,
+          label: "Export PDF (all pages)…",
+          onClick: () => void doExportMultiPagePdf(),
+        },
+        {
+          type: "item" as const,
+          label: "Export PDF via Toolkit…",
+          onClick: () => void exportPdfViaToolkit(),
+        },
         { type: "sep" as const },
         { type: "item" as const, label: "Export Mermaid…", onClick: () => exportCode("mermaid") },
         { type: "item" as const, label: "Export SQL…", onClick: () => exportCode("sql") },
@@ -815,6 +893,11 @@ function DiagramEditorInner() {
         { type: "item" as const, label: "Export OpenAPI…", onClick: () => exportCode("openapi") },
         { type: "sep" as const },
         { type: "item" as const, label: "Import Mermaid…", onClick: () => setMermaidOpen(true) },
+        {
+          type: "item" as const,
+          label: "Import Draw.io…",
+          onClick: () => drawioInputRef.current?.click(),
+        },
         {
           type: "item" as const,
           label: "Print…",
@@ -1266,6 +1349,17 @@ function DiagramEditorInner() {
         placeholder="Paste Mermaid flowchart (TD/LR)…"
         onClose={() => setMermaidOpen(false)}
         onSubmit={importMermaidFromText}
+      />
+      <input
+        ref={drawioInputRef}
+        type="file"
+        accept=".drawio,.xml,application/xml,text/xml"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void importDrawioFile(file);
+        }}
       />
     </div>
   );

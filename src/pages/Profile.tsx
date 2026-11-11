@@ -5,10 +5,27 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Spinner } from "../components/ui/spinner";
-import { User, Mail, CreditCard, Clock, LogOut, Shield, Cloud } from "lucide-react";
+import { User, Mail, CreditCard, Clock, LogOut, Shield, Cloud, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiService } from "@/services/api";
+
+type UsageDashboard = {
+  plan: string;
+  limits: {
+    maxDailyOps: number;
+    maxMonthlySigns: number;
+    maxMonthlyAiCredits: number;
+    maxDailyWebReports: number;
+  };
+  usage: {
+    dailyOpsUsed: number;
+    monthlySignsUsed: number;
+    monthlyAiUsed: number;
+    dailyWebReportsUsed: number;
+  };
+  aiByFeature?: Array<{ feature: string; credits: number | string }>;
+};
 
 function ContactAddressCard() {
   const [loading, setLoading] = React.useState(true);
@@ -115,6 +132,7 @@ function ContactAddressCard() {
 export const Profile: React.FC = () => {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const [usageDash, setUsageDash] = React.useState<UsageDashboard | null>(null);
 
   // Redirect if not logged in and done loading
   useEffect(() => {
@@ -122,6 +140,14 @@ export const Profile: React.FC = () => {
       navigate("/login");
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    apiService
+      .getUsage()
+      .then((data) => setUsageDash(data as UsageDashboard))
+      .catch(() => undefined);
+  }, [user]);
 
   if (loading || !user) {
     return (
@@ -335,6 +361,68 @@ export const Profile: React.FC = () => {
               Resets at {new Date(user.dailyOpsResetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
+
+          {usageDash && (
+            <div className="rounded-2xl border bg-card p-6 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Usage vs plan
+              </h2>
+              <ul className="space-y-3 text-sm">
+                {(
+                  [
+                    ["PDF ops / day", usageDash.usage.dailyOpsUsed, usageDash.limits.maxDailyOps],
+                    ["eSign / month", usageDash.usage.monthlySignsUsed, usageDash.limits.maxMonthlySigns],
+                    ["AI credits / month", usageDash.usage.monthlyAiUsed, usageDash.limits.maxMonthlyAiCredits],
+                    [
+                      "WebReports / day",
+                      usageDash.usage.dailyWebReportsUsed,
+                      usageDash.limits.maxDailyWebReports,
+                    ],
+                  ] as const
+                ).map(([label, used, limit]) => {
+                  const pct =
+                    limit > 0 && limit < 999999
+                      ? Math.min(100, Math.round((used / limit) * 100))
+                      : 0;
+                  return (
+                    <li key={label}>
+                      <div className="mb-1 flex justify-between text-xs font-medium">
+                        <span>{label}</span>
+                        <span className="text-muted-foreground">
+                          {used} / {limit >= 999999 ? "∞" : limit}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            pct >= 90 ? "bg-destructive" : "bg-primary"
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {Array.isArray(usageDash.aiByFeature) && usageDash.aiByFeature.length > 0 && (
+                <div className="mt-4 border-t pt-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    AI by feature (30d)
+                  </p>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {usageDash.aiByFeature.map((row) => (
+                      <li key={row.feature} className="flex justify-between">
+                        <span>{row.feature}</span>
+                        <span>{Number(row.credits)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           <Button
             variant="destructive"

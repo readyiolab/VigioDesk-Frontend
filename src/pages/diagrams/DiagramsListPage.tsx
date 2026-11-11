@@ -12,17 +12,23 @@ import {
   useDiagramList,
 } from "@/features/diagrams";
 import { cn } from "@/lib/utils";
+import { DIAGRAM_TEMPLATES } from "@/lib/diagram/templates";
+import { diagramsApi } from "@/services/diagramsApi";
+import { withOrgRetry } from "@/features/diagrams";
+import { toast } from "sonner";
 
 export default function DiagramsListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [folderId, setFolderId] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState("");
+  const [creatingTemplate, setCreatingTemplate] = useState<string | null>(null);
 
   const listQuery = useDiagramList(folderId, user?.id);
   const createMutation = useCreateDiagram(user?.id);
   const deleteMutation = useDeleteDiagram(user?.id);
   const folderMutation = useCreateFolder(user?.id);
+  const orgId = listQuery.data?.pages?.[0]?.orgId;
 
   const orgId = listQuery.data?.pages[0]?.orgId ?? null;
   const diagrams = listQuery.data?.pages.flatMap((p) => p.diagrams) ?? [];
@@ -41,6 +47,27 @@ export default function DiagramsListPage() {
     } catch (e: unknown) {
       /* error surfaced via mutation; list query stays */
       void e;
+    }
+  };
+
+  const createFromTemplate = async (templateId: string) => {
+    const template = DIAGRAM_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+    setCreatingTemplate(templateId);
+    try {
+      const content = template.build();
+      const { result } = await withOrgRetry(user?.id, (orgId) =>
+        diagramsApi.create(orgId, {
+          title: template.name,
+          folderId,
+          content,
+        })
+      );
+      navigate(`/diagrams/${result.diagram.id}`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not create from template");
+    } finally {
+      setCreatingTemplate(null);
     }
   };
 
@@ -71,6 +98,29 @@ export default function DiagramsListPage() {
           New diagram
         </Button>
       </header>
+
+      <div className="border-b border-[#e2e8f0] bg-white px-6 py-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#64748b]">
+          Start from template
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DIAGRAM_TEMPLATES.map((t) => (
+            <Button
+              key={t.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={Boolean(creatingTemplate)}
+              onClick={() => void createFromTemplate(t.id)}
+              className="rounded-lg"
+              title={t.description}
+            >
+              {creatingTemplate === t.id ? <Spinner className="size-3" /> : null}
+              {t.name}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="flex min-h-0 flex-1">
         <aside className="w-56 shrink-0 border-r border-[#e2e8f0] bg-white p-3">
