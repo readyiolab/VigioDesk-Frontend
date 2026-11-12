@@ -1,15 +1,17 @@
-import { emptyDocument, type DiagramDocument, type DiagramNode, type DiagramEdge } from "./model";
+import {
+  emptyDocument,
+  emptyPage,
+  type DiagramDocument,
+  type DiagramEdge,
+  type DiagramNode,
+  type DiagramPage,
+} from "./model";
 
 /**
  * Best-effort import of diagrams.net / draw.io mxfile XML into Vigodesk diagram JSON.
- * Supports common mxCell vertex/edge shapes; advanced stencils become rectangles.
+ * Supports multi-page mxfile diagrams; advanced stencils become rectangles.
  */
 export function fromDrawioXml(xml: string): DiagramDocument {
-  const doc = emptyDocument();
-  const page = doc.pages[0]!;
-  page.nodes = [];
-  page.edges = [];
-
   if (typeof DOMParser === "undefined") {
     throw new Error("Draw.io import requires a browser DOMParser");
   }
@@ -19,15 +21,45 @@ export function fromDrawioXml(xml: string): DiagramDocument {
     throw new Error("Invalid draw.io / mxfile XML");
   }
 
-  const cells = Array.from(parsed.querySelectorAll("mxCell"));
+  const diagramEls = Array.from(parsed.querySelectorAll("diagram"));
+  const pages: DiagramPage[] = [];
+
+  if (diagramEls.length) {
+    diagramEls.forEach((el, i) => {
+      const name = el.getAttribute("name") || `Page-${i + 1}`;
+      const page = parseCellsIntoPage(el, name);
+      if (page.nodes.length) pages.push(page);
+    });
+  }
+
+  if (!pages.length) {
+    // Flat mxGraphModel (no <diagram> wrappers)
+    const page = parseCellsIntoPage(parsed.documentElement, "Imported");
+    if (page.nodes.length) pages.push(page);
+  }
+
+  if (!pages.length) {
+    throw new Error("No shapes found in this draw.io file");
+  }
+
+  const doc = emptyDocument();
+  doc.pages = pages;
+  return doc;
+}
+
+function parseCellsIntoPage(root: Element, name: string): DiagramPage {
+  const page = emptyPage(name);
+  page.nodes = [];
+  page.edges = [];
+
+  const cells = Array.from(root.querySelectorAll("mxCell"));
   const idMap = new Map<string, string>();
   let n = 0;
 
   for (const cell of cells) {
     const id = cell.getAttribute("id") || "";
     if (!id || id === "0" || id === "1") continue;
-    const isVertex = cell.getAttribute("vertex") === "1";
-    if (!isVertex) continue;
+    if (cell.getAttribute("vertex") !== "1") continue;
 
     const ourId = `dio-${++n}`;
     idMap.set(id, ourId);
@@ -70,12 +102,7 @@ export function fromDrawioXml(xml: string): DiagramDocument {
     page.edges.push(edge);
   }
 
-  if (!page.nodes.length) {
-    throw new Error("No shapes found in this draw.io file");
-  }
-
-  page.name = "Imported";
-  return doc;
+  return page;
 }
 
 function mapDrawioShape(style: string): string {

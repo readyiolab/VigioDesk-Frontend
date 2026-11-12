@@ -33,10 +33,18 @@ import {
   type ThemeId,
 } from "@/lib/diagram/model";
 import type { ShapeDef } from "@/lib/diagram/shapes";
-import { downloadBlob, exportPdf, exportPdfMultiPage, exportPng, exportSvg, printSvg } from "@/lib/diagram/export";
+import {
+  downloadBlob,
+  exportPdf,
+  exportPdfMultiPage,
+  exportPng,
+  exportSvg,
+  printSvg,
+  waitForGraphPaint,
+} from "@/lib/diagram/export";
 import { applyThemeToPage, getTheme } from "@/lib/diagram/themes";
 import { analyzePageLocal } from "@/lib/diagram/analyzeLocal";
-import { fromDrawioXml } from "@/lib/diagram/fromDrawio";
+import { fromDrawioXml, isDrawioFile } from "@/lib/diagram/fromDrawio";
 import {
   fromMermaid,
   toKubernetes,
@@ -101,7 +109,8 @@ function DiagramEditorInner() {
   const [shareOpen, setShareOpen] = useState(false);
   const [pageSetupOpen, setPageSetupOpen] = useState(false);
   const [shapesPanelOpen, setShapesPanelOpen] = useState(true);
-  const [formatPanelOpen, setFormatPanelOpen] = useState(true);
+  const [formatPanelOpen, setFormatPanelOpen] = useState(false);
+  const [formatTab, setFormatTab] = useState<"diagram" | "style" | "elements">("diagram");
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
   const [analyzeIssues, setAnalyzeIssues] = useState<DiagramIssue[]>([]);
   const [explainSteps, setExplainSteps] = useState<ExplainStep[]>([]);
@@ -127,13 +136,28 @@ function DiagramEditorInner() {
     [doc.pages, activePageId]
   );
 
-  // Reload canvas when server version or active page changes
+  // Reload canvas on page change / explicit restore — not on every save version bump
+  // (that thrash polluted undo and felt like the editor was "jumping").
+  const [canvasEpoch, setCanvasEpoch] = useState(0);
   const contentRevision = useMemo(() => {
-    return `${currentVersion ?? 0}|${activePageId}`;
-  }, [currentVersion, activePageId]);
+    return `${canvasEpoch}|${activePageId}`;
+  }, [canvasEpoch, activePageId]);
 
   const aiOpen = tools.aiOpen;
   const setAiOpen = tools.setAiOpen;
+
+  const openSidePanel = useCallback(
+    (panel: SidePanel) => {
+      setAiOpen(false);
+      setSidePanel(panel);
+    },
+    [setAiOpen]
+  );
+
+  const openAiPanel = useCallback(() => {
+    setSidePanel("none");
+    setAiOpen(true);
+  }, [setAiOpen]);
 
   useEffect(() => {
     const onInsertText = () => {
@@ -225,6 +249,26 @@ function DiagramEditorInner() {
       setDirty(false);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
+
+      // Best-effort thumbnail for list previews (does not block save UX).
+      void (async () => {
+        try {
+          const graph = canvasRef.current?.getGraph();
+          if (!graph) return;
+          const png = await exportPng(graph, 1);
+          const file = new File(
+            [png],
+            `diagram-thumb-${diagramId}.png`,
+            { type: "image/png" }
+          );
+          const fileKey = await apiService.uploadFileDirect(file);
+          await withOrgRetry(user?.id, (oid) =>
+            diagramsApi.update(oid, diagramId, { thumbnailPngKey: fileKey })
+          );
+        } catch {
+          /* thumbnail is optional */
+        }
+      })();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Save failed";
       setError(msg);
@@ -233,6 +277,38 @@ function DiagramEditorInner() {
       setSaving(false);
     }
   }, [orgId, diagramId, saving, syncActivePageFromCanvas, title, user?.id]);
+
+  const saveExportToAssets = async (kind: "png" | "pdf") => {
+    const graph = canvasRef.current?.getGraph();
+    if (!graph) {
+      toast.error("Canvas not ready");
+      return;
+    }
+    try {
+      const blob =
+        kind === "png" ? await exportPng(graph, 2) : await exportPdf(graph);
+      const ext = kind === "png" ? "png" : "pdf";
+      const mime = kind === "png" ? "image/png" : "application/pdf";
+      const file = new File(
+        [blob],
+        `${(title || "diagram").replace(/[^\w\-]+/g, "_")}.${ext}`,
+        { type: mime }
+      );
+      const fileKey = await apiService.uploadFileDirect(file);
+      await apiService.createAsset({
+        title: file.name,
+        sourceModule: "diagrams",
+        sourceId: diagramId || undefined,
+        mimeType: mime,
+        storageKey: fileKey,
+        sizeBytes: file.size,
+        organizationId: orgId || undefined,
+      });
+      toast.success("Saved to Asset Library");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save to assets");
+    }
+  };
 
   // Autosave dirty diagrams every 30s (manual Ctrl+S still available).
   useEffect(() => {
@@ -258,7 +334,7 @@ function DiagramEditorInner() {
       }
       if (mod && e.key === "/") {
         e.preventDefault();
-        setAiOpen(true);
+        openAiPanel();
         return;
       }
       if (e.key === "F5") {
@@ -341,7 +417,7 @@ function DiagramEditorInner() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [save, setAiOpen, presentOpen, tools.activeTool, tools.openMenu]);
+  }, [save, openAiPanel, presentOpen, tools.activeTool, tools.openMenu]);
 
   useEffect(() => {
     const onBefore = (e: BeforeUnloadEvent) => {
@@ -371,7 +447,7 @@ function DiagramEditorInner() {
     const nextDoc = syncActivePageFromCanvas();
     setDoc(nextDoc);
     setActivePageId(id);
-    setDirty(true);
+    // Tab switch alone is not an edit — keep existing dirty flag.
   };
 
   const insertPage = (afterId?: string) => {
@@ -475,6 +551,12 @@ function DiagramEditorInner() {
   }, [loading, searchParams, doc.pages]);
 
   const onDropShape = (e: React.DragEvent) => {
+    const file = e.dataTransfer.files?.[0];
+    if (file && /\.(drawio|dio|xml)$/i.test(file.name)) {
+      e.preventDefault();
+      void importDrawioFile(file);
+      return;
+    }
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/x-diagram-shape");
     if (!raw) return;
@@ -509,17 +591,25 @@ function DiagramEditorInner() {
   const onSelectionChange = useCallback((info: SelectionInfo | null) => {
     setSelection(info);
     setSelBounds(canvasRef.current?.getSelectionBounds() ?? null);
+    // draw.io-like: open Format → Style when something is selected
+    if (info?.cells?.length) {
+      setFormatPanelOpen(true);
+      setFormatTab("style");
+    }
   }, []);
 
-  const doExport = async (kind: "png" | "svg" | "pdf") => {
+  const doExport = async (kind: "png" | "png-transparent" | "svg" | "pdf") => {
     const graph = canvasRef.current?.getGraph();
     if (!graph) return;
     const base = title.replace(/[^\w\-]+/g, "_") || "diagram";
     if (kind === "svg") {
       const svg = exportSvg(graph);
       downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `${base}.svg`);
-    } else if (kind === "png") {
-      downloadBlob(await exportPng(graph), `${base}.png`);
+    } else if (kind === "png" || kind === "png-transparent") {
+      downloadBlob(
+        await exportPng(graph, 2, { transparent: kind === "png-transparent" }),
+        `${base}.png`
+      );
     } else {
       downloadBlob(await exportPdf(graph), `${base}.pdf`);
     }
@@ -535,13 +625,13 @@ function DiagramEditorInner() {
       const blobs: Blob[] = [];
       for (const page of nextDoc.pages) {
         canvas.loadPage(page, { fit: false });
-        await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+        await waitForGraphPaint(graph);
         blobs.push(await exportPng(graph, 2));
       }
       const restore = nextDoc.pages.find((p) => p.id === activePageId) ?? nextDoc.pages[0]!;
       canvas.loadPage(restore, { fit: false });
       downloadBlob(await exportPdfMultiPage(blobs), `${base}.pdf`);
-      toast.success(`Exported ${blobs.length} page PDF`);
+      toast.success(`Exported ${blobs.length}-page image PDF`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Multi-page PDF export failed");
     }
@@ -598,11 +688,22 @@ function DiagramEditorInner() {
   const importDrawioFile = async (file: File) => {
     try {
       const xml = await file.text();
+      if (!isDrawioFile(file.name, xml)) {
+        toast.error("Not a draw.io / mxfile XML document");
+        return;
+      }
+      if (dirty && !confirm("Replace the current diagram with this draw.io import?")) {
+        return;
+      }
       const imported = fromDrawioXml(xml);
       setDoc(imported);
       setActivePageId(imported.pages[0]!.id);
       setDirty(true);
-      toast.success(`Imported draw.io diagram (${imported.pages[0]?.nodes.length ?? 0} shapes)`);
+      setCanvasEpoch((n) => n + 1);
+      const shapes = imported.pages.reduce((sum, p) => sum + p.nodes.length, 0);
+      toast.success(
+        `Imported ${imported.pages.length} page(s), ${shapes} shapes from draw.io`
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Draw.io import failed");
     }
@@ -693,7 +794,7 @@ function DiagramEditorInner() {
     const page = getLivePage();
     const local = analyzePageLocal(page);
     setAnalyzeIssues(local);
-    setSidePanel("analyze");
+    openSidePanel("analyze");
     if (!orgId || !diagramId) return;
     try {
       const { issues } = await diagramsApi.aiAnalyze(orgId, diagramId, page);
@@ -719,7 +820,7 @@ function DiagramEditorInner() {
       const { steps, summary } = await diagramsApi.aiExplain(orgId, diagramId, page);
       setExplainSteps(steps ?? []);
       setExplainSummary(summary ?? null);
-      setSidePanel("explain");
+      openSidePanel("explain");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Explain failed");
     }
@@ -829,6 +930,7 @@ function DiagramEditorInner() {
       setCurrentVersion(diagram.currentVersion ?? version);
       setDirty(false);
       loadedRef.current = false;
+      setCanvasEpoch((n) => n + 1);
       toast.success(`Restored v${version}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Restore failed");
@@ -872,17 +974,37 @@ function DiagramEditorInner() {
         { type: "item" as const, label: "Page Setup…", onClick: () => setPageSetupOpen(true) },
         { type: "sep" as const },
         { type: "item" as const, label: "Export as PNG…", onClick: () => void doExport("png") },
-        { type: "item" as const, label: "Export as SVG…", onClick: () => void doExport("svg") },
-        { type: "item" as const, label: "Export as PDF…", onClick: () => void doExport("pdf") },
         {
           type: "item" as const,
-          label: "Export PDF (all pages)…",
+          label: "Export PNG (transparent)…",
+          onClick: () => void doExport("png-transparent"),
+        },
+        { type: "item" as const, label: "Export as SVG…", onClick: () => void doExport("svg") },
+        {
+          type: "item" as const,
+          label: "Export as PDF (image)…",
+          onClick: () => void doExport("pdf"),
+        },
+        {
+          type: "item" as const,
+          label: "Export PDF all pages (image)…",
           onClick: () => void doExportMultiPagePdf(),
         },
         {
           type: "item" as const,
           label: "Export PDF via Toolkit…",
           onClick: () => void exportPdfViaToolkit(),
+        },
+        { type: "sep" as const },
+        {
+          type: "item" as const,
+          label: "Save PNG to Asset Library…",
+          onClick: () => void saveExportToAssets("png"),
+        },
+        {
+          type: "item" as const,
+          label: "Save PDF to Asset Library…",
+          onClick: () => void saveExportToAssets("pdf"),
         },
         { type: "sep" as const },
         { type: "item" as const, label: "Export Mermaid…", onClick: () => exportCode("mermaid") },
@@ -961,6 +1083,17 @@ function DiagramEditorInner() {
           label: settings.pageView === false ? "Show Page View" : "Hide Page View",
           onClick: () => applySettings({ pageView: settings.pageView === false }),
         },
+        { type: "sep" as const },
+        {
+          type: "item" as const,
+          label: shapesPanelOpen ? "Hide Shapes" : "Show Shapes",
+          onClick: () => setShapesPanelOpen((v) => !v),
+        },
+        {
+          type: "item" as const,
+          label: formatPanelOpen ? "Hide Format" : "Show Format",
+          onClick: () => setFormatPanelOpen((v) => !v),
+        },
         {
           type: "item" as const,
           label: focusMode ? "Exit Focus Mode" : "Focus Mode",
@@ -1030,17 +1163,17 @@ function DiagramEditorInner() {
         {
           type: "item" as const,
           label: "AI Generate…",
-          onClick: () => setAiOpen(true),
+          onClick: () => openAiPanel(),
         },
         {
           type: "item" as const,
           label: "AI Edit…",
-          onClick: () => setAiOpen(true),
+          onClick: () => openAiPanel(),
         },
         {
           type: "item" as const,
           label: "Image to Diagram…",
-          onClick: () => setAiOpen(true),
+          onClick: () => openAiPanel(),
         },
         { type: "sep" as const },
         { type: "item" as const, label: "Analyze…", onClick: () => void runAnalyze() },
@@ -1048,7 +1181,7 @@ function DiagramEditorInner() {
         {
           type: "item" as const,
           label: "Version History…",
-          onClick: () => setSidePanel("versions"),
+          onClick: () => openSidePanel("versions"),
         },
       ],
     },
@@ -1067,19 +1200,36 @@ function DiagramEditorInner() {
 
   if (loading) {
     return (
-      <div className="flex h-dvh items-center justify-center">
-        <Spinner className="size-6" />
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#0f172a]">
+        <div className="flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
+          <div className="flex size-7 items-center justify-center rounded-md bg-[#f97316] text-xs font-bold text-white">
+            D
+          </div>
+          <div className="h-4 w-40 animate-pulse rounded bg-[#e2e8f0]" />
+          <div className="ml-auto h-6 w-16 animate-pulse rounded bg-[#e2e8f0]" />
+        </div>
+        <div className="flex min-h-0 flex-1">
+          <div className="hidden w-[200px] shrink-0 border-r border-[#e2e8f0] bg-[#f8fafc] md:block" />
+          <div className="flex min-h-0 flex-1 items-center justify-center bg-[#e5e7eb]">
+            <div className="flex flex-col items-center gap-3">
+              <Spinner className="size-6 text-[#64748b]" />
+              <p className="text-xs text-[#64748b]">Opening diagram…</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  const saveLabel = saving ? "Saving…" : dirty ? "Unsaved" : savedFlash ? "Saved" : "Saved";
+
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-white text-[#0f172a]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#0f172a]">
       <div className="flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
         <Link
-          to="/diagrams"
+          to="/diagrams/studio"
           className="flex size-7 items-center justify-center rounded-md bg-[#f97316] text-xs font-bold text-white"
-          title="Diagram Studio"
+          title="My diagrams"
           onClick={(e) => {
             if (!confirmLeave()) e.preventDefault();
           }}
@@ -1096,19 +1246,21 @@ function DiagramEditorInner() {
         />
         <MenuBar menus={menus} />
         <div className="ml-auto flex items-center gap-2">
-          {dirty ? (
-            <button
-              type="button"
-              onClick={() => void save()}
-              className="rounded bg-[#e11d48] px-2.5 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-[#be123c]"
-            >
-              {saving ? "Saving…" : "Unsaved changes. Click here to save."}
-            </button>
-          ) : savedFlash ? (
-            <span className="rounded bg-[#dcfce7] px-2.5 py-1 text-[11px] font-medium text-[#166534]">
-              All changes saved
-            </span>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              if (dirty && !saving) void save();
+            }}
+            disabled={saving}
+            className={
+              dirty
+                ? "rounded-md border border-[#fcd34d] bg-[#fffbeb] px-2.5 py-1 text-[11px] font-medium text-[#92400e] hover:bg-[#fef3c7]"
+                : "rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-1 text-[11px] font-medium text-[#166534]"
+            }
+            title={dirty ? "Click to save" : "All changes saved"}
+          >
+            {saveLabel}
+          </button>
           <Button
             size="sm"
             className="h-7 rounded-md bg-[#2563eb] text-xs hover:bg-[#1d4ed8]"
@@ -1154,6 +1306,8 @@ function DiagramEditorInner() {
         onOpenInNewWindow={openPageInNewWindow}
         shapesPanelOpen={shapesPanelOpen}
         formatPanelOpen={formatPanelOpen}
+        formatTab={formatTab}
+        onFormatTabChange={setFormatTab}
         onToggleShapesPanel={() => setShapesPanelOpen((v) => !v)}
         onToggleFormatPanel={() => setFormatPanelOpen((v) => !v)}
         selection={selection}
@@ -1166,6 +1320,20 @@ function DiagramEditorInner() {
         onThemeChange={applyTheme}
         onPageSetup={() => setPageSetupOpen(true)}
         onDropShape={onDropShape}
+        elementsPage={getLivePage()}
+        onSelectElement={(id) => canvasRef.current?.selectById(id)}
+        onToggleElementLock={(id) => {
+          const page = getLivePage();
+          const node = page.nodes.find((n) => n.id === id);
+          canvasRef.current?.setCellLockedById(id, !node?.locked);
+          setDirty(true);
+        }}
+        onToggleElementHidden={(id) => {
+          const page = getLivePage();
+          const node = page.nodes.find((n) => n.id === id);
+          canvasRef.current?.setCellHidden(id, !node?.hidden);
+          setDirty(true);
+        }}
         presentOpen={presentOpen}
         presentPlaying={presentPlaying}
         presentSpeed={presentSpeed}
@@ -1208,7 +1376,7 @@ function DiagramEditorInner() {
             setLastLayout("vertical-flow");
           },
           onMagicCleanup: () => canvasRef.current?.magicCleanup(),
-          onAiGenerate: () => setAiOpen(true),
+          onAiGenerate: () => openAiPanel(),
           onExportPng: () => void doExport("png"),
           onExportSvg: () => void doExport("svg"),
           onExportPdf: () => void doExport("pdf"),
@@ -1239,7 +1407,7 @@ function DiagramEditorInner() {
           onPresent: () => setPresentOpen(true),
           onAnalyze: () => void runAnalyze(),
           onExplain: () => void runExplain(),
-          onVersions: () => setSidePanel("versions"),
+          onVersions: () => openSidePanel("versions"),
           onFillColor: (c) => {
             setFillColor(c);
             canvasRef.current?.applyStyle({ fillColor: c });
@@ -1255,70 +1423,65 @@ function DiagramEditorInner() {
           lastLayout,
         }}
         sidePanels={
-          <>
-            {sidePanel === "analyze" ? (
-              <AnalyzePanel
-                open
-                issues={analyzeIssues}
-                onClose={() => setSidePanel("none")}
-                onFocus={(ids) => canvasRef.current?.focusNodes(ids)}
-                onRerun={() => void runAnalyze()}
-              />
-            ) : null}
-            {sidePanel === "versions" && orgId && diagramId ? (
-              <VersionHistoryPanel
-                open
-                organizationId={orgId}
-                diagramId={diagramId}
-                currentVersion={currentVersion}
-                onClose={() => setSidePanel("none")}
-                onRestore={(v) => void restoreVersion(v)}
-              />
-            ) : null}
-            {sidePanel === "explain" ? (
-              <aside className="flex h-full w-[280px] shrink-0 flex-col border-l border-[#cfd8e3] bg-[#f8fafc]">
-                <header className="flex h-11 items-center justify-between border-b border-[#e2e8f0] px-3">
-                  <h2 className="text-sm font-semibold">Explain</h2>
-                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => setSidePanel("none")}>
-                    ×
-                  </Button>
-                </header>
-                {explainSummary ? (
-                  <p className="border-b border-[#e2e8f0] px-3 py-2 text-xs text-[#475569]">{explainSummary}</p>
+          sidePanel === "analyze" ? (
+            <AnalyzePanel
+              open
+              issues={analyzeIssues}
+              onClose={() => setSidePanel("none")}
+              onFocus={(ids) => canvasRef.current?.focusNodes(ids)}
+              onRerun={() => void runAnalyze()}
+            />
+          ) : sidePanel === "versions" && orgId && diagramId ? (
+            <VersionHistoryPanel
+              open
+              organizationId={orgId}
+              diagramId={diagramId}
+              currentVersion={currentVersion}
+              onClose={() => setSidePanel("none")}
+              onRestore={(v) => void restoreVersion(v)}
+            />
+          ) : sidePanel === "explain" ? (
+            <aside className="flex h-full w-full max-w-[400px] flex-col border-l border-[#cfd8e3] bg-[#f8fafc]">
+              <header className="flex h-11 items-center justify-between border-b border-[#e2e8f0] px-3">
+                <h2 className="text-sm font-semibold">Explain</h2>
+                <Button type="button" variant="ghost" size="icon-xs" onClick={() => setSidePanel("none")}>
+                  ×
+                </Button>
+              </header>
+              {explainSummary ? (
+                <p className="border-b border-[#e2e8f0] px-3 py-2 text-xs text-[#475569]">{explainSummary}</p>
+              ) : null}
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+                {explainSteps.map((step) => (
+                  <button
+                    key={step.index}
+                    type="button"
+                    className="w-full rounded-md border border-[#e2e8f0] bg-white p-2.5 text-left hover:border-[#93c5fd]"
+                    onClick={() => canvasRef.current?.focusNodes(step.nodeIds ?? [])}
+                  >
+                    <p className="text-xs font-semibold text-[#0f172a]">
+                      {step.index}. {step.title}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[#64748b]">{step.detail}</p>
+                  </button>
+                ))}
+                {!explainSteps.length ? (
+                  <p className="p-2 text-xs text-[#94a3b8]">No steps yet</p>
                 ) : null}
-                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-                  {explainSteps.map((step) => (
-                    <button
-                      key={step.index}
-                      type="button"
-                      className="w-full rounded-md border border-[#e2e8f0] bg-white p-2.5 text-left hover:border-[#93c5fd]"
-                      onClick={() => canvasRef.current?.focusNodes(step.nodeIds ?? [])}
-                    >
-                      <p className="text-xs font-semibold text-[#0f172a]">
-                        {step.index}. {step.title}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-[#64748b]">{step.detail}</p>
-                    </button>
-                  ))}
-                  {!explainSteps.length ? (
-                    <p className="p-2 text-xs text-[#94a3b8]">No steps yet</p>
-                  ) : null}
-                </div>
-              </aside>
-            ) : null}
-            {orgId && aiOpen ? (
-              <AiChatPanel
-                open={aiOpen}
-                onClose={() => setAiOpen(false)}
-                organizationId={orgId}
-                diagramId={diagramId}
-                currentPage={getLivePage()}
-                onInsertDocument={insertAiDocument}
-                onInsertPage={(page) => applyPageToCanvas(page)}
-                onEditedPage={(page) => applyPageToCanvas(page)}
-              />
-            ) : null}
-          </>
+              </div>
+            </aside>
+          ) : orgId && aiOpen ? (
+            <AiChatPanel
+              open={aiOpen}
+              onClose={() => setAiOpen(false)}
+              organizationId={orgId}
+              diagramId={diagramId}
+              currentPage={getLivePage()}
+              onInsertDocument={insertAiDocument}
+              onInsertPage={(page) => applyPageToCanvas(page)}
+              onEditedPage={(page) => applyPageToCanvas(page)}
+            />
+          ) : null
         }
       />
 

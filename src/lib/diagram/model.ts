@@ -85,6 +85,7 @@ export const diagramNodeSchema = z.object({
   style: nodeStyleSchema.optional(),
   kind: nodeKindSchema.optional().default("shape"),
   locked: z.boolean().optional(),
+  hidden: z.boolean().optional(),
   groupId: z.string().optional(),
   freehand: freehandSchema.optional(),
   table: tableSchema.optional(),
@@ -509,6 +510,16 @@ function nodeToCellStyle(node: DiagramNode): CellStyle {
   // Persist kind / lock / group as style string props for round-trip hints
   (base as Record<string, unknown>).diagramKind = kind;
   if (node.locked != null) (base as Record<string, unknown>).diagramLocked = node.locked ? "1" : "0";
+  if (node.locked) {
+    (base as Record<string, unknown>).movable = false;
+    (base as Record<string, unknown>).resizable = false;
+    (base as Record<string, unknown>).bendable = false;
+    (base as Record<string, unknown>).editable = false;
+  }
+  if (node.hidden) {
+    (base as Record<string, unknown>).diagramHidden = "1";
+    base.opacity = 0;
+  }
   if (node.groupId) (base as Record<string, unknown>).diagramGroupId = node.groupId;
   return base;
 }
@@ -584,7 +595,10 @@ export function toMaxGraph(graph: Graph, page: DiagramPage): void {
         style: nodeToCellStyle(node),
       });
       cell.setId(node.id);
-      if (node.locked) cell.setConnectable(false);
+      if (node.locked) {
+        cell.setConnectable(false);
+      }
+      if (node.hidden) cell.setVisible(false);
       byId.set(node.id, cell);
     }
 
@@ -653,6 +667,12 @@ function vertexToNode(graph: Graph, cell: Cell, defaultParent: Cell): DiagramNod
       : styleRec.diagramLocked === "0" || styleRec.diagramLocked === false
         ? false
         : undefined;
+  const hidden =
+    styleRec.diagramHidden === "1" ||
+    styleRec.diagramHidden === true ||
+    cell.isVisible?.() === false
+      ? true
+      : undefined;
   const parentCell = cell.getParent();
   const groupId =
     parentCell && parentCell !== defaultParent && parentCell.getId()
@@ -679,6 +699,7 @@ function vertexToNode(graph: Graph, cell: Cell, defaultParent: Cell): DiagramNod
     h: clampSize(geo?.height, 60),
     kind,
     locked,
+    hidden,
     groupId,
     freehand: parsed.freehand,
     table: parsed.table,

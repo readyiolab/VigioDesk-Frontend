@@ -3,6 +3,7 @@ import {
   Copy,
   Link2,
   Lock,
+  LockOpen,
   MoreHorizontal,
   Wand2,
   Trash2,
@@ -29,6 +30,7 @@ type Props = {
   onAiAction?: (action: string, text?: string) => void;
   onDelete?: () => void;
   onLock?: () => void;
+  locked?: boolean;
   onGroup?: () => void;
   className?: string;
 };
@@ -50,6 +52,7 @@ export function SelectionToolbar({
   onAiAction,
   onDelete,
   onLock,
+  locked = false,
   onGroup,
   className,
 }: Props) {
@@ -171,8 +174,8 @@ export function SelectionToolbar({
                 }}
               />
               <MoreItem
-                icon={<Lock className="size-3.5" />}
-                label="Lock"
+                icon={locked ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
+                label={locked ? "Unlock" : "Lock"}
                 onClick={() => {
                   onLock?.();
                   setMoreOpen(false);

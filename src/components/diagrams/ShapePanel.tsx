@@ -100,14 +100,14 @@ export function ShapePanel({ onPickShape, className }: Props) {
   const toggleCat = (id: string) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   return (
-    <aside className={cn("flex h-full w-[220px] shrink-0 flex-col border-r border-[#cfd8e3] bg-[#f5f7fa]", className)}>
+    <aside className={cn("flex h-full w-[200px] shrink-0 flex-col border-r border-[#cfd8e3] bg-[#f5f7fa]", className)}>
       <div className="border-b border-[#cfd8e3] p-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type / to search"
+            placeholder="Search shapes"
             className="h-8 rounded-md border-[#cfd8e3] bg-white pl-7 text-xs"
           />
         </div>

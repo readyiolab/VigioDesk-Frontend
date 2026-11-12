@@ -85,27 +85,27 @@ const FEATURES = [
 const DIAGRAMS_FAQS = [
   {
     q: "What types of diagrams can I design in Diagram Studio?",
-    a: "Diagram Studio supports the full spectrum of technical and visual modeling: system architecture, cloud topology (AWS, Azure, Google Cloud, Kubernetes), flowcharts, UML class and sequence diagrams, ER databases, mind maps, network infrastructure, and wireframes.",
+    a: "Flowcharts, UML-style shapes, ER diagrams, network/cloud topology with generic shapes, org charts, and architecture maps. AI can also generate diagrams from a text prompt. Dedicated AWS/Azure icon packs and full UML sequence tooling are not included yet.",
   },
   {
     q: "How does AI text-to-diagram generation work?",
-    a: "Simply describe your workflow or infrastructure in plain natural language (e.g., 'A microservices auth flow with Redis session caching and PostgreSQL'). AI automatically arranges the shapes, labels, and smart connectors. You can also chat to modify nodes, add decision branches, or convert sketch images into editable diagrams.",
+    a: "Describe your workflow or infrastructure in plain language. AI arranges shapes, labels, and connectors. You can chat to edit nodes, or turn a sketch image into an editable diagram (uses your plan’s AI credits).",
   },
   {
     q: "Which file formats can I export my diagrams to?",
-    a: "You can export single pages or complete canvas workspaces to high-resolution PNG (with optional transparency), scalable vector graphics (SVG), or printable vector PDF. You can also export raw XML to backup or migrate your diagrams.",
+    a: "PNG (including transparent), SVG, and high-quality image-based PDF (single page or all pages). You can also send a page through the PDF Toolkit pipeline. Mermaid and other code exports are available from the File menu.",
   },
   {
     q: "Can I share diagrams with external clients or colleagues?",
-    a: "Yes. Vigodesk allows you to generate secure view-only or collaborative editing links. Anyone with the link can view or edit directly in their browser without installing plugins, and you can revoke access at any time.",
+    a: "Yes. Generate view-only or edit links. Anyone with the link can open the diagram in the browser; you can revoke access anytime.",
   },
   {
     q: "Can I import existing Draw.io (.drawio) or XML diagram files?",
-    a: "Yes. Diagram Studio uses standard open XML schema compatible with popular diagramming platforms like draw.io and diagrams.net, allowing you to drag and drop existing XML diagrams and resume work instantly.",
+    a: "Yes — best-effort import from draw.io / diagrams.net XML (including multi-page mxfile). Drag a .drawio/.xml file onto the canvas or use File → Import Draw.io. Complex stencils become basic shapes; JSON remains the source of truth inside Vigodesk.",
   },
   {
     q: "Are my proprietary diagrams and architectural designs kept private?",
-    a: "All diagrams are encrypted with AES-256 and scoped strictly to your authenticated workspace or organization. Vigodesk never shares your system schematics or trains public AI models on your private designs.",
+    a: "Diagrams are scoped to your authenticated account and organization membership. Vigodesk does not train public AI models on your private designs.",
   },
 ];
 
@@ -171,7 +171,7 @@ export default function DiagramsLanding() {
 
               {/* Subheading */}
               <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
-                A fluid, draw.io-compatible canvas powered by AI text-to-diagram prompting, comprehensive cloud shape libraries, and high-fidelity vector PDF &amp; SVG export.
+                A draw.io-style canvas with AI text-to-diagram, shape libraries for flowcharts and architecture, and PNG / SVG / high-quality PDF export.
               </p>
 
               {/* Dual Action Buttons */}

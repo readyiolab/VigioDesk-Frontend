@@ -68,6 +68,7 @@ export type DiagramRow = {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  thumbnailPngKey?: string | null;
 };
 
 export type DiagramFolder = {
@@ -143,13 +144,30 @@ export const diagramsApi = {
   update(
     organizationId: string,
     id: string,
-    body: { title?: string; folderId?: string | null; content?: DiagramDocument }
+    body: {
+      title?: string;
+      folderId?: string | null;
+      content?: DiagramDocument;
+      thumbnailPngKey?: string | null;
+    }
   ) {
     return apiFetch(`/diagrams/${id}`, {
       method: "PATCH",
       headers: orgHeaders(organizationId),
       body: JSON.stringify(body),
     }) as Promise<{ diagram: DiagramRow }>;
+  },
+
+  getVersion(organizationId: string, id: string, version: number) {
+    return apiFetch(`/diagrams/${id}/versions/${version}`, {
+      headers: orgHeaders(organizationId),
+    }) as Promise<{ content: DiagramDocument; version: number }>;
+  },
+
+  getThumbnail(organizationId: string, id: string) {
+    return apiFetch(`/diagrams/${id}/thumbnail`, {
+      headers: orgHeaders(organizationId),
+    }) as Promise<{ url: string }>;
   },
 
   duplicate(organizationId: string, id: string) {

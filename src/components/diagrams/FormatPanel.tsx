@@ -10,10 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { DiagramSettings } from "@/lib/diagram/model";
+import type { DiagramPage, DiagramSettings } from "@/lib/diagram/model";
 import type { SelectionInfo } from "./DiagramCanvas";
+import { ElementsPanel } from "./ElementsPanel";
 import { cn } from "@/lib/utils";
 import type { CellStyle } from "@maxgraph/core";
+
+type FormatTab = "diagram" | "style" | "elements";
 
 type Props = {
   settings: DiagramSettings;
@@ -22,6 +25,12 @@ type Props = {
   onApplyStyle: (patch: Partial<CellStyle>) => void;
   onOpenPageSetup?: () => void;
   onThemeChange?: (themeId: string) => void;
+  elementsPage?: DiagramPage;
+  onSelectElement?: (nodeId: string) => void;
+  onToggleElementLock?: (nodeId: string) => void;
+  onToggleElementHidden?: (nodeId: string) => void;
+  tab?: FormatTab;
+  onTabChange?: (tab: FormatTab) => void;
   className?: string;
 };
 
@@ -46,19 +55,39 @@ export function FormatPanel({
   onApplyStyle,
   onOpenPageSetup,
   onThemeChange,
+  elementsPage,
+  onSelectElement,
+  onToggleElementLock,
+  onToggleElementHidden,
+  tab,
+  onTabChange,
   className,
 }: Props) {
   const style = selection?.style ?? {};
+  const selectedIds = (selection?.cells ?? [])
+    .map((c) => c.getId())
+    .filter(Boolean) as string[];
 
   return (
     <aside className={cn("flex h-full w-[260px] shrink-0 flex-col border-l border-[#cfd8e3] bg-[#f5f7fa]", className)}>
-      <Tabs defaultValue="diagram" className="flex h-full flex-col">
-        <TabsList className="mx-2 mt-2 grid h-8 grid-cols-2 rounded-md bg-[#e2e8f0]">
+      <Tabs
+        {...(tab != null
+          ? {
+              value: tab,
+              onValueChange: (v: string) => onTabChange?.(v as FormatTab),
+            }
+          : { defaultValue: "diagram" as const })}
+        className="flex h-full flex-col"
+      >
+        <TabsList className="mx-2 mt-2 grid h-8 grid-cols-3 rounded-md bg-[#e2e8f0]">
           <TabsTrigger value="diagram" className="text-xs">
             Diagram
           </TabsTrigger>
           <TabsTrigger value="style" className="text-xs">
             Style
+          </TabsTrigger>
+          <TabsTrigger value="elements" className="text-xs">
+            Layers
           </TabsTrigger>
         </TabsList>
 
@@ -82,13 +111,6 @@ export function FormatPanel({
                 className="h-8 w-20 rounded-md text-xs"
               />
               <span className="text-xs text-muted-foreground">pt</span>
-              <Input
-                type="color"
-                value="#cfe2f5"
-                disabled
-                className="h-8 w-10 rounded-md p-1"
-                title="Grid color"
-              />
             </div>
             <div className="flex items-center justify-between gap-2">
               <Label className="text-xs">Page View</Label>
@@ -379,6 +401,20 @@ export function FormatPanel({
                 </>
               )}
             </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="elements" className="min-h-0 flex-1 overflow-hidden p-1">
+          {elementsPage ? (
+            <ElementsPanel
+              page={elementsPage}
+              selectedIds={selectedIds}
+              onSelect={(id) => onSelectElement?.(id)}
+              onToggleLock={(id) => onToggleElementLock?.(id)}
+              onToggleHidden={(id) => onToggleElementHidden?.(id)}
+            />
+          ) : (
+            <p className="px-3 py-4 text-xs text-muted-foreground">No page loaded.</p>
           )}
         </TabsContent>
       </Tabs>

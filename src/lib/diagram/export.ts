@@ -95,7 +95,12 @@ export function exportSvg(graph: Graph, opts?: { flattenHtml?: boolean }): strin
   return new XMLSerializer().serializeToString(clone);
 }
 
-async function rasterizeSvgString(svg: string, w: number, h: number): Promise<Blob> {
+async function rasterizeSvgString(
+  svg: string,
+  w: number,
+  h: number,
+  opts?: { transparent?: boolean }
+): Promise<Blob> {
   const img = new Image();
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
   try {
@@ -108,8 +113,12 @@ async function rasterizeSvgString(svg: string, w: number, h: number): Promise<Bl
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, w, h);
+    if (!opts?.transparent) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      ctx.clearRect(0, 0, w, h);
+    }
     ctx.drawImage(img, 0, 0, w, h);
     return await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG encode failed"))), "image/png");
@@ -123,49 +132,66 @@ async function rasterizeSvgString(svg: string, w: number, h: number): Promise<Bl
  * Rasterize via an HTML wrapper when foreignObject is present — browsers often
  * refuse to draw foreignObject from blob: SVG into canvas.
  */
-async function rasterizeViaHtmlWrapper(svg: string, w: number, h: number): Promise<Blob> {
+async function rasterizeViaHtmlWrapper(
+  svg: string,
+  w: number,
+  h: number,
+  opts?: { transparent?: boolean }
+): Promise<Blob> {
   const iframe = document.createElement("iframe");
   iframe.style.cssText = "position:fixed;left:-99999px;top:0;width:1px;height:1px;border:0;opacity:0";
   document.body.appendChild(iframe);
   try {
     const doc = iframe.contentDocument!;
     doc.open();
+    const bg = opts?.transparent ? "transparent" : "#fff";
     doc.write(
-      `<!doctype html><html><head><style>html,body{margin:0;padding:0;background:#fff}</style></head><body>${svg}</body></html>`
+      `<!doctype html><html><head><style>html,body{margin:0;padding:0;background:${bg}}</style></head><body>${svg}</body></html>`
     );
     doc.close();
     await new Promise((r) => setTimeout(r, 50));
     const svgEl = doc.querySelector("svg");
     if (!svgEl) throw new Error("No SVG in wrapper");
-    // Prefer flattened path if html2canvas-like capture is unavailable — serialize again
     const serialized = new XMLSerializer().serializeToString(svgEl);
-    return await rasterizeSvgString(serialized, w, h);
+    return await rasterizeSvgString(serialized, w, h, opts);
   } finally {
     iframe.remove();
   }
 }
 
-export async function exportPng(graph: Graph, scale = 2): Promise<Blob> {
+export async function exportPng(
+  graph: Graph,
+  scale = 2,
+  opts?: { transparent?: boolean }
+): Promise<Blob> {
   const bounds = graph.getGraphBounds();
   const pad = 20;
   const w = Math.max(1, Math.ceil((bounds.width + pad * 2) * scale));
   const h = Math.max(1, Math.ceil((bounds.height + pad * 2) * scale));
 
-  // Always flatten foreignObject for reliable canvas drawImage
   const svg = exportSvg(graph, { flattenHtml: true });
   if (!svg) throw new Error("Nothing to export");
 
   try {
-    return await rasterizeSvgString(svg, w, h);
+    return await rasterizeSvgString(svg, w, h, opts);
   } catch {
-    // Fallback: try HTML wrapper with unflattened SVG then flatten
     const raw = exportSvg(graph, { flattenHtml: false });
     try {
-      return await rasterizeViaHtmlWrapper(raw, w, h);
+      return await rasterizeViaHtmlWrapper(raw, w, h, opts);
     } catch {
-      return await rasterizeSvgString(exportSvg(graph, { flattenHtml: true }), w, h);
+      return await rasterizeSvgString(exportSvg(graph, { flattenHtml: true }), w, h, opts);
     }
   }
+}
+
+/** Wait for layout/paint so multi-page capture is stable. */
+export async function waitForGraphPaint(graph: Graph): Promise<void> {
+  try {
+    graph.getView().validate();
+  } catch {
+    /* ignore */
+  }
+  await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
 export async function exportPdf(graph: Graph): Promise<Blob> {

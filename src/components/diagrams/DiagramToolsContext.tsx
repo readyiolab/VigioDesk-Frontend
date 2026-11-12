@@ -34,7 +34,8 @@ export type ToolbarMenuId =
   | "layout"
   | "themes"
   | "colors"
-  | "export";
+  | "export"
+  | "more";
 
 export type PenOptions = { size: number; color: string; opacity: number };
 export type TableOptions = {

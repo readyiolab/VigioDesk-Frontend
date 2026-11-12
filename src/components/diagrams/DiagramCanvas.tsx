@@ -522,6 +522,9 @@ export type DiagramCanvasHandle = {
   setFlowSpeed: (s: number) => void;
   getSelectionBounds: () => { x: number; y: number; w: number; h: number } | null;
   lockSelection: (locked: boolean) => void;
+  selectById: (id: string) => void;
+  setCellHidden: (id: string, hidden: boolean) => void;
+  setCellLockedById: (id: string, locked: boolean) => void;
   groupSelection: () => void;
   ungroupSelection: () => void;
 };
@@ -633,6 +636,7 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
   onDirtyRef.current = onDirty;
   const onZoomChangeRef = useRef(onZoomChange);
   onZoomChangeRef.current = onZoomChange;
+  const emitSelectionRef = useRef<() => void>(() => undefined);
   const onGraphReadyRef = useRef(onGraphReady);
   onGraphReadyRef.current = onGraphReady;
   const graphReadyRef = useRef(false);
@@ -665,6 +669,7 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
       style: { ...(cell.getStyle() ?? {}) },
     });
   }, [onSelectionChange]);
+  emitSelectionRef.current = emitSelection;
 
   const updateHoverFromCell = useCallback((cell: Cell | null) => {
     const graph = graphRef.current;
@@ -712,8 +717,10 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         pendingPageRef.current = { page, fit };
         return;
       }
+      // Suppress dirty + discard load edits so Ctrl+Z never undoes a full wipe.
       dirtySkip.current = true;
       toMaxGraph(graph, page);
+      undoRef.current?.clear();
       dirtySkip.current = false;
       if (fit && settingsRef.current?.pageView === false) {
         fitGraphToContent(graph, settingsRef.current, (z) => onZoomChangeRef.current?.(z));
@@ -771,14 +778,31 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
       if (kind === "table") return true;
       return baseIsHtmlLabel(cell);
     };
+    const cellIsDiagramLocked = (cell: Cell) => {
+      const style = (cell.getStyle() ?? {}) as Record<string, unknown>;
+      return style.diagramLocked === "1" || style.diagramLocked === true;
+    };
     const baseIsCellEditable = graph.isCellEditable.bind(graph);
     graph.isCellEditable = (cell: Cell) => {
       if (readOnlyRef.current) return false;
+      if (cellIsDiagramLocked(cell)) return false;
       const kind = parseCellValue(cell.getValue()).kind;
       if (kind === "freehand") return false;
       // Tables use custom double-click cell editor (prompt), not in-place HTML edit
       if (kind === "table") return false;
       return baseIsCellEditable(cell);
+    };
+    const baseIsCellMovable = graph.isCellMovable.bind(graph);
+    graph.isCellMovable = (cell: Cell) => {
+      if (readOnlyRef.current) return false;
+      if (cellIsDiagramLocked(cell)) return false;
+      return baseIsCellMovable(cell);
+    };
+    const baseIsCellResizable = graph.isCellResizable.bind(graph);
+    graph.isCellResizable = (cell: Cell) => {
+      if (readOnlyRef.current) return false;
+      if (cellIsDiagramLocked(cell)) return false;
+      return baseIsCellResizable(cell);
     };
     const baseCellLabelChanged = graph.cellLabelChanged.bind(graph);
     graph.cellLabelChanged = (cell: Cell, value: unknown, autoSize?: boolean) => {
@@ -806,9 +830,11 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
     graph.getView().addListener(InternalEvent.SCALE, () => {
       syncPaperOverlay(graph, paperRef.current);
       onZoomChangeRef.current?.(graph.getView().getScale());
+      emitSelectionRef.current();
     });
     graph.getView().addListener(InternalEvent.TRANSLATE, () => {
       syncPaperOverlay(graph, paperRef.current);
+      emitSelectionRef.current();
     });
 
     const refreshHover = () => {
@@ -2200,7 +2226,10 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         maxY = Math.max(maxY, state.y + state.height);
       }
       if (!Number.isFinite(minX)) return null;
-      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+      const host = hostRef.current;
+      const ox = host ? host.offsetLeft : 0;
+      const oy = host ? host.offsetTop : 0;
+      return { x: minX + ox, y: minY + oy, w: maxX - minX, h: maxY - minY };
     },
     lockSelection: (locked) => {
       const graph = graphRef.current;
@@ -2212,18 +2241,63 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
           const style = {
             ...(cell.getStyle() ?? {}),
             diagramLocked: locked ? "1" : "0",
+            movable: !locked,
+            resizable: !locked,
+            bendable: !locked,
+            editable: !locked,
           } as CellStyle;
           graph.getDataModel().setStyle(cell, style);
           cell.setConnectable(!locked);
-          if (locked) {
-            // prevent move via style editable flag when possible
-            (style as Record<string, unknown>).movable = false;
-          }
         }
       } finally {
         graph.getDataModel().endUpdate();
       }
       onDirty?.();
+      emitSelection();
+    },
+    selectById: (id) => {
+      const graph = graphRef.current;
+      if (!graph) return;
+      const cell = graph.getDataModel().getCell(id);
+      if (cell) {
+        graph.setSelectionCell(cell);
+        emitSelection();
+      }
+    },
+    setCellHidden: (id, hidden) => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current) return;
+      const cell = graph.getDataModel().getCell(id);
+      if (!cell) return;
+      const style = {
+        ...(cell.getStyle() ?? {}),
+        diagramHidden: hidden ? "1" : "0",
+        opacity: hidden ? 0 : ((cell.getStyle() as CellStyle)?.opacity ?? 100),
+      } as CellStyle;
+      graph.getDataModel().setStyle(cell, style);
+      cell.setVisible(!hidden);
+      onDirty?.();
+      emitSelection();
+    },
+    setCellLockedById: (id, locked) => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current) return;
+      const cell = graph.getDataModel().getCell(id);
+      if (!cell) return;
+      graph.setSelectionCell(cell);
+      // reuse lockSelection path
+      const style = {
+        ...(cell.getStyle() ?? {}),
+        diagramLocked: locked ? "1" : "0",
+        movable: !locked,
+        resizable: !locked,
+        bendable: !locked,
+        editable: !locked,
+      } as CellStyle;
+      graph.getDataModel().setStyle(cell, style);
+      cell.setConnectable(!locked);
+      onDirty?.();
+      emitSelection();
     },
     groupSelection: () => {
       const graph = graphRef.current;

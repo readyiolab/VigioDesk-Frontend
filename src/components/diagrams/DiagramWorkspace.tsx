@@ -35,6 +35,8 @@ export type DiagramWorkspaceProps = {
   onOpenInNewWindow?: (id: string) => void;
   shapesPanelOpen: boolean;
   formatPanelOpen: boolean;
+  formatTab?: "diagram" | "style" | "elements";
+  onFormatTabChange?: (tab: "diagram" | "style" | "elements") => void;
   onToggleShapesPanel: () => void;
   onToggleFormatPanel: () => void;
   selection: SelectionInfo | null;
@@ -62,6 +64,10 @@ export type DiagramWorkspaceProps = {
   onPresentSpeed?: (s: number) => void;
   onPresentExit?: () => void;
   onSelectionAiEdit?: (action: string, text?: string) => void;
+  elementsPage?: DiagramPage;
+  onSelectElement?: (nodeId: string) => void;
+  onToggleElementLock?: (nodeId: string) => void;
+  onToggleElementHidden?: (nodeId: string) => void;
   sidePanels?: ReactNode;
   showAdvancedPageTabs?: boolean;
 };
@@ -85,6 +91,8 @@ export function DiagramWorkspace({
   onOpenInNewWindow,
   shapesPanelOpen,
   formatPanelOpen,
+  formatTab,
+  onFormatTabChange,
   onToggleShapesPanel,
   onToggleFormatPanel,
   selection,
@@ -109,6 +117,10 @@ export function DiagramWorkspace({
   onPresentSpeed,
   onPresentExit,
   onSelectionAiEdit,
+  elementsPage,
+  onSelectElement,
+  onToggleElementLock,
+  onToggleElementHidden,
   sidePanels,
   showAdvancedPageTabs: _showAdvancedPageTabs = true,
 }: DiagramWorkspaceProps) {
@@ -135,7 +147,7 @@ export function DiagramWorkspace({
         onToggleShapesPanel={onToggleShapesPanel}
       />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {shapesPanelOpen && !readOnly ? <ShapePanel onPickShape={pickShape} /> : null}
         <div
           className="relative min-w-0 flex-1"
@@ -170,7 +182,17 @@ export function DiagramWorkspace({
               onStyle={onToggleFormatPanel}
               onAiAction={(action, text) => onSelectionAiEdit?.(action, text)}
               onDelete={() => canvasRef.current?.deleteSelection()}
-              onLock={() => canvasRef.current?.lockSelection(true)}
+              locked={
+                String((selection?.style as Record<string, unknown> | undefined)?.diagramLocked) ===
+                "1"
+              }
+              onLock={() => {
+                const locked =
+                  String(
+                    (selection?.style as Record<string, unknown> | undefined)?.diagramLocked
+                  ) === "1";
+                canvasRef.current?.lockSelection(!locked);
+              }}
               onGroup={() => canvasRef.current?.groupSelection()}
             />
           ) : null}
@@ -198,10 +220,21 @@ export function DiagramWorkspace({
             onApplyStyle={onApplyStyle}
             onOpenPageSetup={onPageSetup}
             onThemeChange={onThemeChange}
+            elementsPage={elementsPage}
+            onSelectElement={onSelectElement}
+            onToggleElementLock={onToggleElementLock}
+            onToggleElementHidden={onToggleElementHidden}
+            tab={formatTab}
+            onTabChange={onFormatTabChange}
           />
         ) : null}
 
-        {sidePanels}
+        {/* AI / Analyze / Versions: one overlay drawer over the right edge */}
+        {sidePanels ? (
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex w-[min(400px,100%)]">
+            <div className="pointer-events-auto flex h-full w-full min-w-0 shadow-2xl">{sidePanels}</div>
+          </div>
+        ) : null}
       </div>
 
       <PageTabs

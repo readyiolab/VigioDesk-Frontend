@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FolderPlus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,47 @@ import { DIAGRAM_TEMPLATES } from "@/lib/diagram/templates";
 import { diagramsApi } from "@/services/diagramsApi";
 import { withOrgRetry } from "@/features/diagrams";
 import { toast } from "sonner";
+
+function DiagramThumb({
+  diagramId,
+  hasKey,
+  userId,
+}: {
+  diagramId: string;
+  hasKey?: string | null;
+  userId?: string | null;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hasKey) return;
+    let cancelled = false;
+    void withOrgRetry(userId, (orgId) => diagramsApi.getThumbnail(orgId, diagramId))
+      .then(({ result }) => {
+        if (!cancelled) setUrl(result.url);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [diagramId, hasKey, userId]);
+
+  if (url) {
+    return (
+      <img src={url} alt="" className="h-full w-full rounded-lg object-cover object-top" />
+    );
+  }
+  // Empty-page mock when no thumbnail yet
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded-lg bg-[#e5e7eb] p-3">
+      <div className="relative h-[72%] w-[78%] rounded-sm border border-[#cbd5e1] bg-white shadow-sm">
+        <div className="absolute left-[12%] top-[22%] h-3 w-[38%] rounded-sm bg-[#bfdbfe]" />
+        <div className="absolute right-[14%] top-[38%] h-3 w-[34%] rounded-sm bg-[#bbf7d0]" />
+        <div className="absolute left-[28%] top-[30%] h-px w-[36%] rotate-12 bg-[#94a3b8]" />
+        <div className="absolute bottom-[18%] left-[18%] h-2.5 w-[28%] rounded-sm bg-[#e2e8f0]" />
+      </div>
+    </div>
+  );
+}
 
 export default function DiagramsListPage() {
   const navigate = useNavigate();
@@ -187,8 +228,15 @@ export default function DiagramsListPage() {
                 className="group relative rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition hover:border-[#93c5fd] hover:shadow-md"
               >
                 <Link to={`/diagrams/${d.id}`} className="block">
-                  <div className="mb-3 flex h-28 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#eef2ff,#f8fafc)] text-[#94a3b8]">
-                    <span className="text-xs">Open editor</span>
+                  <div className="relative mb-3 flex h-28 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#eef2ff,#f8fafc)] text-[#94a3b8]">
+                    <DiagramThumb
+                      diagramId={d.id}
+                      hasKey={d.thumbnailPngKey}
+                      userId={user?.id}
+                    />
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/35 to-transparent px-2 py-1.5 text-center text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100">
+                      Open
+                    </span>
                   </div>
                   <h2 className="truncate text-sm font-medium text-[#0f172a]">{d.title}</h2>
                   <p className="mt-1 text-[11px] text-[#94a3b8]">

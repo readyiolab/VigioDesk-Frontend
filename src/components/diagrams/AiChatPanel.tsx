@@ -333,7 +333,7 @@ export function AiChatPanel({
   return (
     <aside
       className={cn(
-        "flex h-full w-[520px] max-w-full shrink-0 flex-col border-l border-[#cfd8e3] bg-white",
+        "flex h-full w-full max-w-[400px] flex-col border-l border-[#cfd8e3] bg-white",
         className
       )}
     >
@@ -346,7 +346,7 @@ export function AiChatPanel({
 
       <div className="flex min-h-0 flex-1">
         {/* Sessions */}
-        <div className="flex w-[160px] shrink-0 flex-col border-r border-[#e2e8f0] bg-[#f8fafc]">
+        <div className="flex w-[112px] shrink-0 flex-col border-r border-[#e2e8f0] bg-[#f8fafc]">
           <Button
             type="button"
             variant="ghost"

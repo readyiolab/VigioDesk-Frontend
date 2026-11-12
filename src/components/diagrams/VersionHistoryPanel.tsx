@@ -97,7 +97,7 @@ export function VersionHistoryPanel({
   return (
     <aside
       className={cn(
-        "flex h-full w-[300px] shrink-0 flex-col border-l border-[#cfd8e3] bg-[#f8fafc]",
+        "flex h-full w-full max-w-[400px] flex-col border-l border-[#cfd8e3] bg-[#f8fafc]",
         className
       )}
     >
