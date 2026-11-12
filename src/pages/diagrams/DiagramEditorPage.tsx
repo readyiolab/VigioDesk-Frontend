@@ -620,10 +620,9 @@ function DiagramEditorInner() {
       const file = new File([png], `${(title || "diagram").replace(/\s+/g, "_")}.png`, {
         type: "image/png",
       });
-      const fileKey = await apiService.uploadFileDirect(file, "image/png");
-      const job = await apiService.createJob("jpgToPdf", [fileKey], {});
+      const fileKey = await apiService.uploadFileDirect(file);
+      await apiService.createJob("jpgToPdf", [fileKey], {});
       toast.success("PDF job queued — check History when ready");
-      void job;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Toolkit PDF export failed");
     }

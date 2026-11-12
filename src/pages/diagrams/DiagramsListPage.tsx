@@ -28,9 +28,7 @@ export default function DiagramsListPage() {
   const createMutation = useCreateDiagram(user?.id);
   const deleteMutation = useDeleteDiagram(user?.id);
   const folderMutation = useCreateFolder(user?.id);
-  const orgId = listQuery.data?.pages?.[0]?.orgId;
-
-  const orgId = listQuery.data?.pages[0]?.orgId ?? null;
+  const orgId = listQuery.data?.pages?.[0]?.orgId ?? null;
   const diagrams = listQuery.data?.pages.flatMap((p) => p.diagrams) ?? [];
   const folders = listQuery.data?.pages[0]?.folders ?? [];
   const loading = listQuery.isLoading;
