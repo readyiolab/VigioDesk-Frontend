@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Copy,
   Link2,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   visible: boolean;
+  /** Viewport (fixed) coordinates of the selection box. */
   x: number;
   y: number;
   onConnect?: () => void;
@@ -42,6 +44,9 @@ const AI_QUICK = [
   { id: "restyle", label: "Restyle" },
 ];
 
+/** Clearance above selection top so N handles / connection dots do not collide. */
+const TOP_CLEARANCE_PX = 44;
+
 export function SelectionToolbar({
   visible,
   x,
@@ -60,16 +65,27 @@ export function SelectionToolbar({
   const [moreOpen, setMoreOpen] = useState(false);
   const [aiText, setAiText] = useState("");
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!visible) {
+      setAiOpen(false);
+      setMoreOpen(false);
+      setAiText("");
+    }
+  }, [visible, x, y]);
 
-  return (
+  if (!visible || typeof document === "undefined") return null;
+
+  const left = x;
+  const top = Math.max(8, y - TOP_CLEARANCE_PX);
+
+  return createPortal(
     <TooltipProvider delayDuration={150}>
       <div
         className={cn(
-          "pointer-events-auto absolute z-40 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-lg border border-[#cfd8e3] bg-white px-1 py-0.5 shadow-md",
+          "pointer-events-auto fixed z-[200] flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-lg border border-[#cfd8e3] bg-white px-1 py-0.5 shadow-lg",
           className
         )}
-        style={{ left: x, top: y - 8 }}
+        style={{ left, top }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <Tb label="Connect" onClick={onConnect}>
@@ -90,7 +106,7 @@ export function SelectionToolbar({
             <span className="text-[11px]">AI Edit</span>
           </Tb>
           {aiOpen ? (
-            <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-[#cfd8e3] bg-white p-2 shadow-lg">
+            <div className="absolute left-0 top-full z-[210] mt-1 w-56 rounded-lg border border-[#cfd8e3] bg-white p-2 shadow-lg">
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
                 Quick actions
               </p>
@@ -164,7 +180,7 @@ export function SelectionToolbar({
             <span className="text-[11px]">More</span>
           </Tb>
           {moreOpen ? (
-            <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg border border-[#cfd8e3] bg-white p-1 shadow-lg">
+            <div className="absolute right-0 top-full z-[210] mt-1 w-36 rounded-lg border border-[#cfd8e3] bg-white p-1 shadow-lg">
               <MoreItem
                 icon={<Boxes className="size-3.5" />}
                 label="Group"
@@ -193,7 +209,8 @@ export function SelectionToolbar({
           ) : null}
         </div>
       </div>
-    </TooltipProvider>
+    </TooltipProvider>,
+    document.body
   );
 }
 

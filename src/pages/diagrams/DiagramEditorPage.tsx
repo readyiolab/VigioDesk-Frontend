@@ -1267,7 +1267,7 @@ function DiagramEditorInner() {
   if (loading) {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#0f172a]">
-        <div className="flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
+              <div className="relative z-[60] flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
           <div className="flex size-7 items-center justify-center rounded-md bg-[#f97316] text-xs font-bold text-white">
             D
           </div>
@@ -1291,7 +1291,7 @@ function DiagramEditorInner() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white text-[#0f172a]">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
+            <div className="relative z-[60] flex h-11 shrink-0 items-center gap-3 border-b border-[#cfd8e3] bg-[#f8fafc] px-3">
         <Link
           to="/diagrams/studio"
           className="flex size-7 items-center justify-center rounded-md bg-[#f97316] text-xs font-bold text-white"

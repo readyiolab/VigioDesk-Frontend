@@ -1267,9 +1267,14 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
     }
     onGraphReadyRef.current?.();
 
+    const rootEl = rootRef.current;
+    const onRootScroll = () => emitSelectionRef.current();
+    rootEl?.addEventListener("scroll", onRootScroll, { passive: true });
+
     return () => {
       graphReadyRef.current = false;
       pendingPageRef.current = null;
+      rootEl?.removeEventListener("scroll", onRootScroll);
       host.removeEventListener("wheel", onWheel);
       host.removeEventListener("mouseleave", onHostMouseLeave);
       graph.removeMouseListener(mouseListener as never);
@@ -2261,8 +2266,8 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
     },
     getSelectionBounds: () => {
       const graph = graphRef.current;
-      const root = rootRef.current;
-      if (!graph || !root) return null;
+      const host = hostRef.current ?? graph?.container;
+      if (!graph || !host) return null;
       const cells = graph.getSelectionCells().filter((c) => c.isVertex());
       if (!cells.length) return null;
       let minX = Infinity;
@@ -2278,10 +2283,14 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         maxY = Math.max(maxY, state.y + state.height);
       }
       if (!Number.isFinite(minX)) return null;
-      const host = hostRef.current;
-      const ox = host ? host.offsetLeft : 0;
-      const oy = host ? host.offsetTop : 0;
-      return { x: minX + ox, y: minY + oy, w: maxX - minX, h: maxY - minY };
+      // Viewport (fixed) coords so SelectionToolbar can portal above SVG handles.
+      const rect = host.getBoundingClientRect();
+      return {
+        x: rect.left + minX,
+        y: rect.top + minY,
+        w: maxX - minX,
+        h: maxY - minY,
+      };
     },
     lockSelection: (locked) => {
       const graph = graphRef.current;

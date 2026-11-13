@@ -217,7 +217,7 @@ export function ToolRail({
       <TooltipProvider delayDuration={300}>
         <div
           className={cn(
-            "flex h-8 shrink-0 items-center justify-center border-b border-[#cfd8e3] bg-[#f1f5f9]",
+            "relative z-50 flex h-8 shrink-0 items-center justify-center border-b border-[#cfd8e3] bg-[#f1f5f9]",
             className
           )}
         >
@@ -231,8 +231,10 @@ export function ToolRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn("relative z-40 flex shrink-0 flex-col", className)}>
-        <div className="relative flex h-10 items-center gap-0.5 overflow-x-auto overflow-y-visible border-b border-[#cfd8e3] bg-[#f1f5f9] px-1.5">
+      <div className={cn("relative z-50 flex shrink-0 flex-col", className)}>
+        <div className="relative flex h-10 items-stretch border-b border-[#cfd8e3] bg-[#f1f5f9]">
+          {/* Scroll strip for tools; menus use absolute/portal so they are not clipped by overflow-x */}
+          <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overflow-y-visible px-1.5 [scrollbar-width:thin]">
           {onToggleLeftPanel ? (
             <RailBtn label="Toggle shapes panel" shortcut="Ctrl+Shift+P" onClick={onToggleLeftPanel}>
               <PanelLeft className="size-3.5" />
@@ -623,7 +625,9 @@ export function ToolRail({
             </div>
           </ToolbarMenu>
 
-          <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          </div>
+
+          <div className="flex shrink-0 items-center gap-0.5 border-l border-[#e2e8f0] bg-[#f1f5f9] px-1.5">
             {onPresent ? (
               <RailBtn label="Present / Fullscreen" shortcut="F5" onClick={onPresent}>
                 <Maximize2 className="size-3.5" />
@@ -699,7 +703,7 @@ function PenStrip() {
   ];
 
   return (
-    <div className="relative z-30 flex h-9 items-center gap-1 overflow-x-auto border-b border-[#e2e8f0] bg-white px-2 shadow-sm">
+    <div className="relative z-50 flex h-9 items-center gap-1 overflow-x-auto border-b border-[#e2e8f0] bg-white px-2 shadow-sm">
       {chips.map((c) => (
         <button
           key={c.id}

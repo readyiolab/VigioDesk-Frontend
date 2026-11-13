@@ -65,7 +65,7 @@ export function MenuBar({ menus, className }: Props) {
           </button>
           {openId === menu.id && (
             <div
-              className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded border border-[#cfd8e3] bg-white py-1 shadow-lg"
+              className="absolute left-0 top-full z-[70] mt-0.5 min-w-[220px] rounded border border-[#cfd8e3] bg-white py-1 shadow-lg"
               onMouseEnter={clearLeaveTimer}
             >
               {menu.items.map((item, i) =>

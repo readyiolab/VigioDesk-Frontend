@@ -1,4 +1,5 @@
-import { type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,7 +97,7 @@ type ToolbarMenuProps = {
   onOpen?: () => void;
 };
 
-/** Click-to-open exclusive menu anchored under a rail button. */
+/** Click-to-open exclusive menu; dropdown is portaled so ToolRail overflow cannot clip it. */
 export function ToolbarMenu({
   id,
   label,
@@ -111,9 +112,40 @@ export function ToolbarMenu({
   const tools = useDiagramToolsOptional();
   const open = tools?.openMenu === id;
   const active = Boolean(toolActive) || open;
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePos = () => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setPos({
+      top: r.bottom + 4,
+      left: align === "right" ? r.right : r.left,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null);
+      return;
+    }
+    updatePos();
+  }, [open, align]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onReposition = () => updatePos();
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, align]);
 
   return (
-    <div className={cn("relative", className)} data-toolbar-menu={id}>
+    <div ref={anchorRef} className={cn("relative shrink-0", className)} data-toolbar-menu={id}>
       <RailBtn
         label={label}
         shortcut={shortcut}
@@ -129,18 +161,23 @@ export function ToolbarMenu({
       >
         {icon}
       </RailBtn>
-      <div
-        className={cn(
-          "absolute top-full z-[100] mt-1 transition-all duration-150",
-          align === "left" ? "left-0" : "right-0",
-          open
-            ? "pointer-events-auto translate-y-0 opacity-100"
-            : "pointer-events-none -translate-y-1 opacity-0"
-        )}
-        aria-hidden={!open}
-      >
-        {open ? children : null}
-      </div>
+      {open && pos && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed z-[180] transition-opacity duration-150"
+              style={{
+                top: pos.top,
+                left: pos.left,
+                transform: align === "right" ? "translateX(-100%)" : undefined,
+              }}
+              data-toolbar-menu={id}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {children}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
