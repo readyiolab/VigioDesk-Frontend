@@ -13,11 +13,19 @@ import {
 } from "@/components/ui/dialog";
 import type { AuditCheck, DevicePerformance, VitalRating, WebReport } from "./types";
 import { stageLabel } from "./stageLabel";
+import {
+  categoryHealth,
+  issueDistribution,
+  isFinding,
+  letterGrade,
+} from "./reportNarrative";
 import { ReportPrint } from "./ReportPrint";
+import { downloadWebReportPdf } from "./buildWebReportPdf";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Bot,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -26,6 +34,8 @@ import {
   Edit3,
   ExternalLink,
   Layers,
+  Loader2,
+  Minus,
   Monitor,
   Save,
   Smartphone,
@@ -33,6 +43,7 @@ import {
 } from "lucide-react";
 
 type TabId = "overview" | "vitals" | "seo" | "ai" | "fixes";
+type SeverityFilter = "all" | "critical" | "warning" | "info" | "pass";
 
 const RATING_LABEL: Record<Exclude<VitalRating, "unavailable">, string> = {
   good: "Good",
@@ -64,39 +75,65 @@ function severityMeta(severity: AuditCheck["severity"]) {
   return { label: "Passed", className: "bg-emerald-50 text-emerald-700 border-emerald-200", Icon: CheckCircle2 };
 }
 
-function isFinding(check: AuditCheck) {
-  return check.status === "present" && check.severity !== "pass";
-}
-
-function CompactRing({ score }: { score: number | null }) {
-  const radius = 34;
+function HealthRing({ score }: { score: number | null }) {
+  const radius = 42;
   const circumference = 2 * Math.PI * radius;
   const value = score ?? 0;
   const dash = score === null ? 0 : (value / 100) * circumference;
+  const grade = letterGrade(score);
   return (
-    <div className="relative flex size-[88px] items-center justify-center">
-      <svg viewBox="0 0 88 88" className="size-full -rotate-90" aria-hidden>
-        <circle cx="44" cy="44" r={radius} stroke="#E2E8F0" strokeWidth="7" fill="none" />
-        <circle
-          cx="44"
-          cy="44"
-          r={radius}
-          className={scoreTone(score)}
-          stroke="currentColor"
-          strokeWidth="7"
-          fill="none"
-          strokeDasharray={`${dash} ${circumference}`}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className={cn("absolute text-2xl font-bold tabular-nums", scoreTone(score))}>
-        {score === null ? "—" : score}
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative flex size-[108px] items-center justify-center">
+        <svg viewBox="0 0 108 108" className="size-full -rotate-90" aria-hidden>
+          <circle cx="54" cy="54" r={radius} stroke="#E2E8F0" strokeWidth="8" fill="none" />
+          <circle
+            cx="54"
+            cy="54"
+            r={radius}
+            className={scoreTone(score)}
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="none"
+            strokeDasharray={`${dash} ${circumference}`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute flex flex-col items-center">
+          <span className={cn("text-3xl font-black tabular-nums leading-none", scoreTone(score))}>
+            {score === null ? "—" : score}
+          </span>
+          <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+            / 100
+          </span>
+        </div>
+      </div>
+      <span
+        className={cn(
+          "rounded-full border px-2.5 py-0.5 text-[11px] font-bold",
+          score === null
+            ? "border-slate-200 bg-slate-50 text-slate-500"
+            : score >= 80
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : score >= 50
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-red-200 bg-red-50 text-red-700"
+        )}
+      >
+        Grade {grade.grade} · {grade.label}
       </span>
     </div>
   );
 }
 
-function ScoreTile({ label, score }: { label: string; score: number | null }) {
+function ScoreTile({
+  label,
+  score,
+  hint,
+}: {
+  label: string;
+  score: number | null;
+  hint?: string;
+}) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
@@ -109,6 +146,8 @@ function ScoreTile({ label, score }: { label: string; score: number | null }) {
           style={{ width: `${score === null ? 0 : Math.min(100, score)}%` }}
         />
       </div>
+      {hint ? <p className="mt-1 text-[10px] text-slate-500">{hint}</p> : null}
+      {score === null ? <p className="mt-1 text-[10px] text-slate-400">Not measured</p> : null}
     </div>
   );
 }
@@ -122,27 +161,29 @@ function VitalCell({
   name: string;
   value: number | null;
   unit: string;
-  rating: VitalRating;
+  rating?: VitalRating | null;
 }) {
   const shown =
     value === null
       ? "—"
       : unit === "cls"
         ? value.toFixed(2)
-        : `${Math.round(value)}${unit ? ` ${unit}` : ""}`;
+        : unit === "kb"
+          ? `${Math.round(value / 1024)} KB`
+          : `${Math.round(value)}${unit ? ` ${unit}` : ""}`;
   const pill =
-    rating === "good"
-      ? "text-emerald-700"
-      : rating === "needs-improvement"
-        ? "text-amber-700"
-        : rating === "poor"
-          ? "text-red-700"
-          : "text-slate-400";
+    !rating || rating === "unavailable"
+      ? "text-slate-400"
+      : rating === "good"
+        ? "text-emerald-700"
+        : rating === "needs-improvement"
+          ? "text-amber-700"
+          : "text-red-700";
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{name}</div>
       <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-900">{shown}</div>
-      {rating !== "unavailable" && value !== null ? (
+      {rating && rating !== "unavailable" && value !== null ? (
         <div className={cn("mt-0.5 text-[10px] font-medium", pill)}>{RATING_LABEL[rating]}</div>
       ) : null}
     </div>
@@ -150,6 +191,7 @@ function VitalCell({
 }
 
 function DeviceVitals({ label, icon, device }: { label: string; icon: ReactNode; device: DevicePerformance }) {
+  const field = device.field;
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -164,37 +206,70 @@ function DeviceVitals({ label, icon, device }: { label: string; icon: ReactNode;
       {device.unavailableReason ? (
         <p className="text-xs text-amber-700">{device.unavailableReason}</p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <VitalCell name="LCP" value={device.lcp} unit="ms" rating={device.ratings.lcp} />
-          <VitalCell name="CLS" value={device.cls} unit="cls" rating={device.ratings.cls} />
-          <VitalCell name="INP" value={device.inp} unit="ms" rating={device.ratings.inp} />
-          <VitalCell name="FCP" value={device.fcp} unit="ms" rating={device.fcp === null ? "unavailable" : "good"} />
-          <VitalCell name="TBT" value={device.tbt} unit="ms" rating={device.tbt === null ? "unavailable" : "good"} />
-          <VitalCell name="TTFB" value={device.ttfb} unit="ms" rating={device.ttfb === null ? "unavailable" : "good"} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <VitalCell name="LCP" value={device.lcp} unit="ms" rating={device.ratings.lcp} />
+            <VitalCell name="CLS" value={device.cls} unit="cls" rating={device.ratings.cls} />
+            <VitalCell name="INP" value={device.inp} unit="ms" rating={device.ratings.inp} />
+            <VitalCell name="FCP" value={device.fcp} unit="ms" />
+            <VitalCell name="TBT" value={device.tbt} unit="ms" />
+            <VitalCell name="TTFB" value={device.ttfb} unit="ms" />
+          </div>
+          {(field?.lcp || field?.inp || field?.cls) && (
+            <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+              <span className="font-semibold text-slate-800">Field (CrUX): </span>
+              {[
+                field.lcp?.percentile != null
+                  ? `LCP p75 ${Math.round(field.lcp.percentile)}ms${field.lcp.category ? ` · ${field.lcp.category}` : ""}`
+                  : null,
+                field.inp?.percentile != null
+                  ? `INP p75 ${Math.round(field.inp.percentile)}ms${field.inp.category ? ` · ${field.inp.category}` : ""}`
+                  : null,
+                field.cls?.percentile != null
+                  ? `CLS p75 ${field.cls.percentile.toFixed(2)}${field.cls.category ? ` · ${field.cls.category}` : ""}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            {device.bytes != null ? <span>Transfer ~{Math.round(device.bytes / 1024)} KB</span> : null}
+            {device.pageUrl ? (
+              <span className="truncate font-mono" title={device.pageUrl}>
+                Tested {device.pageUrl}
+              </span>
+            ) : null}
+          </div>
+        </>
       )}
       {device.issues?.length ? (
-        <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3">
-          {device.issues.slice(0, 6).map((issue) => (
-            <li key={issue.id} className="flex items-start justify-between gap-2 text-xs text-slate-600">
-              <span>{issue.title}</span>
-              {issue.displayValue ? (
-                <span className="shrink-0 font-mono text-slate-500">{issue.displayValue}</span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            Opportunities
+          </p>
+          <ul className="space-y-1">
+            {device.issues.slice(0, 8).map((issue) => (
+              <li key={issue.id} className="flex items-start justify-between gap-2 text-xs text-slate-600">
+                <span>{issue.title}</span>
+                {issue.displayValue ? (
+                  <span className="shrink-0 font-mono text-slate-500">{issue.displayValue}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );
 }
 
-function FindingRow({ check }: { check: AuditCheck }) {
+function FindingRow({ check, dense }: { check: AuditCheck; dense?: boolean }) {
   const [open, setOpen] = useState(false);
   const meta = severityMeta(check.severity);
   const Icon = meta.Icon;
   return (
-    <div className="border-b border-slate-100 last:border-0">
+    <div className={cn("border-b border-slate-100 last:border-0", dense && "odd:bg-slate-50/40")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -217,13 +292,23 @@ function FindingRow({ check }: { check: AuditCheck }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-slate-900">{check.title}</span>
+            {check.category ? (
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium capitalize text-slate-500">
+                {check.category}
+              </span>
+            ) : null}
             {check.affectedCount > 0 ? (
               <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                 {check.affectedCount} page{check.affectedCount === 1 ? "" : "s"}
               </span>
             ) : null}
+            {check.impact ? (
+              <span className="text-[10px] font-medium uppercase text-slate-400">{check.impact} impact</span>
+            ) : null}
           </div>
-          {check.fix ? <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">{check.fix}</p> : null}
+          {check.fix && !open ? (
+            <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{check.fix}</p>
+          ) : null}
         </div>
       </button>
       {open ? (
@@ -250,40 +335,133 @@ function FindingRow({ check }: { check: AuditCheck }) {
   );
 }
 
-function FindingsList({
+function FindingsPanel({
   checks,
+  filter,
+  onFilter,
   showAll,
   onToggleShowAll,
 }: {
   checks: AuditCheck[];
+  filter: SeverityFilter;
+  onFilter: (f: SeverityFilter) => void;
   showAll: boolean;
   onToggleShowAll: () => void;
 }) {
   const findings = checks.filter(isFinding);
-  const passes = checks.filter((c) => !isFinding(c));
-  const visible = showAll ? checks : findings;
+  const filtered = (showAll ? checks : findings).filter((c) => {
+    if (filter === "all") return true;
+    if (filter === "pass") return c.severity === "pass" || c.status === "absent";
+    return c.severity === filter && c.status === "present";
+  });
+
+  const byCategory = useMemo(() => {
+    const map = new Map<string, AuditCheck[]>();
+    for (const c of filtered) {
+      const key = c.category || "General";
+      const list = map.get(key) || [];
+      list.push(c);
+      map.set(key, list);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  const chips: { id: SeverityFilter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "critical", label: "Errors" },
+    { id: "warning", label: "Warnings" },
+    { id: "info", label: "Notices" },
+    { id: "pass", label: "Passed" },
+  ];
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="font-semibold text-slate-800">{findings.length} issues</span>
-          <span>·</span>
-          <span>{passes.length} passed</span>
+        <div className="flex flex-wrap gap-1">
+          {chips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => onFilter(chip.id)}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
+                filter === chip.id
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
         <button
           type="button"
           onClick={onToggleShowAll}
           className="text-xs font-medium text-blue-700 hover:underline"
         >
-          {showAll ? "Show issues only" : "Show all checks"}
+          {showAll ? "Issues only" : "Show all checks"}
         </button>
       </div>
-      {visible.length === 0 ? (
-        <p className="px-3 py-8 text-center text-sm text-slate-500">No issues in this category.</p>
+      {byCategory.length === 0 ? (
+        <p className="px-3 py-8 text-center text-sm text-slate-500">No checks match this filter.</p>
       ) : (
-        visible.map((c) => <FindingRow key={c.id} check={c} />)
+        byCategory.map(([cat, list]) => (
+          <div key={cat}>
+            <div className="sticky top-0 z-[1] border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              {cat} · {list.length}
+            </div>
+            {list.map((c) => (
+              <FindingRow key={c.id} check={c} dense />
+            ))}
+          </div>
+        ))
       )}
+    </div>
+  );
+}
+
+function DistributionBar({
+  errors,
+  warnings,
+  notices,
+  passed,
+}: {
+  errors: number;
+  warnings: number;
+  notices: number;
+  passed: number;
+}) {
+  const total = Math.max(1, errors + warnings + notices + passed);
+  const segs = [
+    { n: errors, color: "bg-red-500", label: "Errors" },
+    { n: warnings, color: "bg-amber-500", label: "Warnings" },
+    { n: notices, color: "bg-sky-500", label: "Notices" },
+    { n: passed, color: "bg-emerald-500", label: "Passed" },
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">Issue distribution</h2>
+      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-slate-100">
+        {segs.map((s) =>
+          s.n > 0 ? (
+            <div
+              key={s.label}
+              className={cn("h-full", s.color)}
+              style={{ width: `${(s.n / total) * 100}%` }}
+              title={`${s.label}: ${s.n}`}
+            />
+          ) : null
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3 text-xs">
+        {segs.map((s) => (
+          <span key={s.label} className="inline-flex items-center gap-1.5 font-medium text-slate-700">
+            <span className={cn("size-2 rounded-full", s.color)} />
+            {s.label}{" "}
+            <span className="tabular-nums text-slate-500">{s.n}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -302,10 +480,13 @@ export function ReportDashboard({
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [showAllSeo, setShowAllSeo] = useState(false);
   const [showAllAi, setShowAllAi] = useState(false);
+  const [seoFilter, setSeoFilter] = useState<SeverityFilter>("all");
+  const [aiFilter, setAiFilter] = useState<SeverityFilter>("all");
   const [brandingModalOpen, setBrandingModalOpen] = useState(false);
   const [editCompanyName, setEditCompanyName] = useState(report.customerBranding?.companyName || "");
   const [editLogoUrl, setEditLogoUrl] = useState(report.customerBranding?.logoUrl || "");
   const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   let domain = "";
   try {
@@ -317,21 +498,33 @@ export function ReportDashboard({
   const customerLogo = report.customerBranding?.logoUrl;
   const fallbackFavicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 
+  const allChecks = useMemo(
+    () => [...report.seo.checks, ...report.aiSearch.checks],
+    [report.seo.checks, report.aiSearch.checks]
+  );
+  const dist = useMemo(() => issueDistribution(allChecks), [allChecks]);
+  const categories = useMemo(() => categoryHealth(allChecks), [allChecks]);
   const allFindings = useMemo(() => {
-    const seo = report.seo.checks.filter(isFinding);
-    const ai = report.aiSearch.checks.filter(isFinding);
-    return [...seo, ...ai].sort((a, b) => {
-      const rank = { critical: 0, warning: 1, info: 2, pass: 3 } as const;
-      return rank[a.severity] - rank[b.severity] || b.affectedCount - a.affectedCount;
-    });
-  }, [report.seo.checks, report.aiSearch.checks]);
+    return allChecks
+      .filter(isFinding)
+      .sort((a, b) => {
+        const rank = { critical: 0, warning: 1, info: 2, pass: 3 } as const;
+        return rank[a.severity] - rank[b.severity] || b.affectedCount - a.affectedCount;
+      });
+  }, [allChecks]);
 
-  const issueCounts = useMemo(() => {
-    const errors = allFindings.filter((c) => c.severity === "critical").length;
-    const warnings = allFindings.filter((c) => c.severity === "warning").length;
-    const notices = allFindings.filter((c) => c.severity === "info").length;
-    return { errors, warnings, notices, total: allFindings.length };
-  }, [allFindings]);
+  const seoFindings = report.seo.checks.filter(isFinding).length;
+  const aiFindings = report.aiSearch.checks.filter(isFinding).length;
+
+  const sectionMeasured = {
+    mobile: report.scores.mobile !== null && !report.completeness.unavailableSections.some((s) => /mobile/i.test(s)),
+    desktop:
+      report.scores.desktop !== null && !report.completeness.unavailableSections.some((s) => /desktop/i.test(s)),
+    seo: report.scores.seo !== null && !report.completeness.unavailableSections.some((s) => /^seo$/i.test(s)),
+    ai:
+      report.scores.aiSearch !== null &&
+      !report.completeness.unavailableSections.some((s) => /ai/i.test(s)),
+  };
 
   async function handleSaveBranding(e: FormEvent) {
     e.preventDefault();
@@ -354,31 +547,32 @@ export function ReportDashboard({
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     { id: "vitals", label: "Core Web Vitals" },
-    { id: "seo", label: "SEO", count: report.seo.checks.filter(isFinding).length },
-    { id: "ai", label: "AI Search", count: report.aiSearch.checks.filter(isFinding).length },
+    { id: "seo", label: "SEO", count: seoFindings },
+    { id: "ai", label: "AI Search", count: aiFindings },
     { id: "fixes", label: "Fixes", count: report.topFixes.length },
   ];
 
   const botEntries = Object.entries(report.aiSearch.botAccess || {});
   const botsAllowed = botEntries.filter(([, v]) => /allow|yes|ok/i.test(String(v))).length;
+  const mobileOps = report.performance.mobile.issues || [];
 
   return (
     <>
       <div className="audit-screen mx-auto flex w-full max-w-5xl flex-col gap-3 bg-[#f4f6f9] px-3 py-4 text-slate-900 print:hidden sm:px-5 sm:py-5">
-        {/* Compact header */}
+        {/* Header */}
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <img
                   src={customerLogo || fallbackFavicon}
                   alt=""
-                  className="size-7 rounded-md border border-slate-200 object-contain"
+                  className="size-8 rounded-md border border-slate-200 object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = fallbackFavicon;
                   }}
                 />
-                <h1 className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
+                <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
                   {customerName}
                 </h1>
                 {onUpdateBranding ? (
@@ -401,43 +595,87 @@ export function ReportDashboard({
                 {report.url}
                 <ExternalLink className="size-3 shrink-0" />
               </a>
-              <p className="mt-2 text-sm font-medium text-slate-800">
+              <p className="mt-2 text-base font-semibold text-slate-900">
                 {report.summary.headline || stageLabel(report.status, report.stage)}
               </p>
+              {report.summary.text ? (
+                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600">
+                  {report.summary.text}
+                </p>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                 <span className="inline-flex items-center gap-1">
                   <Clock className="size-3" />
-                  {report.scannedAt
-                    ? new Date(report.scannedAt).toLocaleString()
-                    : report.status}
+                  {report.scannedAt ? new Date(report.scannedAt).toLocaleString() : report.status}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Layers className="size-3" />
-                  {report.pagesCrawled} pages
+                  {report.pagesCrawled} pages analyzed
                 </span>
               </div>
             </div>
-            <div className="flex shrink-0 flex-col items-center gap-1 self-center sm:self-start">
-              <CompactRing score={report.scores.overall} />
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Site score
-              </span>
-            </div>
+            <HealthRing score={report.scores.overall} />
           </div>
 
-          {!report.completeness.complete ? (
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              Incomplete: {report.completeness.unavailableSections.join(", ") || "some sections"} not
-              measured.
-            </div>
-          ) : null}
+          {/* Completeness checklist */}
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-4">
+            {(
+              [
+                ["Mobile", sectionMeasured.mobile, report.scores.mobile],
+                ["Desktop", sectionMeasured.desktop, report.scores.desktop],
+                ["SEO", sectionMeasured.seo, report.scores.seo],
+                ["AI Search", sectionMeasured.ai, report.scores.aiSearch],
+              ] as const
+            ).map(([label, ok, score]) => (
+              <div
+                key={label}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs",
+                  ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/70"
+                )}
+              >
+                {ok ? (
+                  <Check className="size-3.5 shrink-0 text-emerald-600" />
+                ) : (
+                  <Minus className="size-3.5 shrink-0 text-amber-600" />
+                )}
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-800">{label}</div>
+                  <div className="text-[10px] text-slate-500">
+                    {ok ? `Measured · ${score}` : "Not measured"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {finished && publicView ? (
             <div className="mt-3 border-t border-slate-100 pt-3">
-              <Button type="button" size="sm" className="gap-1.5" onClick={() => window.print()}>
-                <Download className="size-3.5" />
-                Download PDF
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5"
+                disabled={downloadingPdf}
+                onClick={() => {
+                  void (async () => {
+                    setDownloadingPdf(true);
+                    try {
+                      await downloadWebReportPdf(report);
+                      toast.success("PDF downloaded");
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Could not generate PDF");
+                    } finally {
+                      setDownloadingPdf(false);
+                    }
+                  })();
+                }}
+              >
+                {downloadingPdf ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                {downloadingPdf ? "Preparing…" : "Download PDF"}
               </Button>
             </div>
           ) : null}
@@ -448,8 +686,16 @@ export function ReportDashboard({
           <ScoreTile label="Overall" score={report.scores.overall} />
           <ScoreTile label="Mobile" score={report.scores.mobile} />
           <ScoreTile label="Desktop" score={report.scores.desktop} />
-          <ScoreTile label="SEO" score={report.scores.seo} />
-          <ScoreTile label="AI Search" score={report.scores.aiSearch} />
+          <ScoreTile
+            label="SEO"
+            score={report.scores.seo}
+            hint={report.seo.checks.length ? `${seoFindings} issues` : undefined}
+          />
+          <ScoreTile
+            label="AI Search"
+            score={report.scores.aiSearch}
+            hint={report.aiSearch.checks.length ? `${aiFindings} issues` : undefined}
+          />
         </div>
 
         {/* Tabs */}
@@ -481,72 +727,168 @@ export function ReportDashboard({
           ))}
         </div>
 
-        {/* Tab panels */}
         {activeTab === "overview" ? (
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                {issueCounts.errors} errors
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                {issueCounts.warnings} warnings
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">
-                {issueCounts.notices} notices
-              </span>
-            </div>
+            <DistributionBar {...dist} />
+
+            {categories.length > 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Category health
+                </h2>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {categories.map((cat) => (
+                    <div
+                      key={cat.category}
+                      className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold capitalize text-slate-900">
+                          {cat.category}
+                        </span>
+                        <span className="text-xs font-bold tabular-nums text-slate-600">
+                          {cat.passRate}% pass
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className={cn(
+                            "h-full rounded-full",
+                            cat.passRate >= 90
+                              ? "bg-emerald-500"
+                              : cat.passRate >= 60
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                          )}
+                          style={{ width: `${cat.passRate}%` }}
+                        />
+                      </div>
+                      <div className="mt-1.5 flex gap-2 text-[10px] font-medium text-slate-500">
+                        <span className="text-red-600">{cat.errors} err</span>
+                        <span className="text-amber-700">{cat.warnings} warn</span>
+                        <span className="text-sky-700">{cat.notices} notice</span>
+                        <span className="text-emerald-700">{cat.passed} ok</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid gap-3 lg:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Top issues
+                  Core Web Vitals
                 </h2>
-                {allFindings.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-slate-500">No critical findings.</p>
-                ) : (
-                  <div className="-mx-1">
-                    {allFindings.slice(0, 5).map((c) => (
-                      <FindingRow key={c.id} check={c} />
-                    ))}
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+                      <Smartphone className="size-3.5" /> Mobile
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <VitalCell
+                        name="LCP"
+                        value={report.performance.mobile.lcp}
+                        unit="ms"
+                        rating={report.performance.mobile.ratings.lcp}
+                      />
+                      <VitalCell
+                        name="CLS"
+                        value={report.performance.mobile.cls}
+                        unit="cls"
+                        rating={report.performance.mobile.ratings.cls}
+                      />
+                      <VitalCell
+                        name="INP"
+                        value={report.performance.mobile.inp}
+                        unit="ms"
+                        rating={report.performance.mobile.ratings.inp}
+                      />
+                    </div>
                   </div>
-                )}
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+                      <Monitor className="size-3.5" /> Desktop
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <VitalCell
+                        name="LCP"
+                        value={report.performance.desktop.lcp}
+                        unit="ms"
+                        rating={report.performance.desktop.ratings.lcp}
+                      />
+                      <VitalCell
+                        name="CLS"
+                        value={report.performance.desktop.cls}
+                        unit="cls"
+                        rating={report.performance.desktop.ratings.cls}
+                      />
+                      <VitalCell
+                        name="INP"
+                        value={report.performance.desktop.inp}
+                        unit="ms"
+                        rating={report.performance.desktop.ratings.inp}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {mobileOps.length > 0 ? (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      Mobile opportunities
+                    </p>
+                    <ul className="space-y-1">
+                      {mobileOps.slice(0, 4).map((issue) => (
+                        <li
+                          key={issue.id}
+                          className="flex justify-between gap-2 text-xs text-slate-600"
+                        >
+                          <span className="truncate">{issue.title}</span>
+                          {issue.displayValue ? (
+                            <span className="shrink-0 font-mono text-slate-500">{issue.displayValue}</span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-3">
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
                   <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Mobile CWV
+                    Top issues
                   </h2>
-                  <div className="grid grid-cols-3 gap-2">
-                    <VitalCell
-                      name="LCP"
-                      value={report.performance.mobile.lcp}
-                      unit="ms"
-                      rating={report.performance.mobile.ratings.lcp}
-                    />
-                    <VitalCell
-                      name="CLS"
-                      value={report.performance.mobile.cls}
-                      unit="cls"
-                      rating={report.performance.mobile.ratings.cls}
-                    />
-                    <VitalCell
-                      name="INP"
-                      value={report.performance.mobile.inp}
-                      unit="ms"
-                      rating={report.performance.mobile.ratings.inp}
-                    />
-                  </div>
+                  {allFindings.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-slate-500">No issues found.</p>
+                  ) : (
+                    <div className="-mx-1">
+                      {allFindings.slice(0, 6).map((c) => (
+                        <FindingRow key={c.id} check={c} />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Priority fixes
-                  </h2>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Priority fixes
+                    </h2>
+                    {report.topFixes.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("fixes")}
+                        className="text-[11px] font-semibold text-blue-700 hover:underline"
+                      >
+                        See all
+                      </button>
+                    ) : null}
+                  </div>
                   {report.topFixes.length === 0 ? (
                     <p className="py-3 text-center text-sm text-slate-500">No ranked fixes.</p>
                   ) : (
-                    <ol className="space-y-2">
+                    <ol className="space-y-2.5">
                       {report.topFixes.slice(0, 5).map((fix) => (
                         <li key={fix.rank} className="flex gap-2 text-sm">
                           <span className="flex size-5 shrink-0 items-center justify-center rounded bg-slate-900 text-[10px] font-bold text-white">
@@ -557,6 +899,9 @@ export function ReportDashboard({
                             <div className="text-[11px] text-slate-500">
                               {fix.impact} impact · {fix.effort} effort
                             </div>
+                            {fix.why ? (
+                              <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-600">{fix.why}</p>
+                            ) : null}
                           </div>
                         </li>
                       ))}
@@ -584,8 +929,10 @@ export function ReportDashboard({
         ) : null}
 
         {activeTab === "seo" ? (
-          <FindingsList
+          <FindingsPanel
             checks={report.seo.checks}
+            filter={seoFilter}
+            onFilter={setSeoFilter}
             showAll={showAllSeo}
             onToggleShowAll={() => setShowAllSeo((v) => !v)}
           />
@@ -594,7 +941,7 @@ export function ReportDashboard({
         {activeTab === "ai" ? (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-1">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                   <Bot className="size-3.5" />
                   Bot access
@@ -603,22 +950,6 @@ export function ReportDashboard({
                   {botsAllowed}/{botEntries.length || 0}{" "}
                   <span className="text-sm font-medium text-slate-500">allowed</span>
                 </p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {botEntries.slice(0, 8).map(([bot, status]) => (
-                    <span
-                      key={bot}
-                      className={cn(
-                        "rounded border px-1.5 py-0.5 text-[10px] font-medium",
-                        /allow|yes|ok/i.test(String(status))
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : "border-red-200 bg-red-50 text-red-700"
-                      )}
-                      title={String(status)}
-                    >
-                      {bot}
-                    </span>
-                  ))}
-                </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="text-xs font-semibold text-slate-500">llms.txt</div>
@@ -639,8 +970,46 @@ export function ReportDashboard({
                 </p>
               </div>
             </div>
-            <FindingsList
+
+            {botEntries.length > 0 ? (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+                      <th className="px-3 py-2 font-semibold">Bot</th>
+                      <th className="px-3 py-2 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {botEntries.map(([bot, status]) => {
+                      const ok = /allow|yes|ok/i.test(String(status));
+                      return (
+                        <tr key={bot} className="border-b border-slate-100 odd:bg-slate-50/40">
+                          <td className="px-3 py-2 font-medium text-slate-900">{bot}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={cn(
+                                "rounded border px-1.5 py-0.5 text-[10px] font-semibold",
+                                ok
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-red-200 bg-red-50 text-red-700"
+                              )}
+                            >
+                              {String(status)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            <FindingsPanel
               checks={report.aiSearch.checks}
+              filter={aiFilter}
+              onFilter={setAiFilter}
               showAll={showAllAi}
               onToggleShowAll={() => setShowAllAi((v) => !v)}
             />
@@ -654,7 +1023,7 @@ export function ReportDashboard({
             ) : (
               <ol className="divide-y divide-slate-100">
                 {report.topFixes.map((fix) => (
-                  <li key={fix.rank} className="px-4 py-3">
+                  <li key={fix.rank} className="px-4 py-3.5">
                     <div className="flex items-start gap-3">
                       <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white">
                         {fix.rank}
@@ -670,6 +1039,11 @@ export function ReportDashboard({
                             <span className="font-semibold">How: </span>
                             {fix.instructions}
                           </p>
+                        ) : null}
+                        {fix.snippet ? (
+                          <pre className="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-[11px] leading-relaxed text-slate-100">
+                            {fix.snippet}
+                          </pre>
                         ) : null}
                       </div>
                     </div>

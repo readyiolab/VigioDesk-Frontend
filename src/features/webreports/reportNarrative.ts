@@ -1,8 +1,76 @@
-import type { DevicePerformance, VitalRating, WebReport } from "./types";
+import type { AuditCheck, DevicePerformance, VitalRating, WebReport } from "./types";
 
 export interface ProblemGroup {
   title: string;
   lines: string[];
+}
+
+export function letterGrade(score: number | null): { grade: string; label: string } {
+  if (score === null) return { grade: "—", label: "Not scored" };
+  if (score >= 90) return { grade: "A", label: "Excellent" };
+  if (score >= 80) return { grade: "B", label: "Good" };
+  if (score >= 65) return { grade: "C", label: "Fair" };
+  if (score >= 50) return { grade: "D", label: "Poor" };
+  return { grade: "F", label: "Critical" };
+}
+
+export function isFinding(check: AuditCheck) {
+  return check.status === "present" && check.severity !== "pass";
+}
+
+export function issueDistribution(checks: AuditCheck[]) {
+  let errors = 0;
+  let warnings = 0;
+  let notices = 0;
+  let passed = 0;
+  for (const c of checks) {
+    if (c.severity === "pass" || c.status === "absent") {
+      passed += 1;
+      continue;
+    }
+    if (c.status !== "present") continue;
+    if (c.severity === "critical") errors += 1;
+    else if (c.severity === "warning") warnings += 1;
+    else if (c.severity === "info") notices += 1;
+  }
+  return { errors, warnings, notices, passed, total: checks.length };
+}
+
+export type CategoryHealth = {
+  category: string;
+  total: number;
+  errors: number;
+  warnings: number;
+  notices: number;
+  passed: number;
+  passRate: number;
+};
+
+export function categoryHealth(checks: AuditCheck[]): CategoryHealth[] {
+  const map = new Map<string, CategoryHealth>();
+  for (const c of checks) {
+    const key = c.category || "General";
+    let row = map.get(key);
+    if (!row) {
+      row = { category: key, total: 0, errors: 0, warnings: 0, notices: 0, passed: 0, passRate: 0 };
+      map.set(key, row);
+    }
+    row.total += 1;
+    if (c.severity === "pass" || c.status === "absent") row.passed += 1;
+    else if (c.status === "present") {
+      if (c.severity === "critical") row.errors += 1;
+      else if (c.severity === "warning") row.warnings += 1;
+      else if (c.severity === "info") row.notices += 1;
+    } else {
+      row.passed += 1;
+    }
+  }
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      passRate: r.total ? Math.round((r.passed / r.total) * 100) : 0,
+    }))
+    .sort((a, b) => a.errors + a.warnings - (b.errors + b.warnings) || a.category.localeCompare(b.category));
 }
 
 export function keyProblems(report: WebReport): ProblemGroup[] {

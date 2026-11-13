@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,9 @@ import { ApiError } from "@/services/api";
 import { ReportDashboard } from "@/features/webreports/ReportDashboard";
 import { ScanProgress } from "@/features/webreports/ScanProgress";
 import { scanStepTitle } from "@/features/webreports/stageLabel";
+import { downloadWebReportPdf } from "@/features/webreports/buildWebReportPdf";
 import { useWebReport, useWebReportActions } from "@/features/webreports/queries";
-import { ArrowLeft, Download, Share2, ShieldX, RefreshCw, Trash2, Globe, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, Share2, ShieldX, RefreshCw, Trash2, Globe, ExternalLink, Loader2 } from "lucide-react";
 
 export default function WebReportPage() {
   const { id = "" } = useParams();
@@ -14,6 +16,7 @@ export default function WebReportPage() {
   const query = useWebReport(id);
   const actions = useWebReportActions(id);
   const report = query.data?.report;
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   async function share() {
     try {
@@ -51,6 +54,19 @@ export default function WebReportPage() {
       navigate("/webreports/scan");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not delete the report.");
+    }
+  }
+
+  async function downloadPdf() {
+    if (!report || downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      await downloadWebReportPdf(report);
+      toast.success("PDF downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not generate PDF");
+    } finally {
+      setDownloadingPdf(false);
     }
   }
 
@@ -114,15 +130,31 @@ export default function WebReportPage() {
 
         {running ? (
           <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-blue-600" />
-            <span className="hidden sm:inline">{scanStepTitle(report.stage)}</span>
-            <span className="sm:hidden">Scanning…</span>
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-blue-600" />
+            </span>
+            <span>{report.progress}%</span>
+            <span className="hidden text-blue-600/80 sm:inline">· {scanStepTitle(report.stage)}</span>
           </div>
         ) : finished ? (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-            <Button type="button" onClick={() => window.print()} size="sm" className="h-8 gap-1.5">
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">PDF</span>
+            <Button
+              type="button"
+              onClick={() => void downloadPdf()}
+              size="sm"
+              className="h-8 gap-1.5"
+              disabled={downloadingPdf}
+              aria-label="Download PDF"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {downloadingPdf ? "Preparing…" : "Download PDF"}
+              </span>
             </Button>
             <Button
               type="button"

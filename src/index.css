@@ -263,16 +263,30 @@
 }
 
 @media print {
-  /* Ensure parent containers allow multi-page document flow without viewport-height clipping */
-  html, body, #root, #root > div, main {
+  /* Unlock immersive studio shells so Ctrl+P is not a blank clipped page */
+  html,
+  body,
+  #root,
+  #root > div,
+  main,
+  [class*="h-dvh"],
+  [class*="overflow-hidden"],
+  [class*="overflow-y-auto"],
+  [class*="min-h-0"] {
     height: auto !important;
+    max-height: none !important;
     min-height: 0 !important;
     overflow: visible !important;
+  }
+
+  html,
+  body,
+  #root {
     background: #ffffff !important;
     color: #0f172a !important;
   }
-  
-  /* Hide all interactive screen chrome and unprinted views */
+
+  /* Hide interactive screen chrome and on-screen dashboard */
   .audit-screen,
   nav,
   header.print\:hidden,
@@ -281,12 +295,14 @@
     display: none !important;
   }
 
-  /* Unhide the print report and force crisp vectors & exact backgrounds */
+  /* Unhide the print report layout */
   .audit-print,
   .audit-print[hidden] {
     display: block !important;
     visibility: visible !important;
+    position: static !important;
     width: 100% !important;
+    height: auto !important;
     background: #ffffff !important;
   }
 
