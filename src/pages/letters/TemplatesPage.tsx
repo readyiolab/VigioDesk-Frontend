@@ -1,16 +1,27 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { lettersApi } from "@/services/lettersApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StudioSkeleton } from "@/components/letters/StudioPageHeader";
+import { LetterAiDialog } from "@/components/letters/LetterAiDialog";
+import { letterTypeLabel } from "@/components/letters/letterFields";
 
 const LetterEditor = lazy(() =>
   import("@/components/letters/LetterEditor").then((m) => ({ default: m.LetterEditor }))
 );
 import { toast } from "sonner";
-import { Loader2, ChevronDown, Eye, RefreshCw } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Eye,
+  FilePlus2,
+  Loader2,
+  RefreshCw,
+  Search,
+  Send,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   tipTapDocToPlainText,
@@ -37,12 +48,20 @@ const TYPES = [
   "SEPARATION",
 ] as const;
 
+const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
+
 const FONT_STACK: Record<string, string> = {
   Inter: "Inter, system-ui, sans-serif",
   Georgia: "Georgia, 'Times New Roman', serif",
   "Times New Roman": "'Times New Roman', Times, serif",
   "Plus Jakarta Sans": "'Plus Jakarta Sans', Inter, sans-serif",
 };
+
+type SaveStatus = "saved" | "saving" | "unsaved" | "idle";
+
+function snapshot(name: string, type: string, content: unknown) {
+  return JSON.stringify({ name, type, content });
+}
 
 export default function TemplatesPage() {
   const navigate = useNavigate();
@@ -52,21 +71,15 @@ export default function TemplatesPage() {
   const brandsQuery = useBrands(user?.id);
   const templates = templatesQuery.data?.templates ?? [];
   const brands = brandsQuery.data?.brands ?? [];
+
   const [previewBrandId, setPreviewBrandId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [name, setName] = useState("Salary Increment Letter");
+  const [name, setName] = useState("Untitled letter");
   const [type, setType] = useState<(typeof TYPES)[number]>("INCREMENT");
-  const [content, setContent] = useState<any>({
-    type: "doc",
-    content: [{ type: "paragraph" }],
-  });
+  const [content, setContent] = useState<any>(EMPTY_DOC);
   const [editorKey, setEditorKey] = useState(0);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState(
-    "Write an increment letter with 12% hike, formal tone"
-  );
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [polishing, setPolishing] = useState(false);
   const [improveOpen, setImproveOpen] = useState(false);
   const [polishPreview, setPolishPreview] = useState<string | null>(null);
@@ -74,6 +87,13 @@ export default function TemplatesPage() {
   const [showSampleFill, setShowSampleFill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [sidebarQuery, setSidebarQuery] = useState("");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [blankMode, setBlankMode] = useState(true);
+
+  const savedSnapRef = useRef<string>(snapshot("Untitled letter", "INCREMENT", EMPTY_DOC));
+  const deepLinkHandled = useRef(false);
+  const aiParamHandled = useRef(false);
 
   const previewBrand = useMemo(
     () => brands.find((b: { id: string }) => b.id === previewBrandId) || null,
@@ -85,22 +105,52 @@ export default function TemplatesPage() {
     return fillPreviewTokens(plain, SAMPLE_EMPLOYEE);
   }, [content]);
 
+  const hasExistingContent = useMemo(
+    () => tipTapDocToPlainText(content).trim().length > 0,
+    [content]
+  );
+
+  const markDirty = useCallback(() => {
+    const next = snapshot(name, type, content);
+    if (next !== savedSnapRef.current) setSaveStatus("unsaved");
+    else setSaveStatus((s) => (s === "saving" ? s : "saved"));
+  }, [name, type, content]);
+
+  useEffect(() => {
+    markDirty();
+  }, [markDirty]);
+
   const openTemplate = (t: any) => {
+    setBlankMode(false);
     setSelectedId(t.id);
     setName(t.name);
     setType(t.type);
-    setContent(t.contentJson);
+    setContent(t.contentJson || EMPTY_DOC);
     setEditorKey((k) => k + 1);
+    setShowSampleFill(false);
+    setPolishPreview(null);
+    setPolishContentJson(null);
+    savedSnapRef.current = snapshot(t.name, t.type, t.contentJson || EMPTY_DOC);
+    setSaveStatus("saved");
+  };
+
+  const startBlank = () => {
+    setBlankMode(true);
+    setSelectedId(null);
+    setName("Untitled letter");
+    setType("INCREMENT");
+    setContent(EMPTY_DOC);
+    setEditorKey((k) => k + 1);
+    setShowSampleFill(false);
+    setPolishPreview(null);
+    setPolishContentJson(null);
+    savedSnapRef.current = snapshot("Untitled letter", "INCREMENT", EMPTY_DOC);
+    setSaveStatus("idle");
   };
 
   useEffect(() => {
     if (!previewBrandId && brands[0]) setPreviewBrandId(brands[0].id);
   }, [brands, previewBrandId]);
-
-  useEffect(() => {
-    if (!selectedId && templates[0]) openTemplate(templates[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templates]);
 
   useEffect(() => {
     const err = templatesQuery.error || brandsQuery.error;
@@ -115,21 +165,49 @@ export default function TemplatesPage() {
   };
 
   useEffect(() => {
-    // Query hooks load data; this only handles deep-link templateId once templates arrive
     const tid = params.get("templateId");
-    if (tid && templates.length) {
-      const found = templates.find((t: { id: string }) => t.id === tid);
-      if (found) openTemplate(found);
+    if (!tid || !templates.length || deepLinkHandled.current) return;
+    const found = templates.find((t: { id: string }) => t.id === tid);
+    if (found) {
+      deepLinkHandled.current = true;
+      openTemplate(found);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params, templates]);
 
   useEffect(() => {
-    if (params.get("ai") === "1") setAiOpen(true);
+    if (params.get("ai") === "1" && !aiParamHandled.current) {
+      aiParamHandled.current = true;
+      setAiOpen(true);
+    }
   }, [params]);
+
+  const filteredTemplates = useMemo(() => {
+    const q = sidebarQuery.trim().toLowerCase();
+    const list = [...templates].sort((a: any, b: any) => {
+      const ta = String(a.type || "");
+      const tb = String(b.type || "");
+      if (ta !== tb) return ta.localeCompare(tb);
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+    if (!q) return list;
+    return list.filter((t: any) => {
+      const label = letterTypeLabel(t.type || "");
+      return (
+        String(t.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(t.type || "")
+          .toLowerCase()
+          .includes(q) ||
+        label.toLowerCase().includes(q)
+      );
+    });
+  }, [templates, sidebarQuery]);
 
   const save = async () => {
     setSaving(true);
+    setSaveStatus("saving");
     try {
       if (selectedId) {
         const { template } = await lettersApi.updateTemplate(orgId(), selectedId, {
@@ -137,6 +215,8 @@ export default function TemplatesPage() {
           contentJson: content,
           bumpVersion: true,
         });
+        savedSnapRef.current = snapshot(name, type, content);
+        setSaveStatus("saved");
         toast.success(`Saved v${template.version}`);
       } else {
         const { template } = await lettersApi.createTemplate(orgId(), {
@@ -145,45 +225,22 @@ export default function TemplatesPage() {
           contentJson: content,
         });
         setSelectedId(template.id);
-        toast.success("Template created");
+        setBlankMode(false);
+        savedSnapRef.current = snapshot(name, type, content);
+        setSaveStatus("saved");
+        toast.success("Letter saved");
       }
       await reload();
     } catch (e: any) {
+      setSaveStatus("unsaved");
       toast.error(e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const askAiDraft = async () => {
-    if (!aiPrompt.trim() || generating) return;
-    setGenerating(true);
-    try {
-      const result = await lettersApi.aiDraft(orgId(), {
-        instruction: aiPrompt.trim(),
-        letterType: type,
-      });
-      const draft = result.contentJson;
-      setContent(draft);
-      setEditorKey((k) => k + 1);
-      toast.success("Draft loaded in the editor — review and Save");
-      await lettersApi
-        .aiApplyDraft(orgId(), {
-          templateId: selectedId,
-          contentJson: draft,
-          name,
-          type,
-        })
-        .catch(() => undefined);
-    } catch (e: any) {
-      toast.error(e.message || "AI draft failed");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   const polish = async (mode: "formal" | "concise" | "add-disclaimer") => {
-    if (polishing || generating) return;
+    if (polishing) return;
     setPolishing(true);
     setImproveOpen(false);
     setPolishPreview(null);
@@ -199,12 +256,9 @@ export default function TemplatesPage() {
         res.suggestionPreview ||
         res.suggestion ||
         (res.contentJson ? tipTapDocToPlainText(res.contentJson) : "");
-      // Guard: never show raw JSON in the panel
       const safePreview =
         preview.trim().startsWith("{") && preview.includes('"type"')
-          ? tipTapDocToPlainText(
-              res.contentJson || plainTextToTipTapDoc(text)
-            )
+          ? tipTapDocToPlainText(res.contentJson || plainTextToTipTapDoc(text))
           : preview;
       setPolishPreview(safePreview);
       setPolishContentJson(
@@ -230,6 +284,19 @@ export default function TemplatesPage() {
     setPolishPreview(null);
     setPolishContentJson(null);
     toast.success("Applied — remember to Save");
+  };
+
+  const insertAiDraft = (draft: any) => {
+    setContent(draft);
+    setEditorKey((k) => k + 1);
+    void lettersApi
+      .aiApplyDraft(orgId(), {
+        templateId: selectedId,
+        contentJson: draft,
+        name,
+        type,
+      })
+      .catch(() => undefined);
   };
 
   const refreshStarters = async (overwrite: boolean) => {
@@ -263,64 +330,81 @@ export default function TemplatesPage() {
     previewBrand?.defaultFont ||
     FONT_STACK.Georgia;
 
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "unsaved"
+        ? "Unsaved changes"
+        : saveStatus === "saved"
+          ? "Saved"
+          : blankMode
+            ? "Blank letter"
+            : "Ready";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Library */}
-      <aside className="flex w-full shrink-0 flex-col border-b border-border bg-studio-paper lg:w-60 lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-              Your letters
-            </p>
-            <h1 className="font-heading text-sm font-bold text-foreground">Letter templates</h1>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Start from a starter on the left, or click New.
-            </p>
-          </div>
+      {/* Template library */}
+      <aside className="flex w-full shrink-0 flex-col border-b border-border bg-studio-paper lg:w-64 lg:border-b-0 lg:border-r">
+        <div className="space-y-2 border-b border-border px-3 py-3">
           <Button
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg border-slate-200 text-xs"
-            disabled={generating || polishing}
-            onClick={() => {
-              setSelectedId(null);
-              setName("New letter");
-              setContent({ type: "doc", content: [{ type: "paragraph" }] });
-              setEditorKey((k) => k + 1);
-            }}
+            type="button"
+            className="h-9 w-full justify-start gap-2 rounded-lg text-sm font-semibold"
+            disabled={polishing}
+            onClick={startBlank}
           >
-            New
+            <FilePlus2 className="size-4" />
+            New letter
           </Button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={sidebarQuery}
+              onChange={(e) => setSidebarQuery(e.target.value)}
+              placeholder="Search templates…"
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
         </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          {templates.map((t) => (
+          {blankMode && !selectedId ? (
+            <div className="mb-1 rounded-lg border border-primary/25 bg-card px-2.5 py-2 text-left shadow-sm">
+              <p className="text-sm font-semibold text-foreground">Blank letter</p>
+              <p className="text-[11px] text-muted-foreground">Start typing or paste content</p>
+            </div>
+          ) : null}
+
+          {filteredTemplates.map((t: any) => (
             <button
               key={t.id}
               type="button"
-              disabled={generating || polishing}
+              disabled={polishing}
               onClick={() => openTemplate(t)}
               className={cn(
-                "mb-1 block w-full rounded-xl border px-2.5 py-2.5 text-left text-sm transition",
+                "mb-0.5 block w-full rounded-lg px-2.5 py-2 text-left transition",
                 selectedId === t.id
-                  ? "border-primary/25 bg-card shadow-sm font-semibold text-foreground"
-                  : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
+                  ? "bg-card font-semibold text-foreground shadow-sm ring-1 ring-primary/20"
+                  : "text-muted-foreground hover:bg-card/80 hover:text-foreground"
               )}
             >
-              <div className="truncate">{t.name}</div>
+              <div className="truncate text-sm">{t.name}</div>
+              <div className="truncate text-[11px] opacity-70">{letterTypeLabel(t.type)}</div>
             </button>
           ))}
-          {templates.length === 0 && (
-            <p className="px-2 py-6 text-center text-xs text-slate-500">
-              No letters yet. Click New or Refresh starters.
+
+          {filteredTemplates.length === 0 && (
+            <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+              {sidebarQuery.trim() ? "No templates match" : "No letters yet — click New letter"}
             </p>
           )}
         </div>
-        <div className="border-t border-slate-200 p-2">
+
+        <div className="border-t border-border p-2">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 w-full justify-start gap-1.5 rounded-lg text-xs text-slate-600"
+            className="h-8 w-full justify-start gap-1.5 rounded-lg text-xs text-muted-foreground"
             disabled={refreshing}
             onClick={() => refreshStarters(true)}
           >
@@ -334,192 +418,168 @@ export default function TemplatesPage() {
         </div>
       </aside>
 
-      {/* Editor pane */}
+      {/* Document workspace */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-studio-canvas">
-        {/* Sticky toolbar */}
-        <div className="shrink-0 space-y-2 border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[160px] flex-1">
-              <Label className="text-xs">Letter name</Label>
+        {/* Document header */}
+        <div className="shrink-0 border-b border-border/80 bg-card/95 px-3 py-2.5 backdrop-blur sm:px-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={generating || polishing}
-                className="h-9"
+                disabled={polishing}
+                className="h-9 border-transparent bg-transparent px-1 text-base font-semibold shadow-none focus-visible:border-border focus-visible:bg-background"
+                placeholder="Letter title"
+                aria-label="Letter title"
               />
+              <div className="mt-0.5 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+                {saveStatus === "saved" ? (
+                  <Check className="size-3 text-emerald-600" />
+                ) : saveStatus === "saving" ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : null}
+                <span>{statusLabel}</span>
+                {!selectedId ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span>{letterTypeLabel(type)}</span>
+                  </>
+                ) : null}
+              </div>
             </div>
-            {selectedId && (
-              <Button
-                className="h-9 rounded-xl"
-                disabled={generating || polishing}
-                onClick={() => navigate(`/letters/batches/new?templateId=${selectedId}`)}
-              >
-                Use in send
-              </Button>
-            )}
+
             <Button
+              type="button"
+              variant={showSampleFill ? "secondary" : "outline"}
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => setShowSampleFill((v) => !v)}
+            >
+              <Eye className="size-3.5" />
+              {showSampleFill ? "Edit" : "Preview"}
+            </Button>
+
+            <Button
+              type="button"
               variant="outline"
-              onClick={save}
-              disabled={saving || generating || polishing}
-              className="h-9 rounded-xl"
+              size="sm"
+              className="h-9"
+              onClick={() => void save()}
+              disabled={saving || polishing}
             >
               {saving ? "Saving…" : "Save"}
             </Button>
+
+            {selectedId ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 gap-1.5"
+                disabled={polishing}
+                onClick={() => {
+                  if (saveStatus === "unsaved") {
+                    toast.message("You have unsaved changes — save first for the latest letter");
+                  }
+                  navigate(`/letters/batches/new?templateId=${selectedId}`);
+                }}
+              >
+                <Send className="size-3.5" />
+                Use in send
+              </Button>
+            ) : null}
+
             <div className="relative">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="h-9 rounded-xl border-slate-200"
-                onClick={() => setMoreOpen((v) => !v)}
+                className="h-9 px-2"
+                onClick={() => {
+                  setMoreOpen((v) => !v);
+                  setImproveOpen(false);
+                }}
               >
-                More options <ChevronDown className="ml-1 size-3.5" />
+                More
+                <ChevronDown className="ml-1 size-3.5" />
               </Button>
               {moreOpen && (
-                <div className="absolute right-0 z-30 mt-1 w-64 space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                <div className="absolute right-0 z-30 mt-1 w-64 space-y-3 rounded-xl border border-border bg-popover p-3 shadow-lg">
                   <div>
                     <Label className="text-xs">Letter type</Label>
                     <select
-                      className="mt-1 flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      className="mt-1 flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
                       value={type}
-                      onChange={(e) => setType(e.target.value as any)}
-                      disabled={!!selectedId || generating}
+                      onChange={(e) => setType(e.target.value as (typeof TYPES)[number])}
+                      disabled={!!selectedId || polishing}
                     >
                       {TYPES.map((t) => (
                         <option key={t} value={t}>
-                          {t.replace(/_/g, " ")}
+                          {letterTypeLabel(t)}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <Label className="text-xs">Preview company look</Label>
+                    <Label className="text-xs">Preview brand</Label>
                     <select
-                      className="mt-1 flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                      className="mt-1 flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
                       value={previewBrandId}
                       onChange={(e) => setPreviewBrandId(e.target.value)}
                     >
                       <option value="">None</option>
-                      {brands.map((b) => (
+                      {brands.map((b: { id: string; name: string }) => (
                         <option key={b.id} value={b.id}>
                           {b.name}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <Button
-                    type="button"
-                    variant={showSampleFill ? "secondary" : "outline"}
-                    size="sm"
-                    className="h-9 w-full rounded-xl border-slate-200"
-                    onClick={() => {
-                      setShowSampleFill((v) => !v);
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <Eye className="mr-1.5 size-3.5" />
-                    {showSampleFill ? "Back to editing" : "Preview with sample name"}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 rounded-xl border-slate-200"
-                disabled={generating || polishing}
-                onClick={() => setImproveOpen((v) => !v)}
-              >
-                {polishing ? (
-                  <>
-                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                    Improving…
-                  </>
-                ) : (
-                  <>
-                    Help me write <ChevronDown className="ml-1 size-3.5" />
-                  </>
-                )}
-              </Button>
-              {improveOpen && !polishing && (
-                <div className="absolute right-0 z-30 mt-1 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-                  {(
-                    [
-                      ["formal", "Make more formal"],
-                      ["concise", "Make shorter"],
-                      ["add-disclaimer", "Add disclaimer"],
-                    ] as const
-                  ).map(([mode, label]) => (
-                    <button
-                      key={mode}
+                  <div className="relative">
+                    <Button
                       type="button"
-                      className="block w-full rounded-lg px-2.5 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
-                      onClick={() => polish(mode)}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-full justify-between"
+                      disabled={polishing}
+                      onClick={() => setImproveOpen((v) => !v)}
                     >
-                      {label}
-                    </button>
-                  ))}
+                      {polishing ? "Improving…" : "Help me write"}
+                      <ChevronDown className="size-3.5" />
+                    </Button>
+                    {improveOpen && !polishing && (
+                      <div className="absolute left-0 right-0 z-40 mt-1 rounded-lg border border-border bg-popover p-1 shadow-md">
+                        {(
+                          [
+                            ["formal", "Make more formal"],
+                            ["concise", "Make shorter"],
+                            ["add-disclaimer", "Add disclaimer"],
+                          ] as const
+                        ).map(([mode, label]) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-muted"
+                            onClick={() => polish(mode)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 rounded-xl text-primary"
-              onClick={() => setAiOpen((v) => !v)}
-            >
-              Write with AI
-            </Button>
           </div>
 
-          {aiOpen && (
-            <div className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-2">
-              <Input
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Describe the letter you need…"
-                className="h-9 bg-white"
-                disabled={generating}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void askAiDraft();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                onClick={askAiDraft}
-                disabled={generating || !aiPrompt.trim()}
-                className="h-9 shrink-0 rounded-xl bg-primary hover:bg-primary/90"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="mr-1.5 size-4 animate-spin" />
-                    Generating…
-                  </>
-                ) : (
-                  "Generate"
-                )}
-              </Button>
-            </div>
-          )}
-
           {polishPreview && (
-            <div className="rounded-xl border border-primary/20 bg-white p-3 text-sm shadow-sm">
-              <div className="mb-1 font-semibold text-slate-900">AI suggestion</div>
-              <p className="mb-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-600">
+            <div className="mt-2 rounded-xl border border-primary/20 bg-background p-3 text-sm shadow-sm">
+              <div className="mb-1 font-semibold text-foreground">AI suggestion</div>
+              <p className="mb-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
                 {polishPreview}
               </p>
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-8 rounded-lg bg-primary hover:bg-primary/90"
-                  onClick={applyPolish}
-                >
+                <Button size="sm" className="h-8" onClick={applyPolish}>
                   Apply
                 </Button>
                 <Button
@@ -539,35 +599,30 @@ export default function TemplatesPage() {
         </div>
 
         {/* A4 canvas */}
-        <div className="relative min-h-0 flex-1 overflow-y-auto px-3 py-6 sm:px-6">
-          {(generating || polishing) && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--studio-canvas,#E8ECF0)]/80 backdrop-blur-[1px]">
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6 sm:py-8">
+          {polishing && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-studio-canvas/80 backdrop-blur-[1px]">
               <StudioSkeleton className="h-10 w-10 rounded-full" />
               <div className="text-center">
-                <p className="text-sm font-semibold text-slate-900">
-                  {polishing ? "Improving letter…" : "Generating letter…"}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  It will appear on the page when ready
-                </p>
+                <p className="text-sm font-semibold text-foreground">Improving letter…</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">It will appear when ready</p>
               </div>
             </div>
           )}
 
           <div
-            className="mx-auto w-full max-w-[720px] rounded-sm bg-[#FFFEFA] shadow-[0_1px_2px_rgba(15,23,42,0.06),0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/5"
-            style={{ fontFamily }}
+            className="mx-auto w-full max-w-[794px] overflow-hidden rounded-sm bg-[#FFFEFA] shadow-[0_1px_2px_rgba(15,23,42,0.06),0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-black/5"
+            style={{ fontFamily, minHeight: "1123px" }}
           >
-            {/* Brand chrome */}
             {(previewBrand?.letterheadKey || previewBrand?.name) && (
-              <div className="border-b border-slate-100 px-8 pt-8 pb-4 sm:px-12">
+              <div className="border-b border-border/60 px-10 pt-8 pb-4 sm:px-14">
                 {previewBrand?.name && (
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     {previewBrand.name}
                   </p>
                 )}
                 {(previewBrand?.signatoryName || previewBrand?.footerText) && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {[previewBrand.signatoryName, previewBrand.signatoryDesignation]
                       .filter(Boolean)
                       .join(" · ")}
@@ -576,61 +631,51 @@ export default function TemplatesPage() {
               </div>
             )}
 
-            <div className="px-6 py-6 sm:px-10 sm:py-8">
-              {showSampleFill ? (
-                <div className="min-h-[420px] whitespace-pre-wrap text-[15px] leading-[1.65] text-slate-900">
-                  {samplePreviewText || "Empty letter — add content in edit mode."}
-                  {previewBrand?.signatoryName && (
-                    <div className="mt-12 text-sm">
-                      <p className="font-semibold">{previewBrand.signatoryName}</p>
-                      {previewBrand.signatoryDesignation && (
-                        <p className="text-slate-500">{previewBrand.signatoryDesignation}</p>
-                      )}
-                    </div>
-                  )}
-                  {previewBrand?.footerText && (
-                    <p className="mt-10 border-t border-slate-200 pt-3 text-[11px] text-slate-500">
-                      {previewBrand.footerText}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <Suspense
-                  fallback={
-                    <div className="flex min-h-[420px] items-center justify-center">
-                      <StudioSkeleton className="h-8 w-8 rounded-full" />
-                    </div>
-                  }
-                >
-                  <LetterEditor
-                    key={`${selectedId || "new"}-${editorKey}`}
-                    content={content}
-                    onChange={setContent}
-                    paper
-                    fontFamily={fontFamily}
-                  />
-                </Suspense>
-              )}
-            </div>
+            {showSampleFill ? (
+              <div className="min-h-[640px] whitespace-pre-wrap px-10 py-12 text-[15px] leading-[1.65] text-foreground sm:px-14">
+                {samplePreviewText || "Empty letter — switch to Edit to add content."}
+                {previewBrand?.signatoryName && (
+                  <div className="mt-12 text-sm">
+                    <p className="font-semibold">{previewBrand.signatoryName}</p>
+                    {previewBrand.signatoryDesignation && (
+                      <p className="text-muted-foreground">{previewBrand.signatoryDesignation}</p>
+                    )}
+                  </div>
+                )}
+                {previewBrand?.footerText && (
+                  <p className="mt-10 border-t border-border pt-3 text-[11px] text-muted-foreground">
+                    {previewBrand.footerText}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="flex min-h-[640px] items-center justify-center">
+                    <StudioSkeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                }
+              >
+                <LetterEditor
+                  key={`${selectedId || "blank"}-${editorKey}`}
+                  contentJson={content}
+                  onChange={setContent}
+                  onWriteWithAi={() => setAiOpen(true)}
+                />
+              </Suspense>
+            )}
           </div>
-          <p className="mx-auto mt-4 max-w-[720px] text-center text-[11px] text-slate-500">
-            Write the letter. Put employee name/salary where they change. Then Save → Use in send.
-          </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
-          <Button
-            onClick={save}
-            disabled={saving || generating || polishing}
-            className="h-9 rounded-xl bg-primary hover:bg-primary/90"
-          >
+        <div className="flex shrink-0 flex-wrap gap-2 border-t border-border bg-card px-4 py-3 sm:hidden">
+          <Button onClick={() => void save()} disabled={saving || polishing} className="h-9">
             {saving ? "Saving…" : "Save"}
           </Button>
           {selectedId && (
             <Button
               variant="outline"
-              className="h-9 rounded-xl border-slate-200"
-              disabled={generating || polishing}
+              className="h-9"
+              disabled={polishing}
               onClick={() => navigate(`/letters/batches/new?templateId=${selectedId}`)}
             >
               Use in send
@@ -638,6 +683,15 @@ export default function TemplatesPage() {
           )}
         </div>
       </div>
+
+      <LetterAiDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        organizationId={orgId()}
+        defaultType={type}
+        hasExistingContent={hasExistingContent}
+        onInsert={insertAiDraft}
+      />
     </div>
   );
 }

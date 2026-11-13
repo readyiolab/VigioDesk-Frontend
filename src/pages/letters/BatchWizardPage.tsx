@@ -7,7 +7,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { lettersApi } from "@/services/lettersApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import {
 } from "@/lib/letterMapping";
 import { cn } from "@/lib/utils";
 import { ensureLetterOrgId, readLetterOrgId, writeLetterOrgId } from "@/features/letters/orgHelpers";
-import { StudioStepRail, StudioStat } from "@/components/letters/StudioPageHeader";
+import { StudioStepRail, StudioStatusChip, StudioSkeleton } from "@/components/letters/StudioPageHeader";
 import { ChevronDown } from "lucide-react";
 
 function orgId() {
@@ -146,9 +146,10 @@ export default function BatchWizardPage() {
   /** No progress for ~2 min — stop spinner and force Retry. */
   const [generateStuck, setGenerateStuck] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
+  const [zipDownloadStarted, setZipDownloadStarted] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [showFixMatches, setShowFixMatches] = useState(false);
   const [showCompanyLook, setShowCompanyLook] = useState(false);
-  const [showPasswordOptions, setShowPasswordOptions] = useState(false);
   const [showEmailOptions, setShowEmailOptions] = useState(false);
 
   useEffect(() => {
@@ -285,36 +286,58 @@ export default function BatchWizardPage() {
       setPreviewRows((parsed.rows || []).slice(0, 10));
 
       const auto = autoMapHeaders(parsed.headers, fields);
-      let next = { ...auto.mapping };
-      let sources = { ...auto.sources };
+      const next = { ...auto.mapping };
+      const sources = { ...auto.sources };
       setAiNote(null);
-
-      try {
-        const sug = await lettersApi.aiSuggestMapping(orgId(), parsed.headers);
-        for (const [h, v] of Object.entries(sug.suggestions || {})) {
-          if (!next[h] && v && (v as any).field) {
-            const field = (v as any).field as string;
-            const alreadyUsed = Object.values(next).includes(field);
-            if (!alreadyUsed && fields.includes(field)) {
-              next[h] = field;
-              sources[h] = "ai";
-            }
-          }
-        }
-      } catch {
-        setAiNote("AI mapping unavailable — columns were matched automatically.");
-      }
-
       setMapping(next);
       setMapSources(sources);
-      setShowFixMatches(unmappedRequired(next).length > 0);
+      const stillNeed = unmappedRequired(next);
+      setShowFixMatches(stillNeed.length > 0);
       setStep("map");
       const n = parsed.totalRows || parsed.rows?.length || 0;
       toast.success(
-        unmappedRequired(next).length
+        stillNeed.length
           ? `Found ${n} employees — please match a few columns`
           : `Found ${n} employees`
       );
+      // Unlock UI now — AI mapping only if required fields are still missing
+      setBusy(false);
+
+      if (stillNeed.length > 0) {
+        void (async () => {
+          try {
+            const sug = await lettersApi.aiSuggestMapping(orgId(), parsed.headers);
+            setMapping((prev) => {
+              const merged = { ...prev };
+              const used = new Set(Object.values(merged).filter(Boolean));
+              const aiHeaders: string[] = [];
+              for (const [h, v] of Object.entries(sug.suggestions || {})) {
+                if (!merged[h] && v && (v as any).field) {
+                  const field = (v as any).field as string;
+                  if (!used.has(field) && fields.includes(field)) {
+                    merged[h] = field;
+                    used.add(field);
+                    aiHeaders.push(h);
+                  }
+                }
+              }
+              if (aiHeaders.length > 0) {
+                setMapSources((s) => {
+                  const nextSrc = { ...s };
+                  for (const h of aiHeaders) nextSrc[h] = "ai";
+                  return nextSrc;
+                });
+                setShowFixMatches(unmappedRequired(merged).length > 0);
+                toast.message("Suggested a few more column matches");
+              }
+              return merged;
+            });
+          } catch {
+            setAiNote("AI mapping unavailable — match any missing columns below.");
+          }
+        })();
+      }
+      return;
     } catch (e: any) {
       toast.error(e.message || "Failed to parse file");
     } finally {
@@ -346,21 +369,31 @@ export default function BatchWizardPage() {
       setSummary(result.summary);
       const iss = await lettersApi.issues(orgId(), batchId);
       setIssues(iss.issues);
-      try {
-        await lettersApi.aiAnomalies(orgId(), batchId);
-        const refreshed = await lettersApi.issues(orgId(), batchId);
-        setIssues(refreshed.issues);
-      } catch {
-        /* optional */
-      }
-      try {
-        const prev = await lettersApi.preview(orgId(), batchId);
-        setPreview(prev);
-      } catch {
-        /* optional sample */
-      }
+      setPreview(null);
+      setPreviewLoading(true);
       setStep("validate");
       toast.success("Employee list ready to review");
+      setBusy(false);
+
+      // Preview + anomalies in background — do not block Check the list
+      void (async () => {
+        try {
+          const [prev] = await Promise.all([
+            lettersApi.preview(orgId(), batchId).catch(() => null),
+            lettersApi.aiAnomalies(orgId(), batchId).catch(() => null),
+          ]);
+          if (prev) setPreview(prev);
+          try {
+            const refreshed = await lettersApi.issues(orgId(), batchId);
+            setIssues(refreshed.issues);
+          } catch {
+            /* keep first issues */
+          }
+        } finally {
+          setPreviewLoading(false);
+        }
+      })();
+      return;
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -371,9 +404,13 @@ export default function BatchWizardPage() {
   const startGenerate = async () => {
     setBusy(true);
     setGenerateStuck(false);
+    setZipDownloadStarted(false);
     try {
-      const prev = await lettersApi.preview(orgId(), batchId);
-      setPreview(prev);
+      let prev = preview;
+      if (!prev?.samples) {
+        prev = await lettersApi.preview(orgId(), batchId);
+        setPreview(prev);
+      }
       setApproved(true);
       await lettersApi.generate(orgId(), batchId, {
         approved: true,
@@ -383,11 +420,10 @@ export default function BatchWizardPage() {
       setProgress({
         status: "GENERATING",
         generated: 0,
-        pending: prev.eligibleCount || 0,
+        pending: prev?.eligibleCount || summary?.ready || 0,
         failed: 0,
         skipped: 0,
       });
-      // Finish step shows progress, then download
       setStep("send");
       toast.success("Making your PDFs…");
     } catch (e: any) {
@@ -922,50 +958,73 @@ export default function BatchWizardPage() {
 
           {step === "validate" && (
             <div className="space-y-4">
-              {summary && summary.blocked === 0 && summary.warning === 0 && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-4">
-                  <p className="text-sm font-semibold text-emerald-900">
-                    All {summary.ready} employees look good
-                  </p>
-                  <p className="mt-1 text-xs text-emerald-800">
-                    Click Make PDFs when you’re ready.
-                  </p>
-                </div>
-              )}
               {summary && (
-                <div className="grid grid-cols-3 gap-3">
-                  <StudioStat label="Ready" value={summary.ready} tone="success" />
-                  <StudioStat label="Needs a look" value={summary.warning} tone="warning" />
-                  <StudioStat label="Can't send" value={summary.blocked} tone="danger" />
+                <div className="rounded-xl border border-border bg-card px-4 py-3.5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {summary.blocked === 0 && summary.warning === 0
+                          ? `${summary.ready} employees validated — ready for PDFs`
+                          : causeLine ||
+                            `${summary.ready} ready · ${summary.warning} need review · ${summary.blocked} blocked`}
+                      </p>
+                      {summary.blocked === 0 && summary.warning === 0 && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Review the samples below, then Make PDFs.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <StudioStatusChip tone="success">{summary.ready} ready</StudioStatusChip>
+                      <StudioStatusChip tone={summary.warning > 0 ? "warning" : "default"}>
+                        {summary.warning} review
+                      </StudioStatusChip>
+                      <StudioStatusChip tone={summary.blocked > 0 ? "danger" : "default"}>
+                        {summary.blocked} blocked
+                      </StudioStatusChip>
+                    </div>
+                  </div>
                 </div>
               )}
-              {preview?.samples && (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {(
-                    [
-                      { key: "first" as const, label: "First" },
-                      { key: "middle" as const, label: "Middle" },
-                      { key: "last" as const, label: "Last" },
-                    ] as const
-                  ).map(({ key, label }) => {
-                    const sample = preview.samples?.[key];
-                    const data = (sample?.employeeData || {}) as Record<string, string>;
-                    return (
-                      <SampleEmployeeCard
-                        key={key}
-                        label={label}
-                        data={data}
-                        fileName={sample?.suggestedFileName}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              {causeLine && (
-                <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
-                  {causeLine}
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Sample employees
                 </p>
-              )}
+                {previewLoading && !preview?.samples ? (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <StudioSkeleton className="h-36" />
+                    <StudioSkeleton className="h-36" />
+                    <StudioSkeleton className="h-36" />
+                  </div>
+                ) : preview?.samples ? (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {(
+                      [
+                        { key: "first" as const, meta: "First row" },
+                        { key: "middle" as const, meta: "Middle row" },
+                        { key: "last" as const, meta: "Last row" },
+                      ] as const
+                    ).map(({ key, meta }) => {
+                      const sample = preview.samples?.[key];
+                      const data = (sample?.employeeData || {}) as Record<string, string>;
+                      return (
+                        <SampleEmployeeCard
+                          key={key}
+                          meta={meta}
+                          data={data}
+                          fileName={sample?.suggestedFileName}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
+                    Sample preview unavailable — you can still Make PDFs.
+                  </p>
+                )}
+              </div>
+
               {(issueGroups.length > 0 || (summary && (summary.warning > 0 || summary.blocked > 0))) && (
                 <div className="max-h-80 overflow-auto rounded-xl border border-border bg-card text-xs">
                   {visibleGroups.map((g) => (
@@ -1010,43 +1069,37 @@ export default function BatchWizardPage() {
                   )}
                 </div>
               )}
-              <div className="space-y-3 rounded-xl border border-border bg-muted/80 p-3">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between text-left text-xs font-semibold text-foreground"
-                  onClick={() => setShowPasswordOptions((v) => !v)}
+
+              <div className="rounded-xl border border-border bg-card px-4 py-3">
+                <Label className="text-sm font-semibold text-foreground">PDF password</Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Needed to open the PDF (optional).
+                </p>
+                <select
+                  className="mt-2 flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  value={passwordMode}
+                  onChange={(e) => setPasswordMode(e.target.value)}
                 >
-                  Advanced: PDF password
-                  <ChevronDown
-                    className={cn("size-4 transition", showPasswordOptions && "rotate-180")}
-                  />
-                </button>
-                {showPasswordOptions && (
-                  <select
-                    className="flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                    value={passwordMode}
-                    onChange={(e) => setPasswordMode(e.target.value)}
-                  >
-                    <option value="NONE">No password</option>
-                    <option value="FROM_COLUMN">Use password from Excel</option>
-                    <option value="EMPLOYEE_ID">Use Employee ID as password</option>
-                    <option value="LAST4_ID">Use last 4 digits of Employee ID</option>
-                  </select>
-                )}
+                  <option value="NONE">No password</option>
+                  <option value="FROM_COLUMN">Use password from Excel</option>
+                  <option value="EMPLOYEE_ID">Use Employee ID as password</option>
+                  <option value="LAST4_ID">Use last 4 digits of Employee ID</option>
+                </select>
               </div>
+
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  className="rounded-xl border-border transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="rounded-xl"
                   onClick={() => {
                     setShowFixMatches(true);
                     setStep("map");
                   }}
                 >
-                  Go back
+                  Back to Excel
                 </Button>
                 <Button
-                  className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="rounded-xl"
                   disabled={busy || (summary && summary.ready + summary.warning === 0)}
                   onClick={() => void startGenerate()}
                 >
@@ -1060,7 +1113,7 @@ export default function BatchWizardPage() {
           {step === "send" && (isGenerating || generateStuck) && progress && (
             <div className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
               <h2 className="text-sm font-semibold text-foreground">
-                {generateStuck ? "PDF creation paused" : "Making your PDFs"}
+                {generateStuck ? "PDF creation paused" : "Making PDFs…"}
               </h2>
               <Progress value={pct} />
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1120,9 +1173,9 @@ export default function BatchWizardPage() {
           )}
 
           {step === "send" && !isGenerating && !generateStuck && (
-            <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="space-y-4">
               {progress?.failed > 0 && !(progress?.generated > 0) && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
                   <p className="font-semibold">No PDFs were created</p>
                   <p className="mt-1 text-xs leading-relaxed text-rose-800">
                     {progress.lastError ||
@@ -1138,269 +1191,292 @@ export default function BatchWizardPage() {
                   </Button>
                 </div>
               )}
-              {progress?.generated > 0 && progress?.failed > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                  <p className="font-semibold">
-                    {progress.generated} ready · {progress.failed} could not be created
-                  </p>
-                  {Array.isArray(progress.failedEmployees) && progress.failedEmployees.length > 0 && (
-                    <ul className="mt-2 list-inside list-disc text-xs text-amber-900">
-                      {progress.failedEmployees.slice(0, 8).map((f: any) => (
-                        <li key={f.id}>{f.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 rounded-xl border-amber-300"
-                    disabled={busy}
-                    onClick={async () => {
-                      setBusy(true);
-                      setGenerateStuck(false);
-                      try {
-                        const res = await lettersApi.retryFailedGenerate(orgId(), batchId);
-                        setIsGenerating(true);
-                        setStep("send");
-                        setProgress({
-                          status: "GENERATING",
-                          generated: progress.generated,
-                          pending: res.queued || progress.failed,
-                          failed: 0,
-                        });
-                        toast.success(`Retrying ${res.queued} failed letter(s)…`);
-                      } catch (e: any) {
-                        toast.error(e.message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {busy ? <Spinner className="mr-2 size-4" /> : null}
-                    Retry failed only
-                  </Button>
-                </div>
-              )}
-              {progress?.aiSummary && (
-                <div className="rounded-xl bg-primary/10 px-3 py-2.5 text-sm text-primary">
-                  {progress.aiSummary}
-                </div>
-              )}
-              {(progress?.generated > 0 || !(progress?.failed > 0)) && (
-                <div className="space-y-4">
-                  {progress?.generated > 0 && (
-                    <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
-                      <p className="text-sm font-semibold text-foreground">
-                        Your letters are ready
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Download all {progress.generated} PDF
-                        {progress.generated === 1 ? "" : "s"} as a ZIP.
-                      </p>
+
+              {progress?.generated > 0 && (
+                <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">
+                      {progress.generated} PDF{progress.generated === 1 ? "" : "s"} ready
+                      {progress.failed > 0 ? ` · ${progress.failed} failed` : ""}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      One PDF per employee in a single ZIP file.
+                    </p>
+                  </div>
+
+                  {progress.failed > 0 && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                      {Array.isArray(progress.failedEmployees) &&
+                        progress.failedEmployees.length > 0 && (
+                          <ul className="mb-2 list-inside list-disc text-xs text-amber-900">
+                            {progress.failedEmployees.slice(0, 8).map((f: any) => (
+                              <li key={f.id}>{f.name}</li>
+                            ))}
+                          </ul>
+                        )}
                       <Button
                         type="button"
-                        className="mt-3 rounded-xl bg-primary hover:bg-primary/90"
-                        disabled={downloadingZip}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl border-amber-300"
+                        disabled={busy}
                         onClick={async () => {
-                          setDownloadingZip(true);
+                          setBusy(true);
+                          setGenerateStuck(false);
                           try {
-                            await lettersApi.downloadPdfsZip(orgId(), batchId);
-                            toast.success("Downloading letter PDFs");
+                            const res = await lettersApi.retryFailedGenerate(orgId(), batchId);
+                            setIsGenerating(true);
+                            setStep("send");
+                            setProgress({
+                              status: "GENERATING",
+                              generated: progress.generated,
+                              pending: res.queued || progress.failed,
+                              failed: 0,
+                            });
+                            toast.success(`Retrying ${res.queued} failed letter(s)…`);
                           } catch (e: any) {
-                            toast.error(e.message || "Download failed");
+                            toast.error(e.message);
                           } finally {
-                            setDownloadingZip(false);
+                            setBusy(false);
                           }
                         }}
                       >
-                        {downloadingZip ? <Spinner className="mr-2 size-4" /> : null}
-                        Download ZIP
+                        {busy ? <Spinner className="mr-2 size-4" /> : null}
+                        Retry failed only
                       </Button>
                     </div>
                   )}
 
-                  {progress?.generated > 0 && (
-                    <div className="rounded-xl border border-border bg-muted/80 px-4 py-3">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between text-left text-sm font-semibold text-foreground"
-                        onClick={() => setShowEmailOptions((v) => !v)}
-                      >
-                        Also email
-                        <ChevronDown
-                          className={cn("size-4 transition", showEmailOptions && "rotate-180")}
-                        />
-                      </button>
-                      {showEmailOptions && (
-                        <div className="mt-3 space-y-3 border-t border-border pt-3">
-                          <p className="text-xs leading-relaxed text-muted-foreground">
-                            Letters go from <span className="font-medium">your</span> Outlook or
-                            Gmail (not Zuvigo).
-                          </p>
-                          {!canSend && (
-                            <p className="text-xs text-amber-800">
-                              Email needs PRO — you can still download PDFs above.
-                            </p>
-                          )}
-                          {canSend && (
-                            <div className="space-y-3">
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  variant={sendMode === "CREATE_DRAFTS" ? "default" : "outline"}
-                                  size="sm"
-                                  className={cn(
-                                    "rounded-xl",
-                                    sendMode === "CREATE_DRAFTS" &&
-                                      "bg-primary hover:bg-primary/90"
-                                  )}
-                                  onClick={() => setSendMode("CREATE_DRAFTS")}
-                                >
-                                  Create drafts (safer)
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant={sendMode === "SEND_NOW" ? "default" : "outline"}
-                                  size="sm"
-                                  className={cn(
-                                    "rounded-xl",
-                                    sendMode === "SEND_NOW" && "bg-primary hover:bg-primary/90"
-                                  )}
-                                  onClick={() => setSendMode("SEND_NOW")}
-                                >
-                                  Send now
-                                </Button>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-xl border-border"
-                                  disabled={busy}
-                                  onClick={async () => {
-                                    setBusy(true);
-                                    try {
-                                      localStorage.setItem(
-                                        "letter_mail_return_to",
-                                        `/letters/batches/${batchId}`
-                                      );
-                                      const { url } = await lettersApi.mailAuthorize("OUTLOOK");
-                                      window.location.href = url;
-                                    } catch (e: any) {
-                                      toast.error(e.message);
-                                      setBusy(false);
-                                    }
-                                  }}
-                                >
-                                  Connect Outlook
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-xl border-border"
-                                  disabled={busy}
-                                  onClick={async () => {
-                                    setBusy(true);
-                                    try {
-                                      localStorage.setItem(
-                                        "letter_mail_return_to",
-                                        `/letters/batches/${batchId}`
-                                      );
-                                      const { url } = await lettersApi.mailAuthorize("GMAIL");
-                                      window.location.href = url;
-                                    } catch (e: any) {
-                                      toast.error(e.message);
-                                      setBusy(false);
-                                    }
-                                  }}
-                                >
-                                  Connect Gmail
-                                </Button>
-                              </div>
-                              <div>
-                                <Label>Send as</Label>
-                                <select
-                                  className="mt-1 flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                                  value={mailAccountId}
-                                  onChange={(e) => setMailAccountId(e.target.value)}
-                                >
-                                  <option value="">Select connected mailbox…</option>
-                                  {mailAccounts.map((a) => (
-                                    <option key={a.id} value={a.id}>
-                                      {a.provider} · {a.emailAddress}
-                                    </option>
-                                  ))}
-                                </select>
-                                {mailAccountId && (
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    Sending as{" "}
-                                    {mailAccounts.find((a) => a.id === mailAccountId)?.emailAddress ||
-                                      "your mailbox"}
-                                    .{" "}
-                                    <button
-                                      type="button"
-                                      className="underline"
-                                      onClick={async () => {
-                                        try {
-                                          await lettersApi.disconnectMail(mailAccountId);
-                                          const accounts = await lettersApi.mailAccounts();
-                                          setMailAccounts(accounts.accounts);
-                                          setMailAccountId("");
-                                          toast.success("Mailbox disconnected");
-                                        } catch (e: any) {
-                                          toast.error(e.message);
-                                        }
-                                      }}
-                                    >
-                                      Disconnect
-                                    </button>
-                                  </p>
-                                )}
-                              </div>
-                              <div>
-                                <Label>Email subject</Label>
-                                <Input
-                                  value={subject}
-                                  onChange={(e) => setSubject(e.target.value)}
-                                />
-                              </div>
-                              {sendMode === "SEND_NOW" && (
-                                <div>
-                                  <Label>
-                                    Confirm recipient count (
-                                    {progress?.generated || preview?.eligibleCount || "?"})
-                                  </Label>
-                                  <Input
-                                    type="number"
-                                    value={confirmCount}
-                                    onChange={(e) =>
-                                      setConfirmCount(
-                                        e.target.value ? Number(e.target.value) : ""
-                                      )
-                                    }
-                                  />
-                                </div>
-                              )}
-                              <Button
-                                className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
-                                disabled={busy || !(progress?.generated > 0)}
-                                onClick={() => void doSend()}
-                              >
-                                {busy ? <Spinner className="mr-2 size-4" /> : null}
-                                {busy
-                                  ? "Working…"
-                                  : sendMode === "SEND_NOW"
-                                    ? "Confirm & send now"
-                                    : "Create email drafts"}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  <Button
+                    type="button"
+                    className="w-full rounded-xl sm:w-auto"
+                    disabled={downloadingZip}
+                    onClick={async () => {
+                      setDownloadingZip(true);
+                      try {
+                        await lettersApi.downloadPdfsZip(orgId(), batchId);
+                        setZipDownloadStarted(true);
+                        toast.success("Download started");
+                      } catch (e: any) {
+                        toast.error(e.message || "Download failed");
+                      } finally {
+                        setDownloadingZip(false);
+                      }
+                    }}
+                  >
+                    {downloadingZip ? <Spinner className="mr-2 size-4" /> : null}
+                    Download ZIP ({progress.generated})
+                  </Button>
+                  {zipDownloadStarted && (
+                    <p className="text-xs text-muted-foreground">
+                      Download started — check your browser’s downloads folder.
+                    </p>
+                  )}
+
+                  {progress.aiSummary && (
+                    <div className="rounded-xl border border-border bg-muted/50 px-3 py-2.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Batch summary
+                      </p>
+                      <p className="mt-1 text-sm text-foreground">{progress.aiSummary}</p>
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        Generated automatically — confirm names and amounts before distributing.
+                      </p>
                     </div>
                   )}
+
+                  <div className="rounded-xl border border-border px-3 py-3">
+                    <p className="text-xs font-semibold text-foreground">What’s next</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>Keep the ZIP for your records.</li>
+                      <li>
+                        Reopen this send anytime under{" "}
+                        <Link to="/letters/history" className="font-medium text-primary underline-offset-2 hover:underline">
+                          Recent sends
+                        </Link>
+                        .
+                      </li>
+                      <li>Optionally email from your Outlook or Gmail below.</li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between text-left text-sm font-semibold text-foreground"
+                      onClick={() => setShowEmailOptions((v) => !v)}
+                    >
+                      Send from Outlook or Gmail
+                      <ChevronDown
+                        className={cn("size-4 transition", showEmailOptions && "rotate-180")}
+                      />
+                    </button>
+                    {showEmailOptions && (
+                      <div className="mt-3 space-y-3 border-t border-border pt-3">
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          Letters send from <span className="font-medium">your</span> mailbox — not
+                          Vigodesk.
+                        </p>
+                        {!canSend && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-amber-900">
+                            <span>Email requires PRO. You can still download PDFs above.</span>
+                            <Link
+                              to="/billing"
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                            >
+                              Upgrade to PRO
+                            </Link>
+                          </div>
+                        )}
+                        {canSend && (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant={sendMode === "CREATE_DRAFTS" ? "default" : "outline"}
+                                size="sm"
+                                className="rounded-xl"
+                                onClick={() => setSendMode("CREATE_DRAFTS")}
+                              >
+                                Create drafts (safer)
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={sendMode === "SEND_NOW" ? "default" : "outline"}
+                                size="sm"
+                                className="rounded-xl"
+                                onClick={() => setSendMode("SEND_NOW")}
+                              >
+                                Send now
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl"
+                                disabled={busy}
+                                onClick={async () => {
+                                  setBusy(true);
+                                  try {
+                                    localStorage.setItem(
+                                      "letter_mail_return_to",
+                                      `/letters/batches/${batchId}`
+                                    );
+                                    const { url } = await lettersApi.mailAuthorize("OUTLOOK");
+                                    window.location.href = url;
+                                  } catch (e: any) {
+                                    toast.error(e.message);
+                                    setBusy(false);
+                                  }
+                                }}
+                              >
+                                Connect Outlook
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl"
+                                disabled={busy}
+                                onClick={async () => {
+                                  setBusy(true);
+                                  try {
+                                    localStorage.setItem(
+                                      "letter_mail_return_to",
+                                      `/letters/batches/${batchId}`
+                                    );
+                                    const { url } = await lettersApi.mailAuthorize("GMAIL");
+                                    window.location.href = url;
+                                  } catch (e: any) {
+                                    toast.error(e.message);
+                                    setBusy(false);
+                                  }
+                                }}
+                              >
+                                Connect Gmail
+                              </Button>
+                            </div>
+                            <div>
+                              <Label>Send as</Label>
+                              <select
+                                className="mt-1 flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                                value={mailAccountId}
+                                onChange={(e) => setMailAccountId(e.target.value)}
+                              >
+                                <option value="">Select connected mailbox…</option>
+                                {mailAccounts.map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.provider} · {a.emailAddress}
+                                  </option>
+                                ))}
+                              </select>
+                              {mailAccountId && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Sending as{" "}
+                                  {mailAccounts.find((a) => a.id === mailAccountId)?.emailAddress ||
+                                    "your mailbox"}
+                                  .{" "}
+                                  <button
+                                    type="button"
+                                    className="underline"
+                                    onClick={async () => {
+                                      try {
+                                        await lettersApi.disconnectMail(mailAccountId);
+                                        const accounts = await lettersApi.mailAccounts();
+                                        setMailAccounts(accounts.accounts);
+                                        setMailAccountId("");
+                                        toast.success("Mailbox disconnected");
+                                      } catch (e: any) {
+                                        toast.error(e.message);
+                                      }
+                                    }}
+                                  >
+                                    Disconnect
+                                  </button>
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <Label>Email subject</Label>
+                              <Input
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                              />
+                            </div>
+                            {sendMode === "SEND_NOW" && (
+                              <div>
+                                <Label>
+                                  Confirm recipient count (
+                                  {progress?.generated || preview?.eligibleCount || "?"})
+                                </Label>
+                                <Input
+                                  type="number"
+                                  value={confirmCount}
+                                  onChange={(e) =>
+                                    setConfirmCount(e.target.value ? Number(e.target.value) : "")
+                                  }
+                                />
+                              </div>
+                            )}
+                            <Button
+                              className="rounded-xl"
+                              disabled={busy || !(progress?.generated > 0)}
+                              onClick={() => void doSend()}
+                            >
+                              {busy ? <Spinner className="mr-2 size-4" /> : null}
+                              {busy
+                                ? "Working…"
+                                : sendMode === "SEND_NOW"
+                                  ? "Confirm & send now"
+                                  : "Create email drafts"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1419,30 +1495,36 @@ function formatMoney(value: string | undefined): string | null {
 }
 
 function SampleEmployeeCard({
-  label,
+  meta,
   data,
   fileName,
 }: {
-  label: string;
+  meta: string;
   data: Record<string, string>;
   fileName?: string;
 }) {
   const name = data.Employee_Name || "Employee";
   const id = data.Employee_ID || "—";
-  const role = [data.Designation, data.Department].filter(Boolean).join(" · ");
   const oldCtc = formatMoney(data.Old_CTC);
   const newCtc = formatMoney(data.New_CTC);
   const hike = data.Increment_Percent ? `${data.Increment_Percent}%` : null;
-  const effective = data.Effective_Date || null;
   const email = data.Employee_Email || null;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/80 p-3.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1.5 text-sm font-semibold text-foreground">{name}</p>
-      <p className="text-xs text-muted-foreground">ID {id}</p>
-      {role ? <p className="mt-1 text-xs text-muted-foreground">{role}</p> : null}
+    <div className="rounded-xl border border-border bg-card p-3.5">
+      <p className="text-sm font-semibold text-foreground">{name}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        {meta} · ID {id}
+      </p>
       <dl className="mt-3 space-y-1.5 text-xs">
+        {email && (
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">Email</dt>
+            <dd className="max-w-[65%] truncate text-right font-medium text-foreground" title={email}>
+              {email}
+            </dd>
+          </div>
+        )}
         {(oldCtc || newCtc) && (
           <div className="flex justify-between gap-2">
             <dt className="text-muted-foreground">Salary</dt>
@@ -1458,30 +1540,13 @@ function SampleEmployeeCard({
             </dd>
           </div>
         )}
-        {effective && (
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Effective</dt>
-            <dd className="font-medium text-foreground">{effective}</dd>
-          </div>
-        )}
-        {email && (
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Email</dt>
-            <dd className="max-w-[60%] truncate text-right font-medium text-foreground" title={email}>
-              {email}
-            </dd>
-          </div>
-        )}
-        {data.Manager_Name && (
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Manager</dt>
-            <dd className="font-medium text-foreground">{data.Manager_Name}</dd>
-          </div>
-        )}
       </dl>
       {fileName ? (
-        <p className="mt-3 truncate border-t border-border/80 pt-2 text-[10px] text-muted-foreground" title={fileName}>
-          PDF: {fileName}
+        <p
+          className="mt-3 truncate border-t border-border pt-2 text-[10px] text-muted-foreground"
+          title={fileName}
+        >
+          {fileName}
         </p>
       ) : null}
     </div>
