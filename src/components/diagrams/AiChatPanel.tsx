@@ -114,8 +114,10 @@ function friendlyAiError(e: unknown, kind: AiMode | "image"): string {
         : "That took too long. Tap Retry to try again.";
   }
   const msg = e instanceof Error ? e.message : String(e ?? "");
-  if (/valid diagram (document|patch)|invalid patch|invalid diagram/i.test(msg)) {
-    return "AI returned an incomplete diagram. Tap Retry, or simplify your prompt (e.g. fewer entities).";
+  if (/could not update the diagram page|valid diagram (document|patch)|invalid patch|invalid diagram/i.test(msg)) {
+    return kind === "edit"
+      ? "Couldn’t apply that edit. Try: “add an Inventory entity connected to Product”."
+      : "AI returned an incomplete diagram. Tap Retry, or simplify your prompt (e.g. fewer entities).";
   }
   if (/credit|monthly|upgrade|FREE/i.test(msg)) {
     return msg;
