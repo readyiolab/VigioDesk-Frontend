@@ -62,6 +62,11 @@ const WebReportsLanding = lazy(() => import("./pages/webreports/WebReportsLandin
 const WebReportsHome = lazy(() => import("./pages/webreports/WebReportsHome"));
 const WebReportPage = lazy(() => import("./pages/webreports/WebReportPage"));
 const SharedWebReportPage = lazy(() => import("./pages/webreports/SharedWebReportPage"));
+const WebReportStudioShell = lazy(() =>
+  import("./components/webreports/WebReportStudioShell").then((m) => ({
+    default: m.WebReportStudioShell,
+  }))
+);
 const AssetLibraryPage = lazy(() => import("./pages/assets/AssetLibraryPage"));
 
 function App() {
@@ -225,25 +230,17 @@ function App() {
                 <Route path="webreports/shared/:token" element={<SharedWebReportPage />} />
                 <Route path="webreports" element={<WebReportsLanding />} />
                 <Route
-                  path="webreports/scan"
                   element={
                     <ProtectedRoute>
                       <VerifiedRoute>
-                        <WebReportsHome />
+                        <WebReportStudioShell />
                       </VerifiedRoute>
                     </ProtectedRoute>
                   }
-                />
-                <Route
-                  path="webreports/:id"
-                  element={
-                    <ProtectedRoute>
-                      <VerifiedRoute>
-                        <WebReportPage />
-                      </VerifiedRoute>
-                    </ProtectedRoute>
-                  }
-                />
+                >
+                  <Route path="webreports/scan" element={<WebReportsHome />} />
+                  <Route path="webreports/:id" element={<WebReportPage />} />
+                </Route>
                 <Route path="enterprise" element={<EnterpriseByoc />} />
                 <Route path="desktop" element={<DesktopToolkit />} />
                 <Route path="security" element={<InfoPage type="security" />} />

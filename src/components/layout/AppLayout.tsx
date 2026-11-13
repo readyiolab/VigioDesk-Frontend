@@ -18,10 +18,9 @@ export const AppLayout: React.FC = () => {
     location.pathname.startsWith("/letters/") && location.pathname !== "/letters";
   const isDiagramsMarketing = location.pathname === "/diagrams";
   const isWebReportsMarketing = location.pathname === "/webreports";
-  const isWebReportsScan = location.pathname === "/webreports/scan";
-  const isWebReport =
+  // Authenticated product paths under studio shell (not marketing, not public share)
+  const isWebReportStudio =
     location.pathname.startsWith("/webreports/") &&
-    location.pathname !== "/webreports/scan" &&
     !location.pathname.startsWith("/webreports/shared");
   const isDiagramStudio =
     location.pathname.startsWith("/diagrams/") && location.pathname !== "/diagrams";
@@ -36,18 +35,30 @@ export const AppLayout: React.FC = () => {
     isLettersMarketing ||
     isDiagramsMarketing ||
     isWebReportsMarketing ||
-    isWebReportsScan ||
     isLetterStudio ||
     isDiagramStudio ||
     isEsignEditor ||
     isAiStudio ||
     isToolStudio ||
-    isWebReport;
-  const hideChrome = isEsignEditor || isLetterStudio || isDiagramStudio || isWebReport;
-  const hideFooter = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio || isWebReport;
+    isWebReportStudio;
+  const hideChrome =
+    isEsignEditor || isLetterStudio || isDiagramStudio || isWebReportStudio;
+  const hideFooter =
+    isEsignEditor ||
+    isAiStudio ||
+    isToolStudio ||
+    isLetterStudio ||
+    isDiagramStudio ||
+    isWebReportStudio;
   // Immersive panes: no decorative blobs, and the shell must fill the viewport
   // height so children using h-full / flex-1 actually stretch edge-to-edge.
-  const isImmersive = isEsignEditor || isAiStudio || isToolStudio || isLetterStudio || isDiagramStudio || isWebReport;
+  const isImmersive =
+    isEsignEditor ||
+    isAiStudio ||
+    isToolStudio ||
+    isLetterStudio ||
+    isDiagramStudio ||
+    isWebReportStudio;
   const isMarketingBleed =
     isHome ||
     isEnterprise ||
