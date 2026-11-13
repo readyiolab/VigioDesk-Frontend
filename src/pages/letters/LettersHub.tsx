@@ -73,9 +73,10 @@ export default function LettersHub() {
     );
   }
 
-  const primaryCta = hasSentBefore
-    ? { label: "Send more letters", to: "/letters/batches/new" }
-    : { label: `Continue: ${current.short}`, to: current.to };
+  const primaryCta =
+    templateCount > 0
+      ? { label: hasSentBefore ? "Send letters" : "Send letters", to: "/letters/batches/new" }
+      : { label: `Continue: ${current.short}`, to: current.to };
 
   return (
     <div className="flex min-h-full flex-col">
@@ -83,8 +84,8 @@ export default function LettersHub() {
         title={orgName || "Your organization"}
         description={
           hasSentBefore
-            ? "Send more letters from Excel, or open a recent run below."
-            : "Write one letter, then fill it for many employees from Excel."
+            ? "Send the same letter to many people from Excel."
+            : "Send the same letter to many people — pick a letter, add Excel, download PDFs."
         }
         action={
           <StudioPrimaryButton onClick={() => navigate(primaryCta.to)}>
@@ -107,7 +108,7 @@ export default function LettersHub() {
 
         {!hasSentBefore && (
           <section className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-4">
-            <h2 className="text-sm font-semibold text-slate-900">How Letter Studio works</h2>
+            <h2 className="text-sm font-semibold text-slate-900">How it works</h2>
             <ol className="mt-3 space-y-2">
               {LETTER_HOW_IT_WORKS.map((line, i) => (
                 <li key={line} className="flex items-start gap-2.5 text-sm text-slate-600">
@@ -122,15 +123,7 @@ export default function LettersHub() {
         )}
 
         {hasSentBefore ? (
-          <>
-            <RecentLettersSection batches={batches} navigate={navigate} />
-            <SetupChecklist
-              activeStep={activeStep}
-              done={done}
-              navigate={navigate}
-              compact
-            />
-          </>
+          <RecentLettersSection batches={batches} navigate={navigate} />
         ) : (
           <>
             <SetupChecklist activeStep={activeStep} done={done} navigate={navigate} />
@@ -263,7 +256,7 @@ function RecentLettersSection({
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <h2 className="text-sm font-semibold text-slate-900">Recent letters</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Recent sends</h2>
         <Button
           variant="ghost"
           size="sm"
@@ -275,7 +268,7 @@ function RecentLettersSection({
       </div>
       {batches.length === 0 ? (
         <div className="px-4 py-10 text-center text-sm text-slate-500">
-          No letters sent yet. Write your letter template, then start sending from Excel.
+          No sends yet. Pick a letter, add Excel, then Make PDFs.
         </div>
       ) : (
         <div className="divide-y divide-slate-100">
@@ -290,7 +283,7 @@ function RecentLettersSection({
                   {b.templateName || "Letter send"}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-500">
-                  {b.totalRows} employees · {b.status} ·{" "}
+                  {b.totalRows} people · {hubBatchStatus(b.status)} ·{" "}
                   {new Date(b.createdAt).toLocaleString()}
                 </div>
               </div>
@@ -301,4 +294,22 @@ function RecentLettersSection({
       )}
     </section>
   );
+}
+
+function hubBatchStatus(status?: string): string {
+  switch (status) {
+    case "GENERATED":
+      return "Ready";
+    case "GENERATING":
+      return "Making PDFs";
+    case "SENDING":
+      return "Sending";
+    case "SENT":
+      return "Sent";
+    case "FAILED":
+    case "CANCELLED":
+      return "Needs fix";
+    default:
+      return "In progress";
+  }
 }

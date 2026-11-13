@@ -42,9 +42,9 @@ export function shouldShowLetterOnboarding(counts: {
 }
 
 export const LETTER_HOW_IT_WORKS = [
-  "Optional: add your company look (logo & signatory)",
-  "Write one letter with fields that change per employee",
-  "Upload Excel and create PDFs — or email them",
+  "Pick a letter",
+  "Add your Excel file",
+  "Check the list, then Make PDFs and download",
 ] as const;
 
 export const LETTER_STEP_META = [
@@ -61,18 +61,18 @@ export const LETTER_STEP_META = [
     n: 2 as const,
     title: "Your letter",
     short: "Letter",
-    desc: "Write one letter with fields that change per employee.",
+    desc: "Write one letter with fields that change per person.",
     to: "/letters/templates",
     cta: "Open letter templates",
     recommended: false,
   },
   {
     n: 3 as const,
-    title: "Send many letters",
+    title: "Send letters",
     short: "Send letters",
-    desc: "Upload a spreadsheet, review employees, then create PDFs or email them.",
+    desc: "Pick a letter → add Excel → check names → Make PDFs → download ZIP.",
     to: "/letters/batches/new",
-    cta: "Start sending letters",
+    cta: "Send letters",
     recommended: false,
   },
 ] as const;

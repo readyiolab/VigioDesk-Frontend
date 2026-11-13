@@ -177,8 +177,8 @@ export const ISSUE_LABELS: Record<string, string> = {
   INVALID_EMAIL: "Email format is invalid",
   EMAIL_REQUIRED_FOR_SEND: "Email is needed because you chose to send letters",
   MISSING_TEMPLATE_FIELD: "Your letter uses a field that has no data",
-  INVALID_NEW_CTC: "New CTC is missing or not a number",
+  INVALID_NEW_CTC: "New CTC (salary) is missing or not a number",
   BLANK_EFFECTIVE_DATE: "Effective date is empty",
-  BLANK_OLD_CTC: "Old CTC is empty (optional)",
-  BLANK_PDF_PASSWORD: "No PDF password (optional)",
+  BLANK_OLD_CTC: "Current CTC is empty (optional)",
+  BLANK_PDF_PASSWORD: "PDF password column is empty (optional)",
 };

@@ -17,6 +17,48 @@ function orgId() {
   return readLetterOrgId();
 }
 
+function humanBatchStatus(status: string): string {
+  switch (status) {
+    case "GENERATED":
+      return "Ready";
+    case "GENERATING":
+      return "Making PDFs";
+    case "SENDING":
+      return "Sending";
+    case "SENT":
+      return "Sent";
+    case "FAILED":
+    case "CANCELLED":
+      return "Needs fix";
+    case "VALIDATED":
+    case "MAPPED":
+    case "IMPORTED":
+    case "DRAFT":
+      return "In progress";
+    default:
+      return status?.replace(/_/g, " ") || "In progress";
+  }
+}
+
+function humanSendStatus(status: string): string {
+  switch (status) {
+    case "SENT":
+    case "DELIVERED":
+      return "Sent";
+    case "DRAFT":
+    case "DRAFT_CREATED":
+      return "Draft ready";
+    case "FAILED":
+    case "BOUNCED":
+      return "Needs fix";
+    case "PENDING":
+    case "QUEUED":
+      return "Sending";
+    default:
+      return status?.replace(/_/g, " ") || "—";
+  }
+}
+
 export default function BatchHistoryPage() {
   const { user } = useAuth();
   const batchesQuery = useBatches(user?.id);
@@ -50,8 +92,8 @@ export default function BatchHistoryPage() {
   return (
     <div className="flex min-h-full flex-col">
       <StudioPageHeader
-        title="History"
-        description="Reopen past batches, download letter PDFs from cloud storage, or search in plain language."
+        title="Recent sends"
+        description="Reopen a past send, download PDFs, or search by name."
       />
       <StudioPageBody>
         <div className="flex gap-2 rounded-xl border border-slate-200 p-2">
@@ -80,8 +122,8 @@ export default function BatchHistoryPage() {
             <div className="max-h-48 space-y-1 overflow-auto text-xs text-slate-600">
               {results.map((r) => (
                 <div key={r.id} className="border-b border-slate-100 py-1.5 last:border-0">
-                  {r.employee?.Employee_Name || "Employee"} · send {r.sendStatus} · batch{" "}
-                  {String(r.batchId).slice(0, 8)}
+                  {r.employee?.Employee_Name || "Employee"} ·{" "}
+                  {humanSendStatus(r.sendStatus)}
                 </div>
               ))}
             </div>
@@ -90,12 +132,12 @@ export default function BatchHistoryPage() {
 
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
-            Batches
+            Recent sends
           </div>
           {batchesQuery.isLoading ? (
             <div className="px-4 py-10 text-center text-sm text-slate-500">Loading…</div>
           ) : batches.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500">No batches yet.</div>
+            <div className="px-4 py-10 text-center text-sm text-slate-500">No sends yet.</div>
           ) : (
             <div className="divide-y divide-slate-100">
               {batches.map((b: any) => (
@@ -108,10 +150,11 @@ export default function BatchHistoryPage() {
                     className="min-w-0 flex-1 hover:text-indigo-700"
                   >
                     <div className="truncate font-medium text-slate-900">
-                      {b.templateName || "Batch"}
+                      {b.templateName || "Letter send"}
                     </div>
                     <div className="mt-0.5 text-xs text-slate-500">
-                      {b.totalRows} rows · {b.status} · {new Date(b.createdAt).toLocaleString()}
+                      {b.totalRows} people · {humanBatchStatus(b.status)} ·{" "}
+                      {new Date(b.createdAt).toLocaleString()}
                     </div>
                   </Link>
                   <div className="flex shrink-0 gap-2">

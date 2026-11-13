@@ -170,7 +170,7 @@ export function LetterOnboardingWizard() {
                   />
                 </div>
                 <div>
-                  <Label>Signatory name</Label>
+                  <Label>Who signs the letter</Label>
                   <Input
                     value={signatoryName}
                     onChange={(e) => setSignatoryName(e.target.value)}
@@ -178,7 +178,7 @@ export function LetterOnboardingWizard() {
                   />
                 </div>
                 <div>
-                  <Label>Designation</Label>
+                  <Label>Their designation</Label>
                   <Input
                     value={signatoryDesignation}
                     onChange={(e) => setSignatoryDesignation(e.target.value)}
@@ -231,8 +231,7 @@ export function LetterOnboardingWizard() {
           {step === 3 && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600">
-                Next you will upload a spreadsheet of employees, review the rows, then create
-                PDFs (or email them).
+                Next: pick your letter, add Excel, check the names, then Make PDFs and download.
               </p>
               <ul className="space-y-2 text-sm text-slate-700">
                 {LETTER_HOW_IT_WORKS.map((line) => (
@@ -306,7 +305,7 @@ export function LetterOnboardingWizard() {
                   );
                 }}
               >
-                Start sending letters
+                Send letters
                 <ArrowRight className="ml-1.5 size-4" />
               </Button>
             )}

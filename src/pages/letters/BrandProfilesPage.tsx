@@ -126,13 +126,13 @@ export default function BrandProfilesPage() {
     <div className="flex min-h-full flex-col">
       <StudioPageHeader
         title="Company look"
-        description="Add logo and signatory so letters look official (you can skip and add later). Images only (PNG/JPG) — not PDF."
+        description="Logo and who signs the letter — so PDFs look official. You can skip and add later. Images only (PNG/JPG)."
       />
       <div className="grid flex-1 gap-0 lg:grid-cols-[1fr_280px]">
         <div className="space-y-5 border-b border-slate-200 p-4 sm:p-5 lg:border-b-0 lg:border-r">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label>Company / brand name</Label>
+              <Label>Company name</Label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -227,7 +227,7 @@ export default function BrandProfilesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold text-slate-900">{b.name}</div>
                     <div className="mt-0.5 text-xs text-slate-500">
-                      {b.signatoryName || "No signatory"}
+                      {b.signatoryName || "Who signs — not set"}
                       {b.signatoryDesignation ? ` · ${b.signatoryDesignation}` : ""}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] font-medium">
@@ -257,7 +257,7 @@ export default function BrandProfilesPage() {
             ))}
             {brands.length === 0 && (
               <div className="px-2 py-8 text-center text-sm text-slate-500">
-                No company look yet. Add logo and signatory, then click Save — or skip and do this
+                No company look yet. Add logo and who signs the letter, then Save — or skip and do this
                 later when you send letters.
               </div>
             )}

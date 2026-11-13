@@ -26,7 +26,7 @@ const NAV = [
   { to: "/letters/brands", label: "Company look", icon: Palette },
   { to: "/letters/templates", label: "Letter templates", icon: PenLine },
   { to: "/letters/batches/new", label: "Send letters", icon: Upload },
-  { to: "/letters/history", label: "History", icon: History },
+  { to: "/letters/history", label: "Recent sends", icon: History },
   { to: "/letters/team", label: "Team", icon: Users },
 ] as const;
 
@@ -61,8 +61,8 @@ export function LetterStudioShell() {
             <p className="truncate font-heading text-sm font-bold tracking-tight text-slate-900">
               Letter Studio
             </p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
-              Letters for many employees
+            <p className="truncate text-[10px] font-medium text-slate-400">
+              Send the same letter to many people
             </p>
           </div>
         </div>
@@ -119,15 +119,15 @@ export function LetterStudioShell() {
             </span>
             <div className="min-w-0">
               <p className="truncate font-heading text-sm font-bold">Letter Studio</p>
-              <p className="truncate text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                Letters for many employees
+              <p className="truncate text-[10px] font-medium text-slate-400">
+                Send the same letter to many people
               </p>
             </div>
           </div>
           <p className="hidden font-heading text-sm font-semibold tracking-tight text-slate-800 md:block">
             Letter Studio
             <span className="ml-2 font-sans text-xs font-normal text-slate-500">
-              Write one letter · send many from Excel
+              Send the same letter to many people
             </span>
           </p>
           <div className="ml-auto">
