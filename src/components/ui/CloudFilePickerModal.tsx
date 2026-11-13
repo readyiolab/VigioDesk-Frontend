@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   X,
   UploadCloud,
-  HardDrive,
   Search,
   Link2,
   Loader2,
@@ -15,15 +14,14 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiService } from "@/services/api";
+import { CloudProviderLogo, type CloudBrandId } from "./CloudProviderLogo";
 
-export type CloudProviderId = "device" | "gdrive" | "dropbox" | "onedrive" | "sharepoint" | "box";
+export type CloudProviderId = "device" | CloudBrandId;
 
 interface CloudProviderMeta {
   id: CloudProviderId;
   name: string;
   shortDesc: string;
-  iconBg: string;
-  accentColor: string;
   brandTag: string;
 }
 
@@ -32,48 +30,36 @@ const PROVIDERS: CloudProviderMeta[] = [
     id: "device",
     name: "My Device",
     shortDesc: "Upload from your computer or phone",
-    iconBg: "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20",
-    accentColor: "text-slate-600 dark:text-slate-300",
     brandTag: "Local",
   },
   {
     id: "gdrive",
     name: "Google Drive",
     shortDesc: "Import from personal or shared drives",
-    iconBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    accentColor: "text-blue-600 dark:text-blue-400",
     brandTag: "Google Workspace",
   },
   {
     id: "dropbox",
     name: "Dropbox",
     shortDesc: "Sync from Dropbox folders & teams",
-    iconBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-    accentColor: "text-indigo-600 dark:text-indigo-400",
     brandTag: "Dropbox Sync",
   },
   {
     id: "onedrive",
     name: "Microsoft OneDrive",
     shortDesc: "Personal & Microsoft 365 cloud files",
-    iconBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-    accentColor: "text-sky-600 dark:text-sky-400",
     brandTag: "Microsoft 365",
   },
   {
     id: "sharepoint",
     name: "SharePoint",
     shortDesc: "Enterprise document libraries & sites",
-    iconBg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
-    accentColor: "text-teal-600 dark:text-teal-400",
     brandTag: "SharePoint Online",
   },
   {
     id: "box",
     name: "Box",
     shortDesc: "Secure enterprise content management",
-    iconBg: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-    accentColor: "text-cyan-600 dark:text-cyan-400",
     brandTag: "Box Enterprise",
   },
 ];
@@ -96,6 +82,10 @@ interface CloudFilePickerModalProps {
   onOpenDeviceFilePicker?: () => void;
 }
 
+function isCloudBrand(id: CloudProviderId): id is CloudBrandId {
+  return id !== "device";
+}
+
 export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
   isOpen,
   onClose,
@@ -105,14 +95,13 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
   toolName = "PDF",
   onOpenDeviceFilePicker,
 }) => {
-  const [activeTab, setActiveTab] = useState<CloudProviderId>("gdrive");
+  const [activeTab, setActiveTab] = useState<CloudProviderId>("device");
   const [connectedMap, setConnectedMap] = useState<Record<string, { email: string; lastSync?: string }>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [files, setFiles] = useState<CloudFileRecord[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [connectEmail, setConnectEmail] = useState("");
 
   // Sync connected providers on mount or open
   useEffect(() => {
@@ -121,7 +110,6 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
     async function loadConnections() {
       const map: Record<string, { email: string; lastSync?: string }> = {};
 
-      // Check localStorage fallbacks
       ["gdrive", "dropbox", "onedrive", "sharepoint", "box"].forEach((p) => {
         const saved = localStorage.getItem(`cloud_conn_${p}`);
         if (saved) {
@@ -129,7 +117,6 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
         }
       });
 
-      // Query backend if authenticated
       try {
         const res = await apiService.getCloudIntegrations();
         if (res?.status === "success" && Array.isArray(res.data)) {
@@ -170,7 +157,6 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
           setFiles([]);
         }
       } catch (err) {
-        // Fallback default sample list
         setFiles([
           { id: "1", name: "Q3_Financial_Audit_Report_2026.pdf", size: "4.8 MB", updatedAt: "Today, 09:42 AM" },
           { id: "2", name: "Enterprise_SaaS_Contract_Signed.pdf", size: "2.1 MB", updatedAt: "Yesterday" },
@@ -187,11 +173,10 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentMeta = PROVIDERS.find((p) => p.id === activeTab) || PROVIDERS[1];
+  const currentMeta = PROVIDERS.find((p) => p.id === activeTab) || PROVIDERS[0];
   const isCurrentConnected = activeTab === "device" || Boolean(connectedMap[activeTab]);
 
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConnect = async () => {
     if (activeTab === "device") return;
 
     setIsConnecting(true);
@@ -242,6 +227,88 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
     }
   };
 
+  const selectProvider = (id: CloudProviderId) => {
+    setActiveTab(id);
+    if (id === "device" && onOpenDeviceFilePicker) {
+      onOpenDeviceFilePicker();
+      onClose();
+    }
+  };
+
+  const renderSourceButton = (p: CloudProviderMeta, variant: "list" | "chip") => {
+    const isSelected = activeTab === p.id;
+    const isConn = p.id === "device" || Boolean(connectedMap[p.id]);
+
+    if (variant === "chip") {
+      return (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => selectProvider(p.id)}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-left transition-all cursor-pointer",
+            isSelected
+              ? "border-primary/40 bg-primary/10 text-foreground shadow-xs ring-1 ring-primary/20"
+              : "border-border/80 bg-background text-foreground hover:bg-muted/70"
+          )}
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background">
+            {p.id === "device" ? (
+              <Laptop className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" />
+            ) : (
+              <CloudProviderLogo id={p.id} size={14} className="h-3.5 w-3.5" />
+            )}
+          </span>
+          <span className="text-xs font-semibold whitespace-nowrap">{p.name}</span>
+          {isConn && p.id !== "device" && (
+            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="Connected" />
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        key={p.id}
+        type="button"
+        onClick={() => selectProvider(p.id)}
+        className={cn(
+          "relative w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl text-left transition-all cursor-pointer",
+          isSelected
+            ? "bg-muted/80 text-foreground shadow-xs ring-1 ring-border font-semibold"
+            : "text-foreground hover:bg-muted/60"
+        )}
+      >
+        {isSelected && (
+          <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-primary" aria-hidden />
+        )}
+        <div className="flex items-center gap-3 min-w-0 pl-1">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-background shadow-xs">
+            {p.id === "device" ? (
+              <Laptop className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            ) : (
+              <CloudProviderLogo id={p.id} size={18} className="h-4.5 w-4.5" />
+            )}
+          </span>
+          <div className="min-w-0 truncate">
+            <p className="text-xs font-semibold truncate leading-tight">{p.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate leading-normal">
+              {p.id === "device"
+                ? "This computer"
+                : isConn
+                  ? connectedMap[p.id]?.email
+                  : "Connect"}
+            </p>
+          </div>
+        </div>
+
+        {isConn && (
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Connected" />
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
       <div
@@ -251,16 +318,16 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
         aria-labelledby="choose-file-title"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/70 px-6 py-4.5 bg-muted/20">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <div className="flex items-center justify-between border-b border-border/70 px-5 sm:px-6 py-4 bg-muted/20">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <UploadCloud className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 id="choose-file-title" className="text-lg font-bold text-foreground">
                 Choose File
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground truncate">
                 Select a file from your storage or device.
               </p>
             </div>
@@ -269,82 +336,35 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
+        {/* Mobile source chips */}
+        <div className="md:hidden border-b border-border/70 bg-muted/10 px-3 py-2.5 overflow-x-auto">
+          <div className="flex items-center gap-2 min-w-min">
+            {PROVIDERS.map((p) => renderSourceButton(p, "chip"))}
+          </div>
+        </div>
+
         {/* Content Body: Sidebar + Main Panel */}
         <div className="flex flex-1 min-h-0 overflow-hidden flex-col md:flex-row">
-          {/* Storage Providers List */}
-          <div className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-border/70 p-3 space-y-1 bg-muted/10 overflow-y-auto">
+          {/* Desktop Storage Providers List */}
+          <div className="hidden md:flex md:w-72 shrink-0 flex-col border-r border-border/70 p-3 space-y-1 bg-muted/10 overflow-y-auto">
             <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Storage Sources
             </p>
-
-            {PROVIDERS.map((p) => {
-              const isSelected = activeTab === p.id;
-              const isConn = p.id === "device" || Boolean(connectedMap[p.id]);
-
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(p.id);
-                    if (p.id === "device" && onOpenDeviceFilePicker) {
-                      onOpenDeviceFilePicker();
-                      onClose();
-                    }
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl text-left transition-all cursor-pointer",
-                    isSelected
-                      ? "bg-primary/10 text-primary shadow-xs ring-1 ring-primary/25 dark:bg-primary/15 font-semibold"
-                      : "text-foreground hover:bg-muted/70"
-                  )}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-xs font-bold",
-                        p.iconBg
-                      )}
-                    >
-                      {p.id === "device" ? (
-                        <Laptop className="h-4 w-4" />
-                      ) : (
-                        <HardDrive className="h-4 w-4" />
-                      )}
-                    </span>
-                    <div className="min-w-0 truncate">
-                      <p className="text-xs font-semibold truncate leading-tight">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate leading-normal">
-                        {p.id === "device"
-                          ? "This computer"
-                          : isConn
-                          ? connectedMap[p.id]?.email
-                          : "Connect storage"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isConn && (
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Connected" />
-                  )}
-                </button>
-              );
-            })}
+            {PROVIDERS.map((p) => renderSourceButton(p, "list"))}
           </div>
 
           {/* Right Panel: File Browser / Connect Flow */}
           <div className="flex-1 flex flex-col min-h-0 p-5 overflow-y-auto">
-            {/* If Device is chosen */}
             {activeTab === "device" ? (
               <div className="flex flex-col items-center justify-center flex-1 py-12 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/80 bg-background shadow-xs text-slate-600 dark:text-slate-300 mb-4">
                   <Laptop className="h-8 w-8" />
                 </div>
                 <h3 className="text-base font-bold text-foreground">Upload from this Device</h3>
@@ -363,11 +383,10 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
                   Browse Device Files
                 </button>
               </div>
-            ) : !isCurrentConnected ? (
-              /* Connect Provider View */
+            ) : !isCurrentConnected && isCloudBrand(activeTab) ? (
               <div className="flex flex-col items-center justify-center flex-1 py-10 text-center max-w-md mx-auto">
-                <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl border mb-4", currentMeta.iconBg)}>
-                  <HardDrive className="h-8 w-8" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border/80 bg-background shadow-xs mb-4">
+                  <CloudProviderLogo id={activeTab} size={40} className="h-10 w-10" />
                 </div>
 
                 <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-muted border text-muted-foreground uppercase tracking-wider mb-2">
@@ -379,58 +398,51 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
                   Authorize Vigodesk to securely browse and pick files directly from your {currentMeta.name} storage.
                 </p>
 
-                <form onSubmit={handleConnect} className="w-full space-y-3">
-                  <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs">
-                    <input
-                      type="email"
-                      value={connectEmail}
-                      onChange={(e) => setConnectEmail(e.target.value)}
-                      placeholder={`your-account@${activeTab === "sharepoint" ? "company.sharepoint" : activeTab}.com`}
-                      className="w-full bg-transparent outline-hidden text-foreground placeholder:text-muted-foreground"
-                    />
-                  </div>
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <CloudProviderLogo id={activeTab} size={16} className="h-4 w-4" />
+                      Continue with {currentMeta.name}
+                      <Link2 className="h-3.5 w-3.5 opacity-70" />
+                    </>
+                  )}
+                </button>
 
-                  <button
-                    type="submit"
-                    disabled={isConnecting}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {isConnecting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className="h-4 w-4" />
-                        Connect {currentMeta.name}
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <div className="mt-6 flex items-center gap-4 text-[11px] text-muted-foreground">
+                <div className="mt-6 flex items-center gap-3 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Lock className="h-3 w-3 text-emerald-500" /> 256-bit OAuth PKCE
+                    <Lock className="h-3 w-3 text-emerald-500" /> Secure OAuth
                   </span>
-                  <span>•</span>
-                  <span>Read-only document access</span>
+                  <span aria-hidden>•</span>
+                  <span>Read-only access</span>
                 </div>
               </div>
             ) : (
-              /* Connected File Browser */
               <div className="flex flex-col flex-1 min-h-0">
-                {/* Account & Search Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/70">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-semibold text-foreground">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {isCloudBrand(activeTab) && (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-background">
+                        <CloudProviderLogo id={activeTab} size={16} className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold text-foreground truncate">
                       {connectedMap[activeTab]?.email}
                     </span>
                     <button
                       type="button"
                       onClick={handleDisconnect}
-                      className="text-[10px] text-muted-foreground hover:text-destructive underline ml-2 cursor-pointer"
+                      className="text-[10px] text-muted-foreground hover:text-destructive underline ml-1 cursor-pointer shrink-0"
                     >
                       Disconnect
                     </button>
@@ -448,7 +460,6 @@ export const CloudFilePickerModal: React.FC<CloudFilePickerModalProps> = ({
                   </div>
                 </div>
 
-                {/* File List */}
                 <div className="flex-1 overflow-y-auto py-3 space-y-1.5 min-h-[200px]">
                   {isLoadingFiles ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">

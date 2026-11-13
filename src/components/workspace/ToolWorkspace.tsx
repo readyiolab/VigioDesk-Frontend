@@ -123,6 +123,30 @@ const WATERMARK_POS: Record<string, string> = {
   "bottom-right": "items-end justify-end p-6",
 };
 
+/** iLovePDF-style plain-language labels per tool */
+function getToolFlowCopy(toolId: string, toolName: string) {
+  const map: Record<string, { cta: string; working: string; stepLabel: string; readySuffix: string }> = {
+    merge: { cta: "Merge PDF", working: "Merging PDF…", stepLabel: "Merging", readySuffix: "ready to merge" },
+    split: { cta: "Split PDF", working: "Splitting PDF…", stepLabel: "Splitting", readySuffix: "ready to split" },
+    compress: { cta: "Compress PDF", working: "Compressing PDF…", stepLabel: "Compressing", readySuffix: "ready to compress" },
+    rotate: { cta: "Rotate PDF", working: "Rotating PDF…", stepLabel: "Rotating", readySuffix: "ready to rotate" },
+    protect: { cta: "Protect PDF", working: "Protecting PDF…", stepLabel: "Protecting", readySuffix: "ready to protect" },
+    watermark: { cta: "Watermark PDF", working: "Adding watermark…", stepLabel: "Watermarking", readySuffix: "ready to watermark" },
+    pdfToJpg: { cta: "Convert to JPG", working: "Converting to JPG…", stepLabel: "Converting", readySuffix: "ready to convert" },
+    jpgToPdf: { cta: "Convert to PDF", working: "Converting to PDF…", stepLabel: "Converting", readySuffix: "ready to convert" },
+    officeConvert: { cta: "Convert to PDF", working: "Converting to PDF…", stepLabel: "Converting", readySuffix: "ready to convert" },
+    ocr: { cta: "Run OCR", working: "Running OCR…", stepLabel: "OCR", readySuffix: "ready for OCR" },
+  };
+  return (
+    map[toolId] ?? {
+      cta: toolName,
+      working: "Working on your PDF…",
+      stepLabel: "Working",
+      readySuffix: "ready",
+    }
+  );
+}
+
 export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
   const tool = getToolById(toolId);
   const { token, refreshProfile } = useAuth();
@@ -241,7 +265,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
       const uploadedKeys = await fileUpload.uploadAll();
       await jobProcessor.processFiles(toolId, uploadedKeys, buildOptions());
       await refreshProfile();
-      toast.success("Processing complete! Your file has been downloaded.");
+      toast.success("Your PDF is ready and downloading.");
     } catch (err: any) {
       toast.error(err.message || "An unexpected error occurred.");
     }
@@ -285,6 +309,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
   }
 
   const Icon = tool.icon;
+  const flowCopy = getToolFlowCopy(toolId, tool.name);
 
   if (jobProcessor.step === "done") {
     return (
@@ -320,7 +345,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{tool.name}</h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{tool.desc}</p>
           <p className="mt-3 text-xs font-medium text-muted-foreground/80">
-            Live studio — document on one side, controls on the other
+            Select PDF files to get started
           </p>
         </div>
         <FileDropzone
@@ -358,7 +383,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
           )}
         >
           <PanelLeft className="size-3.5" />
-          Document
+          Your files
         </button>
         <button
           type="button"
@@ -369,7 +394,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
           )}
         >
           <PanelRight className="size-3.5" />
-          Controls
+          Options
         </button>
       </div>
 
@@ -387,14 +412,14 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
               <p className="truncate text-sm font-medium">
                 {fileUpload.files.length === 1
                   ? fileUpload.files[0].name
-                  : `${fileUpload.files.length} files · ${tool.name}`}
+                  : `${fileUpload.files.length} PDFs ${flowCopy.readySuffix}`}
               </p>
               <p className="text-[11px] text-white/50">
                 {fileUpload.files.length === 1
                   ? `${formatFileSize(fileUpload.files[0].size)}${
                       pdfPreviews.pageCount > 0 ? ` · ${pdfPreviews.pageCount} pages` : ""
                     }`
-                  : "Drag to reorder on the stage"}
+                  : "Drag to change order"}
               </p>
             </div>
             {!isProcessing && (
@@ -413,7 +438,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
           <div className="relative min-h-0 flex-1 overflow-auto bg-[#0b141a]">
             {isProcessing && (
               <div className="absolute inset-x-0 top-0 z-20 border-b border-white/10 bg-[#202c33]/95 p-3 backdrop-blur">
-                <ProcessingStepper currentStep={currentStep} />
+                <ProcessingStepper currentStep={currentStep} toolLabel={flowCopy.stepLabel} />
                 {jobProcessor.step !== "idle" && jobProcessor.progress > 0 && (
                   <div className="mt-3 flex flex-col gap-1">
                     <Progress value={jobProcessor.progress} />
@@ -621,7 +646,7 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{tool.name}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {isProcessing ? "Working on your file…" : "Tune options · run when ready"}
+                {isProcessing ? "Working…" : "Options"}
               </p>
             </div>
             {tool.multiple && !isProcessing && (
@@ -696,19 +721,19 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
               )}
               {toolId === "merge" && (
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Drag cards on the document stage to set merge order. Files join top-to-bottom, left-to-right.
+                  Drag files to set the order. They join from first to last.
                 </p>
               )}
               {!["split", "compress", "rotate", "protect", "watermark", "pdfToJpg", "jpgToPdf", "officeConvert", "ocr", "merge"].includes(
                 toolId
               ) && (
-                <p className="text-sm text-muted-foreground">No extra options — hit run when you&apos;re ready.</p>
+                <p className="text-sm text-muted-foreground">No extra options — tap the button below when you&apos;re ready.</p>
               )}
             </div>
 
             {(toolId === "rotate" || toolId === "watermark") && (
               <div className="rounded-2xl bg-[#d9fdd3]/80 px-3 py-2 text-xs text-slate-800 dark:bg-emerald-900/40 dark:text-emerald-100">
-                Changes preview live on the left — unique to this studio.
+                Preview updates on the left as you change options.
               </div>
             )}
           </div>
@@ -725,16 +750,10 @@ export const ToolWorkspace: React.FC<ToolWorkspaceProps> = ({ toolId }) => {
               )}
             >
               {isProcessing ? (
-                currentStep === "upload" ? (
-                  "Uploading…"
-                ) : currentStep === "queue" ? (
-                  "Queued…"
-                ) : (
-                  "Processing…"
-                )
+                flowCopy.working
               ) : (
                 <>
-                  {tool.name}
+                  {flowCopy.cta}
                   <ChevronRight className="h-4 w-4" />
                 </>
               )}

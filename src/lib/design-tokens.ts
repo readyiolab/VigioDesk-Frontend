@@ -274,11 +274,12 @@ export function formatFilenameFromKey(key: string): string {
 
 export type ProcessingStep = "idle" | "upload" | "queue" | "poll" | "done" | "failed";
 
+/** Consumer-facing phases (maps upload/queue/poll → middle “Working” step in UI) */
 export const PROCESSING_STEPS = [
-  { key: "upload" as const, label: "Uploading", desc: "Uploading files to cloud" },
-  { key: "queue" as const, label: "Queueing", desc: "Creating processing job" },
-  { key: "poll" as const, label: "Processing", desc: "Processing your files" },
-  { key: "done" as const, label: "Complete", desc: "Download ready" },
+  { key: "upload" as const, label: "Select", desc: "Files selected" },
+  { key: "queue" as const, label: "Working", desc: "Preparing your files" },
+  { key: "poll" as const, label: "Working", desc: "Working on your PDF" },
+  { key: "done" as const, label: "Download", desc: "Your PDF is ready" },
 ];
 
 // ─── API Constants ───────────────────────────────────────────────────────────

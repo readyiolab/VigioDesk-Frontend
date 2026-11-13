@@ -1,7 +1,8 @@
 import React, { useCallback, useState, useRef } from "react";
-import { UploadCloud, FileText, Image as ImageIcon, HardDrive, ChevronDown } from "lucide-react";
+import { UploadCloud, FileText, Image as ImageIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CloudFilePickerModal } from "./CloudFilePickerModal";
+import { CloudProviderLogo, CLOUD_BRAND_ORDER } from "./CloudProviderLogo";
 
 interface FileDropzoneProps {
   accept: string;
@@ -151,9 +152,20 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
               disabled={disabled}
               className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs font-semibold text-foreground shadow-xs hover:bg-muted hover:border-primary/40 transition-all duration-200 cursor-pointer active:scale-[0.98]"
             >
-              <HardDrive className="h-3.5 w-3.5 text-primary" />
+              <span className="flex items-center -space-x-1" aria-hidden>
+                {CLOUD_BRAND_ORDER.slice(0, 4).map((id) => (
+                  <span
+                    key={id}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-border/70 bg-background"
+                  >
+                    <CloudProviderLogo id={id} size={12} className="h-3 w-3" />
+                  </span>
+                ))}
+              </span>
               <span>From Storage</span>
-              <span className="text-[10px] text-muted-foreground hidden sm:inline">(Drive, Dropbox, OneDrive, SharePoint)</span>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                Drive, Dropbox, OneDrive, Box
+              </span>
               <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </button>
           </div>

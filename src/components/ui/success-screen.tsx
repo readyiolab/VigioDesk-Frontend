@@ -58,10 +58,10 @@ export const SuccessScreen: React.FC<SuccessScreenProps> = ({
 
       {/* Success message */}
       <h3 className="text-lg font-bold text-foreground mb-1">
-        Processing Complete!
+        Your PDF is ready!
       </h3>
       <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-        Your file has been processed successfully and is ready for download.
+        Download started. Tap Download again if you need another copy.
       </p>
 
       {/* File info */}
@@ -89,7 +89,7 @@ export const SuccessScreen: React.FC<SuccessScreenProps> = ({
             onClick={onProcessAnother}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-all active:scale-[0.98]"
           >
-            Process Another
+            Start over
             <ArrowRight className="h-4 w-4" />
           </button>
         )}
