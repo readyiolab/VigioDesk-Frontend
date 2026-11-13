@@ -9,8 +9,8 @@ import {
 } from "@maxgraph/core";
 import { parseCellValue } from "./model";
 
-/** How many evenly-spaced ports to show around each shape perimeter. */
-const PERIMETER_SAMPLE_COUNT = 16;
+/** How many evenly-spaced ports to show around each shape perimeter (draw.io-dense). */
+const PERIMETER_SAMPLE_COUNT = 24;
 
 const CONNECTION_DOT_SVG = encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">' +
@@ -50,6 +50,8 @@ type ConstraintHandlerLike = {
 
 export type ConnectionSetupOptions = {
   connectionPointsEnabled: () => boolean;
+  /** When true, only discrete perimeter samples (no floating cursor port). */
+  snapToPoint?: () => boolean;
 };
 
 export type PinConnectionOptions = {
@@ -104,7 +106,9 @@ function buildPerimeterConstraints(
     constraints.push(new ConnectionConstraint(new Point(x, y), true, `s${i}`));
   }
 
+  // Floating mode: add a cursor-aligned perimeter port. Snap-to-point skips this.
   if (
+    !snapToPointActive &&
     hoverContext &&
     hoverContext.cellId === (terminal.cell.getId() || "") &&
     Number.isFinite(hoverContext.graphX) &&
@@ -132,6 +136,9 @@ function buildPerimeterConstraints(
   void source;
   return constraints;
 }
+
+/** Module-level flag read by buildPerimeterConstraints. */
+let snapToPointActive = false;
 
 export function isConnectableDiagramVertex(cell: Cell | null): cell is Cell {
   if (!cell?.isVertex() || !cell.isConnectable()) return false;
@@ -220,6 +227,7 @@ export function configureGraphConnections(graph: Graph, opts: ConnectionSetupOpt
   graph.getAllConnectionConstraints = (terminal: CellState | null, source: boolean) => {
     if (!opts.connectionPointsEnabled()) return null;
     if (!terminal?.cell || !isConnectableDiagramVertex(terminal.cell)) return null;
+    snapToPointActive = Boolean(opts.snapToPoint?.());
     return buildPerimeterConstraints(graph, terminal, source);
   };
 

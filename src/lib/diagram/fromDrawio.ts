@@ -5,11 +5,12 @@ import {
   type DiagramEdge,
   type DiagramNode,
   type DiagramPage,
+  type EdgeStyle,
 } from "./model";
 
 /**
  * Best-effort import of diagrams.net / draw.io mxfile XML into Vigodesk diagram JSON.
- * Supports multi-page mxfile diagrams; advanced stencils become rectangles.
+ * Supports multi-page mxfile diagrams; advanced stencils map to closest custom shapes.
  */
 export function fromDrawioXml(xml: string): DiagramDocument {
   if (typeof DOMParser === "undefined") {
@@ -28,14 +29,13 @@ export function fromDrawioXml(xml: string): DiagramDocument {
     diagramEls.forEach((el, i) => {
       const name = el.getAttribute("name") || `Page-${i + 1}`;
       const page = parseCellsIntoPage(el, name);
-      if (page.nodes.length) pages.push(page);
+      if (page.nodes.length || page.edges.length) pages.push(page);
     });
   }
 
   if (!pages.length) {
-    // Flat mxGraphModel (no <diagram> wrappers)
     const page = parseCellsIntoPage(parsed.documentElement, "Imported");
-    if (page.nodes.length) pages.push(page);
+    if (page.nodes.length || page.edges.length) pages.push(page);
   }
 
   if (!pages.length) {
@@ -45,6 +45,20 @@ export function fromDrawioXml(xml: string): DiagramDocument {
   const doc = emptyDocument();
   doc.pages = pages;
   return doc;
+}
+
+function parseStyleMap(style: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of style.split(";")) {
+    if (!part.trim()) continue;
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      out[part.trim().toLowerCase()] = "1";
+      continue;
+    }
+    out[part.slice(0, eq).trim().toLowerCase()] = part.slice(eq + 1).trim();
+  }
+  return out;
 }
 
 function parseCellsIntoPage(root: Element, name: string): DiagramPage {
@@ -69,8 +83,9 @@ function parseCellsIntoPage(root: Element, name: string): DiagramPage {
     const y = Number(geo?.getAttribute("y") || 40);
     const w = Number(geo?.getAttribute("width") || 120);
     const h = Number(geo?.getAttribute("height") || 60);
-    const style = cell.getAttribute("style") || "";
-    const shape = mapDrawioShape(style);
+    const styleAttr = cell.getAttribute("style") || "";
+    const styleMap = parseStyleMap(styleAttr);
+    const shape = mapDrawioShape(styleAttr, styleMap);
     const label = decodeDrawioLabel(cell.getAttribute("value") || "");
     const node: DiagramNode = {
       id: ourId,
@@ -80,7 +95,17 @@ function parseCellsIntoPage(root: Element, name: string): DiagramPage {
       y,
       w,
       h,
-      kind: "shape",
+      kind: shape === "text" ? "text" : "shape",
+      style: {
+        fill: styleMap.fillcolor,
+        stroke: styleMap.strokecolor,
+        strokeWidth: styleMap.strokewidth ? Number(styleMap.strokewidth) : undefined,
+        dashed: styleMap.dashed === "1",
+        fontSize: styleMap.fontsize ? Number(styleMap.fontsize) : undefined,
+        fontColor: styleMap.fontcolor,
+        rounded: styleMap.rounded === "1",
+      },
+      layerId: page.layers?.[0]?.id,
     };
     page.nodes.push(node);
   }
@@ -93,11 +118,44 @@ function parseCellsIntoPage(root: Element, name: string): DiagramPage {
     const source = idMap.get(cell.getAttribute("source") || "");
     const target = idMap.get(cell.getAttribute("target") || "");
     if (!source || !target) continue;
+    const styleMap = parseStyleMap(cell.getAttribute("style") || "");
+    const geo = cell.querySelector("mxGeometry");
+    const pointEls = geo ? Array.from(geo.querySelectorAll("mxPoint")) : [];
+    const points = pointEls
+      .map((p) => [Number(p.getAttribute("x") || 0), Number(p.getAttribute("y") || 0)] as [number, number])
+      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+
+    let edgeStyle: EdgeStyle["edgeStyle"] = "orthogonal";
+    const es = (styleMap.edgestyle || "").toLowerCase();
+    if (es.includes("none") || es === "") {
+      if (styleMap.curved === "1") edgeStyle = "orthogonal";
+      else if (!styleMap.edgestyle) edgeStyle = "orthogonal";
+      else edgeStyle = "straight";
+    }
+    if (es.includes("elbow")) edgeStyle = "elbow";
+    if (es.includes("entityrelation")) edgeStyle = "entityRelation";
+    if (es === "none") edgeStyle = "straight";
+
     const edge: DiagramEdge = {
       id: ourId,
       source,
       target,
       label: decodeDrawioLabel(cell.getAttribute("value") || ""),
+      style: {
+        stroke: styleMap.strokecolor,
+        strokeWidth: styleMap.strokewidth ? Number(styleMap.strokewidth) : undefined,
+        dashed: styleMap.dashed === "1",
+        arrow: (styleMap.endarrow as EdgeStyle["arrow"]) || "classic",
+        startArrow: (styleMap.startarrow as EdgeStyle["startArrow"]) || "none",
+        edgeStyle,
+        curved: styleMap.curved === "1",
+        exitX: styleMap.exitx ? Number(styleMap.exitx) : undefined,
+        exitY: styleMap.exity ? Number(styleMap.exity) : undefined,
+        entryX: styleMap.entryx ? Number(styleMap.entryx) : undefined,
+        entryY: styleMap.entryy ? Number(styleMap.entryy) : undefined,
+        floating: !(styleMap.exitx || styleMap.entryx),
+        points: points.length ? points : undefined,
+      },
     };
     page.edges.push(edge);
   }
@@ -105,16 +163,35 @@ function parseCellsIntoPage(root: Element, name: string): DiagramPage {
   return page;
 }
 
-function mapDrawioShape(style: string): string {
+function mapDrawioShape(style: string, map: Record<string, string>): string {
   const s = style.toLowerCase();
-  if (s.includes("ellipse") || s.includes("shape=ellipse")) return "ellipse";
-  if (s.includes("rhombus") || s.includes("diamond")) return "diamond";
-  if (s.includes("cylinder")) return "cylinder";
-  if (s.includes("cloud")) return "cloud";
-  if (s.includes("actor")) return "actor";
-  if (s.includes("swimlane")) return "swimlane";
-  if (s.includes("parallelogram")) return "parallelogram";
-  if (s.includes("hexagon")) return "hexagon";
+  const shape = (map.shape || "").toLowerCase();
+  if (map.text === "1" || shape === "text") return "text";
+  if (shape.includes("umlactor") || s.includes("actor")) return "actor";
+  if (shape.includes("offpage")) return "offPageConnector";
+  if (shape.includes("manualinput")) return "manualInput";
+  if (shape.includes("datastore") || shape.includes("datastorage")) return "dataStorage";
+  if (shape.includes("internalstorage")) return "internalStorage";
+  if (shape.includes("document")) return "document";
+  if (shape.includes("note")) return "note";
+  if (shape.includes("step")) return "step";
+  if (shape.includes("tape")) return "tape";
+  if (shape.includes("card")) return "card";
+  if (shape.includes("callout")) return "callout";
+  if (shape.includes("cube")) return "cube";
+  if (shape.includes("component") || shape.includes("module")) return "component";
+  if (shape.includes("display")) return "display";
+  if (shape.includes("delay")) return "delay";
+  if (shape.includes("parallelogram") || s.includes("parallelogram")) return "parallelogram";
+  if (shape.includes("hexagon") || s.includes("hexagon")) return "hexagon";
+  if (shape.includes("cylinder") || s.includes("cylinder")) return "cylinder";
+  if (shape.includes("cloud") || s.includes("cloud")) return "cloud";
+  if (shape.includes("doubleellipse") || s.includes("doubleellipse")) return "doubleEllipse";
+  if (shape.includes("triangle") || s.includes("triangle")) return "triangle";
+  if (s.includes("rhombus") || s.includes("diamond") || shape.includes("rhombus")) return "diamond";
+  if (s.includes("ellipse") || shape.includes("ellipse")) return "ellipse";
+  if (s.includes("swimlane") || shape.includes("swimlane")) return "swimlane";
+  if (map.rounded === "1") return "rounded";
   return "rectangle";
 }
 

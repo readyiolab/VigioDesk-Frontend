@@ -15,6 +15,8 @@ import {
 import type { ShapeDef } from "@/lib/diagram/shapes";
 import { downloadBlob, exportPdf, exportPng, exportSvg } from "@/lib/diagram/export";
 import { diagramsApi } from "@/services/diagramsApi";
+import { PresenceCursors } from "@/components/diagrams/PresenceCursors";
+import { emptyPage } from "@/lib/diagram/model";
 import type { CellStyle } from "@maxgraph/core";
 
 function SharedDiagramInner() {
@@ -217,6 +219,10 @@ function SharedDiagramInner() {
         </div>
       ) : null}
 
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      {token && role === "EDIT" ? (
+        <PresenceCursors token={token} canvasRef={canvasRef} enabled />
+      ) : null}
       <DiagramWorkspace
         canvasRef={canvasRef}
         settings={settings}
@@ -231,12 +237,7 @@ function SharedDiagramInner() {
             ? undefined
             : () => {
                 const nextDoc = syncActivePageFromCanvas();
-                const page: DiagramPage = {
-                  id: crypto.randomUUID(),
-                  name: `Page-${nextDoc.pages.length + 1}`,
-                  nodes: [],
-                  edges: [],
-                };
+                const page = emptyPage(`Page-${nextDoc.pages.length + 1}`);
                 setDoc({ ...nextDoc, pages: [...nextDoc.pages, page] });
                 setActivePageId(page.id);
                 setDirty(true);
@@ -341,6 +342,7 @@ function SharedDiagramInner() {
           lastLayout: null,
         }}
       />
+      </div>
     </div>
   );
 }

@@ -112,6 +112,16 @@ export type DiagramPagination = {
   totalPages: number;
 };
 
+export type PresencePeer = {
+  clientId: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  selectionIds: string[];
+  updatedAt: number;
+};
+
 export const diagramsApi = {
   list(organizationId: string, folderId?: string | null, page = 1, limit = 50) {
     const params = new URLSearchParams();
@@ -261,6 +271,36 @@ export const diagramsApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }) as Promise<{ diagram: DiagramRow }>;
+  },
+
+  presenceHeartbeat(
+    token: string,
+    body: {
+      clientId: string;
+      name?: string;
+      x: number;
+      y: number;
+      selectionIds?: string[];
+    }
+  ) {
+    return apiFetch(`/diagrams/shared/${token}/presence`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }) as Promise<{ peers: PresencePeer[] }>;
+  },
+
+  presenceList(token: string, clientId?: string) {
+    const q = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    return apiFetch(`/diagrams/shared/${token}/presence${q}`) as Promise<{
+      peers: PresencePeer[];
+    }>;
+  },
+
+  presenceLeave(token: string, clientId: string) {
+    return apiFetch(`/diagrams/shared/${token}/presence/leave`, {
+      method: "POST",
+      body: JSON.stringify({ clientId }),
+    }) as Promise<{ ok: boolean }>;
   },
 
   aiGenerate(organizationId: string, prompt: string) {

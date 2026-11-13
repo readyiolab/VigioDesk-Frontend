@@ -45,11 +45,20 @@ const flowchart: ShapeDef[] = [
   { id: "fc-doc", label: "Document", shape: "document", preview: "doc", category: "flowchart" },
   { id: "fc-db", label: "Database", shape: "cylinder", preview: "cyl", category: "flowchart" },
   { id: "fc-prep", label: "Preparation", shape: "hexagon", preview: "hex", category: "flowchart" },
-  { id: "fc-manual", label: "Manual Input", shape: "parallelogram", preview: "parallelogram", category: "flowchart" },
-  { id: "fc-display", label: "Display", shape: "ellipse", preview: "ellipse", category: "flowchart" },
+  { id: "fc-manual", label: "Manual Input", shape: "manualInput", preview: "parallelogram", category: "flowchart" },
+  { id: "fc-display", label: "Display", shape: "display", preview: "ellipse", category: "flowchart" },
   { id: "fc-or", label: "Or", shape: "circle", w: 50, h: 50, preview: "ellipse", category: "flowchart" },
-  { id: "fc-sum", label: "Summing Junction", shape: "circle", w: 50, h: 50, preview: "dellipse", category: "flowchart" },
-  { id: "fc-offpage", label: "Off-page", shape: "triangle", preview: "tri", category: "flowchart" },
+  { id: "fc-sum", label: "Summing Junction", shape: "doubleEllipse", w: 50, h: 50, preview: "dellipse", category: "flowchart" },
+  { id: "fc-offpage", label: "Off-page", shape: "offPageConnector", preview: "tri", category: "flowchart" },
+  { id: "fc-delay", label: "Delay", shape: "delay", preview: "rounded", category: "flowchart" },
+  { id: "fc-stored", label: "Stored Data", shape: "dataStorage", preview: "cyl", category: "flowchart" },
+  { id: "fc-internal", label: "Internal Storage", shape: "internalStorage", preview: "rect", category: "flowchart" },
+  { id: "fc-predefined", label: "Predefined Process", shape: "process", preview: "rounded", category: "flowchart" },
+  { id: "fc-collate", label: "Collate", shape: "triangle", preview: "tri", category: "flowchart" },
+  { id: "fc-sort", label: "Sort", shape: "diamond", preview: "diamond", category: "flowchart" },
+  { id: "fc-extract", label: "Extract", shape: "triangle", preview: "tri", category: "flowchart" },
+  { id: "fc-merge", label: "Merge", shape: "triangle", preview: "tri", category: "flowchart" },
+  { id: "fc-multidoc", label: "Multi-document", shape: "document", preview: "doc", category: "flowchart" },
 ];
 
 const arrows: ShapeDef[] = [
@@ -63,10 +72,15 @@ const uml: ShapeDef[] = [
   { id: "uml-actor", label: "Actor", shape: "actor", w: 40, h: 80, preview: "actor", category: "uml" },
   { id: "uml-usecase", label: "Use Case", shape: "ellipse", w: 140, h: 60, preview: "ellipse", category: "uml" },
   { id: "uml-note", label: "Note", shape: "note", preview: "note", category: "uml" },
-  { id: "uml-component", label: "Component", shape: "rectangle", preview: "rect", category: "uml" },
+  { id: "uml-component", label: "Component", shape: "component", preview: "rect", category: "uml" },
   { id: "uml-interface", label: "Interface", shape: "circle", w: 40, h: 40, preview: "ellipse", category: "uml" },
   { id: "uml-package", label: "Package", shape: "swimlane", w: 180, h: 140, preview: "swimlane", category: "uml" },
   { id: "uml-state", label: "State", shape: "rounded", preview: "rounded", category: "uml" },
+  { id: "uml-lifeline", label: "Lifeline", shape: "rectangle", w: 20, h: 200, preview: "rect", category: "uml" },
+  { id: "uml-activation", label: "Activation", shape: "rectangle", w: 16, h: 60, preview: "rect", category: "uml" },
+  { id: "uml-boundary", label: "Boundary", shape: "ellipse", preview: "ellipse", category: "uml" },
+  { id: "uml-control", label: "Control", shape: "circle", w: 50, h: 50, preview: "ellipse", category: "uml" },
+  { id: "uml-entity", label: "Entity", shape: "circle", w: 50, h: 50, preview: "ellipse", category: "uml" },
 ];
 
 const er: ShapeDef[] = [
@@ -74,6 +88,8 @@ const er: ShapeDef[] = [
   { id: "er-weak", label: "Weak Entity", shape: "rectangle", preview: "rect", category: "er" },
   { id: "er-attr", label: "Attribute", shape: "ellipse", preview: "ellipse", category: "er" },
   { id: "er-key", label: "Key Attribute", shape: "ellipse", preview: "ellipse", category: "er" },
+  { id: "er-multivalue", label: "Multivalued Attr.", shape: "doubleEllipse", preview: "dellipse", category: "er" },
+  { id: "er-derived", label: "Derived Attr.", shape: "ellipse", preview: "ellipse", category: "er" },
   { id: "er-rel", label: "Relationship", shape: "diamond", preview: "diamond", category: "er" },
   { id: "er-ident", label: "Identifying Rel.", shape: "diamond", preview: "diamond", category: "er" },
 ];
@@ -90,10 +106,13 @@ const network: ShapeDef[] = [
 ];
 
 const misc: ShapeDef[] = [
-  { id: "misc-callout", label: "Callout", shape: "cloud", preview: "cloud", category: "misc" },
-  { id: "misc-card", label: "Card", shape: "rounded", preview: "rounded", category: "misc" },
+  { id: "misc-callout", label: "Callout", shape: "callout", preview: "cloud", category: "misc" },
+  { id: "misc-card", label: "Card", shape: "card", preview: "rounded", category: "misc" },
   { id: "misc-badge", label: "Badge", shape: "ellipse", w: 60, h: 40, preview: "ellipse", category: "misc" },
-  { id: "misc-step", label: "Step", shape: "hexagon", preview: "hex", category: "misc" },
+  { id: "misc-step", label: "Step", shape: "step", preview: "hex", category: "misc" },
+  { id: "misc-tape", label: "Tape", shape: "tape", preview: "cyl", category: "misc" },
+  { id: "misc-cube", label: "Cube", shape: "cube", preview: "rect", category: "misc" },
+  { id: "misc-list", label: "List", shape: "swimlane", w: 160, h: 140, preview: "swimlane", category: "misc" },
 ];
 
 const advanced: ShapeDef[] = [

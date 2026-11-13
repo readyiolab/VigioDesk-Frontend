@@ -45,6 +45,10 @@ import {
 import { applyThemeToPage, getTheme } from "@/lib/diagram/themes";
 import { analyzePageLocal } from "@/lib/diagram/analyzeLocal";
 import { fromDrawioXml, isDrawioFile } from "@/lib/diagram/fromDrawio";
+import { downloadDrawio } from "@/lib/diagram/toDrawio";
+import { FindReplaceDialog } from "@/components/diagrams/FindReplaceDialog";
+import { PresenceCursors } from "@/components/diagrams/PresenceCursors";
+import { defaultLayers } from "@/lib/diagram/model";
 import {
   fromMermaid,
   toKubernetes,
@@ -110,7 +114,11 @@ function DiagramEditorInner() {
   const [pageSetupOpen, setPageSetupOpen] = useState(false);
   const [shapesPanelOpen, setShapesPanelOpen] = useState(true);
   const [formatPanelOpen, setFormatPanelOpen] = useState(false);
-  const [formatTab, setFormatTab] = useState<"diagram" | "style" | "elements">("diagram");
+  const [formatTab, setFormatTab] = useState<"diagram" | "style" | "arrange" | "elements">(
+    "diagram"
+  );
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel>("none");
   const [analyzeIssues, setAnalyzeIssues] = useState<DiagramIssue[]>([]);
   const [explainSteps, setExplainSteps] = useState<ExplainStep[]>([]);
@@ -376,6 +384,33 @@ function DiagramEditorInner() {
         canvas.duplicate();
         return;
       }
+      if (mod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) canvas.ungroupSelection();
+        else canvas.groupSelection();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFindOpen(true);
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        canvas.applyStyle({ fontStyle: ((selection?.style?.fontStyle as number) || 0) ^ 1 });
+        return;
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        setFormatPanelOpen(true);
+        setFormatTab("elements");
+        return;
+      }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setFormatPanelOpen((v) => !v);
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         canvas.deleteSelection();
@@ -417,7 +452,7 @@ function DiagramEditorInner() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [save, openAiPanel, presentOpen, tools.activeTool, tools.openMenu]);
+  }, [save, openAiPanel, presentOpen, tools.activeTool, tools.openMenu, selection]);
 
   useEffect(() => {
     const onBefore = (e: BeforeUnloadEvent) => {
@@ -1012,6 +1047,14 @@ function DiagramEditorInner() {
         { type: "item" as const, label: "Export Terraform…", onClick: () => exportCode("terraform") },
         { type: "item" as const, label: "Export Kubernetes…", onClick: () => exportCode("k8s") },
         { type: "item" as const, label: "Export OpenAPI…", onClick: () => exportCode("openapi") },
+        {
+          type: "item" as const,
+          label: "Export Draw.io…",
+          onClick: () => {
+            const nextDoc = syncActivePageFromCanvas();
+            downloadDrawio(nextDoc, `${title.replace(/[^\w\-]+/g, "_") || "diagram"}.drawio`);
+          },
+        },
         { type: "sep" as const },
         { type: "item" as const, label: "Import Mermaid…", onClick: () => setMermaidOpen(true) },
         {
@@ -1046,6 +1089,12 @@ function DiagramEditorInner() {
           onClick: () => canvasRef.current?.duplicate(),
         },
         { type: "item" as const, label: "Delete", onClick: () => canvasRef.current?.deleteSelection() },
+        {
+          type: "item" as const,
+          label: "Find / Replace…",
+          shortcut: "Ctrl+F",
+          onClick: () => setFindOpen(true),
+        },
         { type: "sep" as const },
         {
           type: "item" as const,
@@ -1056,11 +1105,13 @@ function DiagramEditorInner() {
         {
           type: "item" as const,
           label: "Group",
+          shortcut: "Ctrl+G",
           onClick: () => canvasRef.current?.groupSelection(),
         },
         {
           type: "item" as const,
           label: "Ungroup",
+          shortcut: "Ctrl+Shift+G",
           onClick: () => canvasRef.current?.ungroupSelection(),
         },
       ],
@@ -1092,7 +1143,22 @@ function DiagramEditorInner() {
         {
           type: "item" as const,
           label: formatPanelOpen ? "Hide Format" : "Show Format",
+          shortcut: "Ctrl+Shift+P",
           onClick: () => setFormatPanelOpen((v) => !v),
+        },
+        {
+          type: "item" as const,
+          label: outlineOpen ? "Hide Outline" : "Show Outline",
+          onClick: () => setOutlineOpen((v) => !v),
+        },
+        {
+          type: "item" as const,
+          label: "Layers…",
+          shortcut: "Ctrl+Shift+L",
+          onClick: () => {
+            setFormatPanelOpen(true);
+            setFormatTab("elements");
+          },
         },
         {
           type: "item" as const,
@@ -1334,6 +1400,111 @@ function DiagramEditorInner() {
           canvasRef.current?.setCellHidden(id, !node?.hidden);
           setDirty(true);
         }}
+        outlineOpen={outlineOpen}
+        onAddLayer={() => {
+          const nextDoc = syncActivePageFromCanvas();
+          const layers = [...(nextDoc.pages.find((p) => p.id === activePageId)?.layers ?? defaultLayers())];
+          const layer = {
+            id: crypto.randomUUID(),
+            name: `Layer ${layers.length + 1}`,
+            visible: true,
+            locked: false,
+          };
+          layers.push(layer);
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId ? { ...p, layers, activeLayerId: layer.id } : p
+            ),
+          });
+          setDirty(true);
+          setCanvasEpoch((e) => e + 1);
+        }}
+        onRemoveLayer={(layerId) => {
+          const nextDoc = syncActivePageFromCanvas();
+          const page = nextDoc.pages.find((p) => p.id === activePageId);
+          if (!page?.layers || page.layers.length <= 1) return;
+          const fallback = page.layers.find((l) => l.id !== layerId)?.id ?? page.layers[0]!.id;
+          const layers = page.layers.filter((l) => l.id !== layerId);
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId
+                ? {
+                    ...p,
+                    layers,
+                    activeLayerId: p.activeLayerId === layerId ? fallback : p.activeLayerId,
+                    nodes: p.nodes.map((n) =>
+                      n.layerId === layerId ? { ...n, layerId: fallback } : n
+                    ),
+                  }
+                : p
+            ),
+          });
+          setDirty(true);
+          setCanvasEpoch((e) => e + 1);
+        }}
+        onRenameLayer={(layerId, name) => {
+          const nextDoc = syncActivePageFromCanvas();
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId
+                ? {
+                    ...p,
+                    layers: (p.layers ?? defaultLayers()).map((l) =>
+                      l.id === layerId ? { ...l, name } : l
+                    ),
+                  }
+                : p
+            ),
+          });
+          setDirty(true);
+        }}
+        onToggleLayerVisible={(layerId) => {
+          const nextDoc = syncActivePageFromCanvas();
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId
+                ? {
+                    ...p,
+                    layers: (p.layers ?? defaultLayers()).map((l) =>
+                      l.id === layerId ? { ...l, visible: l.visible === false } : l
+                    ),
+                  }
+                : p
+            ),
+          });
+          setDirty(true);
+          setCanvasEpoch((e) => e + 1);
+        }}
+        onToggleLayerLocked={(layerId) => {
+          const nextDoc = syncActivePageFromCanvas();
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId
+                ? {
+                    ...p,
+                    layers: (p.layers ?? defaultLayers()).map((l) =>
+                      l.id === layerId ? { ...l, locked: !l.locked } : l
+                    ),
+                  }
+                : p
+            ),
+          });
+          setDirty(true);
+        }}
+        onSelectLayer={(layerId) => {
+          const nextDoc = syncActivePageFromCanvas();
+          setDoc({
+            ...nextDoc,
+            pages: nextDoc.pages.map((p) =>
+              p.id === activePageId ? { ...p, activeLayerId: layerId } : p
+            ),
+          });
+        }}
         presentOpen={presentOpen}
         presentPlaying={presentPlaying}
         presentSpeed={presentSpeed}
@@ -1505,6 +1676,23 @@ function DiagramEditorInner() {
       )}
 
       <KeyboardShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <FindReplaceDialog
+        open={findOpen}
+        onClose={() => setFindOpen(false)}
+        onFind={(q) => canvasRef.current?.findByLabel(q) ?? []}
+        onReplace={(find, replace, all) =>
+          canvasRef.current?.replaceLabels(find, replace, all) ?? 0
+        }
+        onSelectIds={(ids) => {
+          const graph = canvasRef.current?.getGraph();
+          if (!graph || !ids.length) return;
+          canvasRef.current?.clearSelection();
+          for (const id of ids) {
+            const cell = graph.getDataModel().getCell(id);
+            if (cell) graph.addSelectionCell(cell);
+          }
+        }}
+      />
       <TextPromptDialog
         open={mermaidOpen}
         title="Import Mermaid flowchart"

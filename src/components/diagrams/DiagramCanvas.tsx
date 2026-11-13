@@ -21,6 +21,8 @@ import {
   getDefaultPlugins,
   StencilShapeConfig,
   VertexHandlerConfig,
+  EdgeHandlerConfig,
+  HandleConfig,
   SelectionHandler,
   type Cell,
   type CellStyle,
@@ -92,6 +94,12 @@ export type LayoutKindCanvas =
 // for production (default is already false; set explicitly for defense).
 StencilShapeConfig.allowEval = false;
 VertexHandlerConfig.rotationEnabled = true;
+// Lucid / diagrams.net-like connector editing: virtual mid-segment bends + circular handles
+EdgeHandlerConfig.virtualBendsEnabled = true;
+EdgeHandlerConfig.handleShape = "circle";
+EdgeHandlerConfig.addBendOnShiftClickEnabled = true;
+EdgeHandlerConfig.removeBendOnShiftClickEnabled = true;
+HandleConfig.size = 8;
 
 type Dir = "n" | "e" | "s" | "w";
 
@@ -527,6 +535,16 @@ export type DiagramCanvasHandle = {
   setCellLockedById: (id: string, locked: boolean) => void;
   groupSelection: () => void;
   ungroupSelection: () => void;
+  /** Clear waypoints and let orthogonal router recompute (draw.io auto-route). */
+  autoRouteEdges: () => void;
+  /** Remove bend points from selected edges. */
+  clearWaypoints: () => void;
+  /** Toggle floating vs fixed terminal attachment on selected edges. */
+  setEdgeFloating: (floating: boolean) => void;
+  /** Find cells whose label contains query (case-insensitive). */
+  findByLabel: (query: string) => string[];
+  /** Replace label text on matching cells; returns count replaced. */
+  replaceLabels: (find: string, replace: string, all?: boolean) => number;
 };
 
 type HoverUi = {
@@ -710,6 +728,24 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
     void root;
   }, []);
 
+  const pageMetaRef = useRef<{ layers?: DiagramPage["layers"]; activeLayerId?: string }>({});
+
+  const applyLayerVisibility = useCallback((graph: Graph, page: DiagramPage) => {
+    const layers = page.layers ?? [];
+    if (!layers.length) return;
+    const visibility = new Map(layers.map((l) => [l.id, l.visible !== false]));
+    const parent = graph.getDefaultParent();
+    const cells = graph.getChildCells(parent, true, true);
+    for (const cell of cells) {
+      const style = (cell.getStyle() ?? {}) as Record<string, unknown>;
+      const layerId = typeof style.diagramLayerId === "string" ? style.diagramLayerId : layers[0]?.id;
+      const visible = layerId ? visibility.get(layerId) !== false : true;
+      if (cell.isVisible() !== visible) {
+        graph.getDataModel().setVisible(cell, visible);
+      }
+    }
+  }, []);
+
   const applyLoadPage = useCallback(
     (page: DiagramPage, fit = false) => {
       const graph = graphRef.current;
@@ -717,9 +753,14 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         pendingPageRef.current = { page, fit };
         return;
       }
+      pageMetaRef.current = {
+        layers: page.layers,
+        activeLayerId: page.activeLayerId,
+      };
       // Suppress dirty + discard load edits so Ctrl+Z never undoes a full wipe.
       dirtySkip.current = true;
       toMaxGraph(graph, page);
+      applyLayerVisibility(graph, page);
       undoRef.current?.clear();
       dirtySkip.current = false;
       if (fit && settingsRef.current?.pageView === false) {
@@ -745,7 +786,7 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         g.sizeDidChange();
       });
     },
-    [emitSelection]
+    [emitSelection, applyLayerVisibility]
   );
 
   useEffect(() => {
@@ -812,6 +853,7 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
 
     configureGraphConnections(graph, {
       connectionPointsEnabled: () => settingsRef.current?.connectionPoints !== false,
+      snapToPoint: () => settingsRef.current?.snapToPoint === true,
     });
 
     const selectionHandler = graph.getPlugin("SelectionHandler") as SelectionHandler | null;
@@ -1382,7 +1424,11 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
     serializePage: (meta) => {
       const graph = graphRef.current;
       if (!graph) return null;
-      return fromMaxGraph(graph, meta);
+      return fromMaxGraph(graph, {
+        ...meta,
+        layers: pageMetaRef.current.layers,
+        activeLayerId: pageMetaRef.current.activeLayerId,
+      });
     },
     addShape: (def, at) => {
       const graph = graphRef.current;
@@ -1402,6 +1448,9 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         fontColor: "#333333",
         whiteSpace: "wrap",
       };
+      if (pageMetaRef.current.activeLayerId) {
+        (style as Record<string, unknown>).diagramLayerId = pageMetaRef.current.activeLayerId;
+      }
       graph.insertVertex({
         parent,
         id: crypto.randomUUID(),
@@ -1432,6 +1481,9 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
         fontColor: "#333333",
         whiteSpace: "wrap",
       };
+      if (pageMetaRef.current.activeLayerId) {
+        (style as Record<string, unknown>).diagramLayerId = pageMetaRef.current.activeLayerId;
+      }
       graph.insertVertex({
         parent: graph.getDefaultParent(),
         id: crypto.randomUUID(),
@@ -2339,6 +2391,131 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, Props>(function Dia
       } catch {
         /* ignore */
       }
+    },
+    autoRouteEdges: () => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current) return;
+      const edges = graph.getSelectionCells().filter((c) => c.isEdge());
+      const targets = edges.length
+        ? edges
+        : graph.getChildEdges(graph.getDefaultParent());
+      graph.getDataModel().beginUpdate();
+      try {
+        for (const edge of targets) {
+          const geo = edge.getGeometry()?.clone();
+          if (geo) {
+            geo.points = [];
+            graph.getDataModel().setGeometry(edge, geo);
+          }
+          const style = {
+            ...(edge.getStyle() ?? {}),
+            edgeStyle: "orthogonalEdgeStyle",
+            rounded: true,
+          };
+          graph.getDataModel().setStyle(edge, style);
+        }
+        try {
+          new ParallelEdgeLayout(graph).execute(graph.getDefaultParent());
+        } catch {
+          /* optional */
+        }
+      } finally {
+        graph.getDataModel().endUpdate();
+      }
+      onDirty?.();
+    },
+    clearWaypoints: () => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current) return;
+      const edges = graph.getSelectionCells().filter((c) => c.isEdge());
+      if (!edges.length) return;
+      graph.getDataModel().beginUpdate();
+      try {
+        for (const edge of edges) {
+          const geo = edge.getGeometry()?.clone();
+          if (!geo) continue;
+          geo.points = [];
+          graph.getDataModel().setGeometry(edge, geo);
+        }
+      } finally {
+        graph.getDataModel().endUpdate();
+      }
+      onDirty?.();
+    },
+    setEdgeFloating: (floating) => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current) return;
+      const edges = graph.getSelectionCells().filter((c) => c.isEdge());
+      if (!edges.length) return;
+      graph.getDataModel().beginUpdate();
+      try {
+        for (const edge of edges) {
+          const style = { ...(edge.getStyle() ?? {}) } as CellStyle & Record<string, unknown>;
+          style.diagramFloating = floating ? "1" : "0";
+          if (floating) {
+            style.exitPerimeter = true;
+            style.entryPerimeter = true;
+          } else {
+            // Pin to mid-sides if no fixed points yet
+            if (typeof style.exitX !== "number") {
+              style.exitX = 1;
+              style.exitY = 0.5;
+            }
+            if (typeof style.entryX !== "number") {
+              style.entryX = 0;
+              style.entryY = 0.5;
+            }
+            delete style.exitPerimeter;
+            delete style.entryPerimeter;
+          }
+          graph.getDataModel().setStyle(edge, style);
+        }
+      } finally {
+        graph.getDataModel().endUpdate();
+      }
+      emitSelection();
+      onDirty?.();
+    },
+    findByLabel: (query) => {
+      const graph = graphRef.current;
+      if (!graph || !query.trim()) return [];
+      const q = query.trim().toLowerCase();
+      const parent = graph.getDefaultParent();
+      const cells = graph.getChildCells(parent, true, true);
+      const ids: string[] = [];
+      for (const cell of cells) {
+        const label = cellValueToDisplay(cell.getValue()).toLowerCase();
+        if (label.includes(q)) {
+          const id = cell.getId();
+          if (id) ids.push(id);
+        }
+      }
+      return ids;
+    },
+    replaceLabels: (find, replace, all = true) => {
+      const graph = graphRef.current;
+      if (!graph || readOnlyRef.current || !find) return 0;
+      const q = find.toLowerCase();
+      const parent = graph.getDefaultParent();
+      const cells = graph.getChildCells(parent, true, true);
+      let count = 0;
+      graph.getDataModel().beginUpdate();
+      try {
+        for (const cell of cells) {
+          const display = cellValueToDisplay(cell.getValue());
+          if (!display.toLowerCase().includes(q)) continue;
+          const next = all
+            ? display.replace(new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), replace)
+            : display.replace(new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), replace);
+          graph.getDataModel().setValue(cell, encodeEditedCellValue(cell.getValue(), next));
+          count += 1;
+          if (!all) break;
+        }
+      } finally {
+        graph.getDataModel().endUpdate();
+      }
+      if (count) onDirty?.();
+      return count;
     },
   }));
 

@@ -78,11 +78,38 @@ type Props = {
   className?: string;
 };
 
+const SCRATCHPAD_KEY = "vigodesk.diagram.scratchpad";
+
+function loadScratchpad(): ShapeDef[] {
+  try {
+    const raw = localStorage.getItem(SCRATCHPAD_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ShapeDef[];
+    return Array.isArray(parsed) ? parsed.slice(0, 24) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function ShapePanel({ onPickShape, className }: Props) {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<Record<string, boolean>>({ general: true, flowchart: true });
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    scratchpad: true,
+    general: true,
+    flowchart: true,
+  });
   const [enabled, setEnabled] = useState<Set<string>>(new Set(DEFAULT_CATEGORY_IDS));
   const [moreOpen, setMoreOpen] = useState(false);
+  const [scratchpad, setScratchpad] = useState<ShapeDef[]>(() => loadScratchpad());
+
+  const persistScratchpad = (next: ShapeDef[]) => {
+    setScratchpad(next);
+    try {
+      localStorage.setItem(SCRATCHPAD_KEY, JSON.stringify(next.slice(0, 24)));
+    } catch {
+      /* ignore quota */
+    }
+  };
 
   const categories = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -114,6 +141,74 @@ export function ShapePanel({ onPickShape, className }: Props) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+        <div className="mb-1">
+          <button
+            type="button"
+            onClick={() => toggleCat("scratchpad")}
+            className="flex w-full items-center gap-1 rounded px-1.5 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-[#475569] hover:bg-[#e8eef5]"
+          >
+            {open.scratchpad ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+            Scratchpad
+          </button>
+          {open.scratchpad && (
+            <div
+              className="min-h-[48px] rounded border border-dashed border-[#cbd5e1] bg-white/70 p-1"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                try {
+                  const raw = e.dataTransfer.getData("application/x-diagram-shape");
+                  if (!raw) return;
+                  const shape = JSON.parse(raw) as ShapeDef;
+                  persistScratchpad([
+                    { ...shape, id: `scratch-${crypto.randomUUID()}` },
+                    ...scratchpad.filter((s) => s.shape !== shape.shape || s.label !== shape.label),
+                  ]);
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              {!scratchpad.length ? (
+                <p className="px-1 py-2 text-[10px] text-muted-foreground">
+                  Drag shapes here for quick reuse
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-1">
+                  {scratchpad.map((shape) => (
+                    <button
+                      key={shape.id}
+                      type="button"
+                      title={shape.label}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(
+                          "application/x-diagram-shape",
+                          JSON.stringify(shape)
+                        );
+                        e.dataTransfer.effectAllowed = "copy";
+                      }}
+                      onClick={() => onPickShape(shape)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        persistScratchpad(scratchpad.filter((s) => s.id !== shape.id));
+                      }}
+                      className="flex flex-col items-center gap-0.5 rounded border border-transparent p-1 hover:border-[#93c5fd] hover:bg-white"
+                    >
+                      <svg viewBox="0 0 36 36" className="size-9">
+                        <ShapeThumb preview={shape.preview} />
+                      </svg>
+                      <span className="max-w-full truncate text-[9px] text-[#64748b]">
+                        {shape.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {categories.map((cat) => {
           const isOpen = open[cat.id] ?? Boolean(cat.defaultOpen);
           return (

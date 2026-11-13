@@ -12,6 +12,18 @@ export const CUSTOM_SHAPE = {
   document: "document",
   note: "note",
   plus: "plus",
+  step: "diagramStep",
+  tape: "diagramTape",
+  card: "diagramCard",
+  callout: "diagramCallout",
+  cube: "diagramCube",
+  component: "diagramComponent",
+  internalStorage: "diagramInternalStorage",
+  dataStorage: "diagramDataStorage",
+  offPageConnector: "diagramOffPage",
+  manualInput: "diagramManualInput",
+  display: "diagramDisplay",
+  delay: "diagramDelay",
 } as const;
 
 function parseFreehandPoints(cell: Cell | null | undefined): {
@@ -156,6 +168,203 @@ class PlusShape extends Shape {
   }
 }
 
+class StepShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const s = Math.min(w * 0.22, 24);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, 0);
+    c.lineTo(w - s, 0);
+    c.lineTo(w, h / 2);
+    c.lineTo(w - s, h);
+    c.lineTo(0, h);
+    c.lineTo(s, h / 2);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class TapeShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const wave = Math.min(h * 0.18, 10);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, wave);
+    c.quadTo(w / 4, 0, w / 2, wave);
+    c.quadTo((3 * w) / 4, wave * 2, w, wave);
+    c.lineTo(w, h - wave);
+    c.quadTo((3 * w) / 4, h, w / 2, h - wave);
+    c.quadTo(w / 4, h - wave * 2, 0, h - wave);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class CardShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const cut = Math.min(w * 0.18, 16);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(cut, 0);
+    c.lineTo(w, 0);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.lineTo(0, cut);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class CalloutShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const tip = Math.min(h * 0.28, 18);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, 0);
+    c.lineTo(w, 0);
+    c.lineTo(w, h - tip);
+    c.lineTo(w * 0.35, h - tip);
+    c.lineTo(w * 0.22, h);
+    c.lineTo(w * 0.28, h - tip);
+    c.lineTo(0, h - tip);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class CubeShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const d = Math.min(w, h) * 0.22;
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, d);
+    c.lineTo(w - d, d);
+    c.lineTo(w - d, h);
+    c.lineTo(0, h);
+    c.close();
+    c.fillAndStroke();
+    c.begin();
+    c.moveTo(0, d);
+    c.lineTo(d, 0);
+    c.lineTo(w, 0);
+    c.lineTo(w - d, d);
+    c.close();
+    c.fillAndStroke();
+    c.begin();
+    c.moveTo(w - d, d);
+    c.lineTo(w, 0);
+    c.lineTo(w, h - d);
+    c.lineTo(w - d, h);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class ComponentShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const tab = Math.min(w * 0.18, 14);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(tab, 0);
+    c.lineTo(w, 0);
+    c.lineTo(w, h);
+    c.lineTo(tab, h);
+    c.close();
+    c.fillAndStroke();
+    c.rect(0, h * 0.18, tab * 1.4, h * 0.18);
+    c.fillAndStroke();
+    c.rect(0, h * 0.55, tab * 1.4, h * 0.18);
+    c.fillAndStroke();
+  }
+}
+
+class InternalStorageShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    c.translate(x, y);
+    c.rect(0, 0, w, h);
+    c.fillAndStroke();
+    c.begin();
+    c.moveTo(w * 0.18, 0);
+    c.lineTo(w * 0.18, h);
+    c.moveTo(0, h * 0.22);
+    c.lineTo(w, h * 0.22);
+    c.stroke();
+  }
+}
+
+class DataStorageShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const curve = Math.min(w * 0.18, 18);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(curve, 0);
+    c.lineTo(w, 0);
+    c.quadTo(w - curve, h / 2, w, h);
+    c.lineTo(curve, h);
+    c.quadTo(0, h / 2, curve, 0);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class OffPageShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, 0);
+    c.lineTo(w, 0);
+    c.lineTo(w, h * 0.65);
+    c.lineTo(w / 2, h);
+    c.lineTo(0, h * 0.65);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class ManualInputShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const rise = Math.min(h * 0.28, 18);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, rise);
+    c.lineTo(w, 0);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class DisplayShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const tip = Math.min(w * 0.18, 20);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(tip, 0);
+    c.lineTo(w - tip, 0);
+    c.quadTo(w, h / 2, w - tip, h);
+    c.lineTo(tip, h);
+    c.lineTo(0, h / 2);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
+class DelayShape extends Shape {
+  paintVertexShape(c: AbstractCanvas2D, x: number, y: number, w: number, h: number) {
+    const r = Math.min(w * 0.35, h / 2);
+    c.translate(x, y);
+    c.begin();
+    c.moveTo(0, 0);
+    c.lineTo(w - r, 0);
+    c.quadTo(w, 0, w, h / 2);
+    c.quadTo(w, h, w - r, h);
+    c.lineTo(0, h);
+    c.close();
+    c.fillAndStroke();
+  }
+}
+
 let registered = false;
 
 /** Idempotent registration of diagram custom shapes into maxGraph. */
@@ -167,4 +376,16 @@ export function registerDiagramCustomShapes() {
   ShapeRegistry.add(CUSTOM_SHAPE.document, DocumentShape);
   ShapeRegistry.add(CUSTOM_SHAPE.note, NoteShape);
   ShapeRegistry.add(CUSTOM_SHAPE.plus, PlusShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.step, StepShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.tape, TapeShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.card, CardShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.callout, CalloutShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.cube, CubeShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.component, ComponentShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.internalStorage, InternalStorageShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.dataStorage, DataStorageShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.offPageConnector, OffPageShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.manualInput, ManualInputShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.display, DisplayShape);
+  ShapeRegistry.add(CUSTOM_SHAPE.delay, DelayShape);
 }

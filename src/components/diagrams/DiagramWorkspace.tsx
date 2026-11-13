@@ -11,6 +11,7 @@ import { ToolRail } from "@/components/diagrams/ToolRail";
 import { PageTabs } from "@/components/diagrams/PageTabs";
 import { SelectionToolbar } from "@/components/diagrams/SelectionToolbar";
 import { PresentBar } from "@/components/diagrams/PresentBar";
+import { OutlinePanel } from "@/components/diagrams/OutlinePanel";
 import { useDiagramToolsOptional } from "@/components/diagrams/DiagramToolsContext";
 import type { DiagramPage, DiagramSettings } from "@/lib/diagram/model";
 import type { ShapeDef } from "@/lib/diagram/shapes";
@@ -35,8 +36,8 @@ export type DiagramWorkspaceProps = {
   onOpenInNewWindow?: (id: string) => void;
   shapesPanelOpen: boolean;
   formatPanelOpen: boolean;
-  formatTab?: "diagram" | "style" | "elements";
-  onFormatTabChange?: (tab: "diagram" | "style" | "elements") => void;
+  formatTab?: "diagram" | "style" | "arrange" | "elements";
+  onFormatTabChange?: (tab: "diagram" | "style" | "arrange" | "elements") => void;
   onToggleShapesPanel: () => void;
   onToggleFormatPanel: () => void;
   selection: SelectionInfo | null;
@@ -68,6 +69,13 @@ export type DiagramWorkspaceProps = {
   onSelectElement?: (nodeId: string) => void;
   onToggleElementLock?: (nodeId: string) => void;
   onToggleElementHidden?: (nodeId: string) => void;
+  onAddLayer?: () => void;
+  onRemoveLayer?: (layerId: string) => void;
+  onRenameLayer?: (layerId: string, name: string) => void;
+  onToggleLayerVisible?: (layerId: string) => void;
+  onToggleLayerLocked?: (layerId: string) => void;
+  onSelectLayer?: (layerId: string) => void;
+  outlineOpen?: boolean;
   sidePanels?: ReactNode;
   showAdvancedPageTabs?: boolean;
 };
@@ -121,6 +129,13 @@ export function DiagramWorkspace({
   onSelectElement,
   onToggleElementLock,
   onToggleElementHidden,
+  onAddLayer,
+  onRemoveLayer,
+  onRenameLayer,
+  onToggleLayerVisible,
+  onToggleLayerLocked,
+  onSelectLayer,
+  outlineOpen = false,
   sidePanels,
   showAdvancedPageTabs: _showAdvancedPageTabs = true,
 }: DiagramWorkspaceProps) {
@@ -210,6 +225,8 @@ export function DiagramWorkspace({
               onExit={() => onPresentExit?.()}
             />
           ) : null}
+
+          <OutlinePanel canvasRef={canvasRef} open={outlineOpen} />
         </div>
 
         {formatPanelOpen && !readOnly ? (
@@ -224,6 +241,21 @@ export function DiagramWorkspace({
             onSelectElement={onSelectElement}
             onToggleElementLock={onToggleElementLock}
             onToggleElementHidden={onToggleElementHidden}
+            onAlign={(dir) => canvasRef.current?.align(dir)}
+            onDistribute={(axis) => canvasRef.current?.distribute(axis)}
+            onBringToFront={() => canvasRef.current?.bringToFront()}
+            onSendToBack={() => canvasRef.current?.sendToBack()}
+            onAutoRoute={() => canvasRef.current?.autoRouteEdges()}
+            onClearWaypoints={() => canvasRef.current?.clearWaypoints()}
+            onSetEdgeFloating={(f) => canvasRef.current?.setEdgeFloating(f)}
+            onGroup={() => canvasRef.current?.groupSelection()}
+            onUngroup={() => canvasRef.current?.ungroupSelection()}
+            onAddLayer={onAddLayer}
+            onRemoveLayer={onRemoveLayer}
+            onRenameLayer={onRenameLayer}
+            onToggleLayerVisible={onToggleLayerVisible}
+            onToggleLayerLocked={onToggleLayerLocked}
+            onSelectLayer={onSelectLayer}
             tab={formatTab}
             onTabChange={onFormatTabChange}
           />

@@ -35,6 +35,11 @@ export const edgeStyleSchema = z.object({
   entryY: z.number().optional(),
   exitPerimeter: z.boolean().optional(),
   entryPerimeter: z.boolean().optional(),
+  /** Floating = glide on perimeter; fixed = stick to exitX/Y / entryX/Y. */
+  floating: z.boolean().optional(),
+  /** Draw.io-style line jump when edges cross (visual cue via dashed gaps when unsupported natively). */
+  jumpStyle: z.enum(["none", "arc", "gap", "sharp"]).optional(),
+  jumpSize: z.number().optional(),
   points: z.array(z.tuple([z.number(), z.number()])).optional(),
 });
 
@@ -74,6 +79,13 @@ export const containerSchema = z.object({
 
 export const nodeKindSchema = z.enum(["shape", "freehand", "table", "container", "text"]);
 
+export const diagramLayerSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  visible: z.boolean().default(true),
+  locked: z.boolean().default(false),
+});
+
 export const diagramNodeSchema = z.object({
   id: z.string().min(1),
   label: z.string().default(""),
@@ -87,6 +99,8 @@ export const diagramNodeSchema = z.object({
   locked: z.boolean().optional(),
   hidden: z.boolean().optional(),
   groupId: z.string().optional(),
+  /** Named layer id (draw.io-style layers). Defaults to first page layer. */
+  layerId: z.string().optional(),
   freehand: freehandSchema.optional(),
   table: tableSchema.optional(),
   container: containerSchema.optional(),
@@ -105,6 +119,8 @@ export const diagramPageSchema = z.object({
   name: z.string().min(1),
   nodes: z.array(diagramNodeSchema).default([]),
   edges: z.array(diagramEdgeSchema).default([]),
+  layers: z.array(diagramLayerSchema).optional(),
+  activeLayerId: z.string().optional(),
 });
 
 export const paperEnum = z.enum([
@@ -140,6 +156,8 @@ export const diagramDocumentSchema = z.object({
       background: z.string().optional(),
       connectionArrows: z.boolean().optional(),
       connectionPoints: z.boolean().optional(),
+      /** Prefer snapping connectors to fixed connection points (vs floating perimeter). */
+      snapToPoint: z.boolean().optional(),
       guides: z.boolean().optional(),
       paper: paperEnum.optional(),
       pageWidth: z.number().optional(),
@@ -155,12 +173,17 @@ export type FreehandData = z.infer<typeof freehandSchema>;
 export type TableData = z.infer<typeof tableSchema>;
 export type ContainerData = z.infer<typeof containerSchema>;
 export type NodeKind = z.infer<typeof nodeKindSchema>;
+export type DiagramLayer = z.infer<typeof diagramLayerSchema>;
 export type DiagramNode = z.infer<typeof diagramNodeSchema>;
 export type DiagramEdge = z.infer<typeof diagramEdgeSchema>;
 export type DiagramPage = z.infer<typeof diagramPageSchema>;
 export type DiagramDocument = z.infer<typeof diagramDocumentSchema>;
 export type DiagramSettings = NonNullable<DiagramDocument["settings"]>;
 export type ThemeId = z.infer<typeof themeEnum>;
+
+export function defaultLayers(): DiagramLayer[] {
+  return [{ id: "layer-default", name: "Background", visible: true, locked: false }];
+}
 
 export const PAPER_SIZES = {
   a0: { w: 3179, h: 4494, label: "A0" },
@@ -404,9 +427,19 @@ function encodeCellValue(node: DiagramNode): string {
 }
 
 export function emptyDocument(_title = "Untitled Diagram"): DiagramDocument {
+  const layers = defaultLayers();
   return {
     version: 2,
-    pages: [{ id: crypto.randomUUID(), name: "Page-1", nodes: [], edges: [] }],
+    pages: [
+      {
+        id: crypto.randomUUID(),
+        name: "Page-1",
+        nodes: [],
+        edges: [],
+        layers,
+        activeLayerId: layers[0]!.id,
+      },
+    ],
     settings: {
       grid: true,
       gridSize: 10,
@@ -414,6 +447,7 @@ export function emptyDocument(_title = "Untitled Diagram"): DiagramDocument {
       background: "#ffffff",
       connectionArrows: true,
       connectionPoints: true,
+      snapToPoint: false,
       guides: true,
       paper: "a4-portrait",
       pageWidth: PAPER_SIZES["a4-portrait"].w,
@@ -424,18 +458,33 @@ export function emptyDocument(_title = "Untitled Diagram"): DiagramDocument {
 }
 
 export function emptyPage(name = "Page-1"): DiagramPage {
-  return { id: crypto.randomUUID(), name, nodes: [], edges: [] };
+  const layers = defaultLayers();
+  return {
+    id: crypto.randomUUID(),
+    name,
+    nodes: [],
+    edges: [],
+    layers,
+    activeLayerId: layers[0]!.id,
+  };
 }
 
 /** Upgrade a v1 (or partially migrated) document to DiagramDocument v2. */
 export function upgradeDocument(doc: DiagramDocument): DiagramDocument {
-  const pages = doc.pages.map((page) => ({
-    ...page,
-    nodes: page.nodes.map((node) => ({
-      ...node,
-      kind: node.kind ?? "shape",
-    })),
-  }));
+  const pages = doc.pages.map((page) => {
+    const layers = page.layers?.length ? page.layers : defaultLayers();
+    const defaultLayerId = layers[0]!.id;
+    return {
+      ...page,
+      layers,
+      activeLayerId: page.activeLayerId ?? defaultLayerId,
+      nodes: page.nodes.map((node) => ({
+        ...node,
+        kind: node.kind ?? "shape",
+        layerId: node.layerId ?? defaultLayerId,
+      })),
+    };
+  });
   return {
     ...doc,
     version: 2,
@@ -443,6 +492,7 @@ export function upgradeDocument(doc: DiagramDocument): DiagramDocument {
     settings: {
       ...doc.settings,
       theme: doc.settings?.theme ?? "automatic",
+      snapToPoint: doc.settings?.snapToPoint ?? false,
     },
   };
 }
@@ -474,6 +524,18 @@ export function shapeToMaxStyle(shape: string): Partial<CellStyle> {
     line: { shape: "line" },
     swimlane: { shape: "swimlane" },
     plus: { shape: CUSTOM_SHAPE.plus },
+    step: { shape: CUSTOM_SHAPE.step },
+    tape: { shape: CUSTOM_SHAPE.tape },
+    card: { shape: CUSTOM_SHAPE.card },
+    callout: { shape: CUSTOM_SHAPE.callout },
+    cube: { shape: CUSTOM_SHAPE.cube },
+    component: { shape: CUSTOM_SHAPE.component },
+    internalStorage: { shape: CUSTOM_SHAPE.internalStorage },
+    dataStorage: { shape: CUSTOM_SHAPE.dataStorage },
+    offPageConnector: { shape: CUSTOM_SHAPE.offPageConnector },
+    manualInput: { shape: CUSTOM_SHAPE.manualInput },
+    display: { shape: CUSTOM_SHAPE.display },
+    delay: { shape: CUSTOM_SHAPE.delay },
     [CUSTOM_SHAPE.freehand]: { shape: CUSTOM_SHAPE.freehand, fillColor: "none" },
   };
   return map[shape] ?? { shape: shape as CellStyle["shape"] };
@@ -521,6 +583,7 @@ function nodeToCellStyle(node: DiagramNode): CellStyle {
     base.opacity = 0;
   }
   if (node.groupId) (base as Record<string, unknown>).diagramGroupId = node.groupId;
+  if (node.layerId) (base as Record<string, unknown>).diagramLayerId = node.layerId;
   return base;
 }
 
@@ -534,7 +597,8 @@ function edgeToCellStyle(edge: DiagramEdge): CellStyle {
     entityRelation: "entityRelationEdgeStyle",
     elbow: "elbowEdgeStyle",
   };
-  return {
+  const floating = s.floating !== false;
+  const base: CellStyle = {
     strokeColor: s.stroke ?? "#64748b",
     strokeWidth: s.strokeWidth ?? 1.5,
     dashed: s.dashed ?? false,
@@ -545,13 +609,34 @@ function edgeToCellStyle(edge: DiagramEdge): CellStyle {
     fontSize: s.fontSize ?? 11,
     fontColor: s.fontColor ?? "#475569",
     rounded: true,
-    ...(typeof s.exitX === "number" ? { exitX: s.exitX } : {}),
-    ...(typeof s.exitY === "number" ? { exitY: s.exitY } : {}),
-    ...(typeof s.entryX === "number" ? { entryX: s.entryX } : {}),
-    ...(typeof s.entryY === "number" ? { entryY: s.entryY } : {}),
-    ...(s.exitPerimeter ? { exitPerimeter: true } : {}),
-    ...(s.entryPerimeter ? { entryPerimeter: true } : {}),
   };
+  const rec = base as Record<string, unknown>;
+  if (s.jumpStyle && s.jumpStyle !== "none") {
+    rec.jumpStyle = s.jumpStyle;
+    rec.jumpSize = s.jumpSize ?? 6;
+  }
+  rec.diagramFloating = floating ? "1" : "0";
+  if (!floating) {
+    if (typeof s.exitX === "number") base.exitX = s.exitX;
+    if (typeof s.exitY === "number") base.exitY = s.exitY;
+    if (typeof s.entryX === "number") base.entryX = s.entryX;
+    if (typeof s.entryY === "number") base.entryY = s.entryY;
+  } else {
+    // Floating connectors: prefer perimeter glide (draw.io default)
+    if (typeof s.exitX === "number") {
+      base.exitX = s.exitX;
+      base.exitPerimeter = true;
+    }
+    if (typeof s.exitY === "number") base.exitY = s.exitY;
+    if (typeof s.entryX === "number") {
+      base.entryX = s.entryX;
+      base.entryPerimeter = true;
+    }
+    if (typeof s.entryY === "number") base.entryY = s.entryY;
+    if (s.exitPerimeter) base.exitPerimeter = true;
+    if (s.entryPerimeter) base.entryPerimeter = true;
+  }
+  return base;
 }
 
 function sortNodesParentsFirst(nodes: DiagramNode[]): DiagramNode[] {
@@ -701,6 +786,7 @@ function vertexToNode(graph: Graph, cell: Cell, defaultParent: Cell): DiagramNod
     locked,
     hidden,
     groupId,
+    layerId: typeof styleRec.diagramLayerId === "string" ? styleRec.diagramLayerId : undefined,
     freehand: parsed.freehand,
     table: parsed.table,
     container,
@@ -759,20 +845,37 @@ function edgeToDiagramEdge(cell: Cell): DiagramEdge | null {
       entryY: typeof style.entryY === "number" ? style.entryY : undefined,
       exitPerimeter: style.exitPerimeter === true ? true : undefined,
       entryPerimeter: style.entryPerimeter === true ? true : undefined,
+      floating: (style as Record<string, unknown>).diagramFloating === "0" ? false : true,
+      jumpStyle:
+        typeof (style as Record<string, unknown>).jumpStyle === "string"
+          ? ((style as Record<string, unknown>).jumpStyle as EdgeStyle["jumpStyle"])
+          : undefined,
+      jumpSize:
+        typeof (style as Record<string, unknown>).jumpSize === "number"
+          ? ((style as Record<string, unknown>).jumpSize as number)
+          : undefined,
       points: points?.length ? points : undefined,
     },
   };
 }
 
 /** Serialize the current graph contents into a page JSON. */
-export function fromMaxGraph(graph: Graph, pageMeta: Pick<DiagramPage, "id" | "name">): DiagramPage {
+export function fromMaxGraph(
+  graph: Graph,
+  pageMeta: Pick<DiagramPage, "id" | "name"> &
+    Partial<Pick<DiagramPage, "layers" | "activeLayerId">>
+): DiagramPage {
   const parent = graph.getDefaultParent();
   const vertices: Cell[] = [];
   collectChildVertices(graph, parent, vertices);
   const edges: Cell[] = [];
   collectChildEdges(graph, parent, edges);
 
-  const nodes: DiagramNode[] = vertices.map((cell) => vertexToNode(graph, cell, parent));
+  const layers = pageMeta.layers?.length ? pageMeta.layers : defaultLayers();
+  const nodes: DiagramNode[] = vertices.map((cell) => {
+    const node = vertexToNode(graph, cell, parent);
+    return { ...node, layerId: node.layerId ?? layers[0]!.id };
+  });
   const pageEdges: DiagramEdge[] = edges
     .map((cell) => edgeToDiagramEdge(cell))
     .filter(Boolean) as DiagramEdge[];
@@ -782,6 +885,8 @@ export function fromMaxGraph(graph: Graph, pageMeta: Pick<DiagramPage, "id" | "n
     name: pageMeta.name,
     nodes,
     edges: pageEdges,
+    layers,
+    activeLayerId: pageMeta.activeLayerId ?? layers[0]!.id,
   };
 }
 

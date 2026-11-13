@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/select";
 import type { DiagramPage, DiagramSettings } from "@/lib/diagram/model";
 import type { SelectionInfo } from "./DiagramCanvas";
-import { ElementsPanel } from "./ElementsPanel";
+import { LayersPanel } from "./LayersPanel";
 import { cn } from "@/lib/utils";
 import type { CellStyle } from "@maxgraph/core";
 
-type FormatTab = "diagram" | "style" | "elements";
+type FormatTab = "diagram" | "style" | "arrange" | "elements";
 
 type Props = {
   settings: DiagramSettings;
@@ -29,12 +29,27 @@ type Props = {
   onSelectElement?: (nodeId: string) => void;
   onToggleElementLock?: (nodeId: string) => void;
   onToggleElementHidden?: (nodeId: string) => void;
+  onAlign?: (dir: "left" | "center" | "right" | "top" | "middle" | "bottom") => void;
+  onDistribute?: (axis: "h" | "v") => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
+  onAutoRoute?: () => void;
+  onClearWaypoints?: () => void;
+  onSetEdgeFloating?: (floating: boolean) => void;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  onAddLayer?: () => void;
+  onRemoveLayer?: (layerId: string) => void;
+  onRenameLayer?: (layerId: string, name: string) => void;
+  onToggleLayerVisible?: (layerId: string) => void;
+  onToggleLayerLocked?: (layerId: string) => void;
+  onSelectLayer?: (layerId: string) => void;
   tab?: FormatTab;
   onTabChange?: (tab: FormatTab) => void;
   className?: string;
 };
 
-type ConnectorRouting = "orthogonal" | "straight" | "elbow" | "curved";
+type ConnectorRouting = "orthogonal" | "straight" | "elbow" | "curved" | "entityRelation";
 
 /**
  * An edge with no edgeStyle inherits the orthogonal stylesheet default, so it
@@ -45,6 +60,7 @@ function connectorRouting(style: Partial<CellStyle>): ConnectorRouting {
   const kind = String(style.edgeStyle ?? "");
   if (kind === "none") return "straight";
   if (kind.includes("elbow")) return "elbow";
+  if (kind.includes("entityRelation")) return "entityRelation";
   return "orthogonal";
 }
 
@@ -59,34 +75,54 @@ export function FormatPanel({
   onSelectElement,
   onToggleElementLock,
   onToggleElementHidden,
+  onAlign,
+  onDistribute,
+  onBringToFront,
+  onSendToBack,
+  onAutoRoute,
+  onClearWaypoints,
+  onSetEdgeFloating,
+  onGroup,
+  onUngroup,
+  onAddLayer,
+  onRemoveLayer,
+  onRenameLayer,
+  onToggleLayerVisible,
+  onToggleLayerLocked,
+  onSelectLayer,
   tab,
   onTabChange,
   className,
 }: Props) {
   const style = selection?.style ?? {};
+  const styleRec = style as Record<string, unknown>;
   const selectedIds = (selection?.cells ?? [])
     .map((c) => c.getId())
     .filter(Boolean) as string[];
+  const isFloating = styleRec.diagramFloating !== "0";
 
   return (
-    <aside className={cn("flex h-full w-[260px] shrink-0 flex-col border-l border-[#cfd8e3] bg-[#f5f7fa]", className)}>
+    <aside className={cn("flex h-full w-[280px] shrink-0 flex-col border-l border-[#cfd8e3] bg-[#f5f7fa]", className)}>
       <Tabs
         {...(tab != null
           ? {
-              value: tab,
+              value: tab === "elements" ? "elements" : tab,
               onValueChange: (v: string) => onTabChange?.(v as FormatTab),
             }
           : { defaultValue: "diagram" as const })}
         className="flex h-full flex-col"
       >
-        <TabsList className="mx-2 mt-2 grid h-8 grid-cols-3 rounded-md bg-[#e2e8f0]">
-          <TabsTrigger value="diagram" className="text-xs">
+        <TabsList className="mx-2 mt-2 grid h-8 grid-cols-4 rounded-md bg-[#e2e8f0]">
+          <TabsTrigger value="diagram" className="px-1 text-[10px]">
             Diagram
           </TabsTrigger>
-          <TabsTrigger value="style" className="text-xs">
+          <TabsTrigger value="style" className="px-1 text-[10px]">
             Style
           </TabsTrigger>
-          <TabsTrigger value="elements" className="text-xs">
+          <TabsTrigger value="arrange" className="px-1 text-[10px]">
+            Arrange
+          </TabsTrigger>
+          <TabsTrigger value="elements" className="px-1 text-[10px]">
             Layers
           </TabsTrigger>
         </TabsList>
@@ -147,6 +183,13 @@ export function FormatPanel({
                 />
               </div>
             ))}
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">Snap to Point</Label>
+              <Switch
+                checked={settings.snapToPoint === true}
+                onCheckedChange={(v) => onSettingsChange({ snapToPoint: v })}
+              />
+            </div>
           </section>
 
           <section className="space-y-2">
@@ -382,7 +425,9 @@ export function FormatPanel({
                               ? "orthogonalEdgeStyle"
                               : v === "elbow"
                                 ? "elbowEdgeStyle"
-                                : "none",
+                                : v === "entityRelation"
+                                  ? "entityRelationEdgeStyle"
+                                  : "none",
                           curved: v === "curved",
                         })
                       }
@@ -395,23 +440,184 @@ export function FormatPanel({
                         <SelectItem value="straight">Straight</SelectItem>
                         <SelectItem value="elbow">Elbow</SelectItem>
                         <SelectItem value="curved">Curved</SelectItem>
+                        <SelectItem value="entityRelation">Entity Relation</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Floating</Label>
+                    <Switch
+                      checked={isFloating}
+                      onCheckedChange={(v) => onSetEdgeFloating?.(v)}
+                    />
+                  </div>
+                  <Field label="Line jump">
+                    <Select
+                      value={String(styleRec.jumpStyle ?? "none")}
+                      onValueChange={(v) =>
+                        onApplyStyle({
+                          jumpStyle: v === "none" ? undefined : v,
+                          jumpSize: v === "none" ? undefined : 6,
+                        } as Partial<CellStyle>)
+                      }
+                    >
+                      <SelectTrigger className="h-8 rounded-md text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="arc">Arc</SelectItem>
+                        <SelectItem value="gap">Gap</SelectItem>
+                        <SelectItem value="sharp">Sharp</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-md text-xs"
+                      onClick={() => onAutoRoute?.()}
+                    >
+                      Auto-route
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-md text-xs"
+                      onClick={() => onClearWaypoints?.()}
+                    >
+                      Clear waypoints
+                    </Button>
+                  </div>
                 </>
               )}
             </>
           )}
         </TabsContent>
 
+        <TabsContent value="arrange" className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          <section className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+              Align
+            </h3>
+            <div className="grid grid-cols-3 gap-1">
+              {(
+                [
+                  ["left", "Left"],
+                  ["center", "Center"],
+                  ["right", "Right"],
+                  ["top", "Top"],
+                  ["middle", "Middle"],
+                  ["bottom", "Bottom"],
+                ] as const
+              ).map(([dir, label]) => (
+                <Button
+                  key={dir}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-md text-[10px]"
+                  onClick={() => onAlign?.(dir)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </section>
+          <section className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+              Distribute
+            </h3>
+            <div className="grid grid-cols-2 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onDistribute?.("h")}
+              >
+                Horizontal
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onDistribute?.("v")}
+              >
+                Vertical
+              </Button>
+            </div>
+          </section>
+          <section className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+              Order
+            </h3>
+            <div className="grid grid-cols-2 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onBringToFront?.()}
+              >
+                To front
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onSendToBack?.()}
+              >
+                To back
+              </Button>
+            </div>
+          </section>
+          <section className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+              Group
+            </h3>
+            <div className="grid grid-cols-2 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onGroup?.()}
+              >
+                Group
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md text-xs"
+                onClick={() => onUngroup?.()}
+              >
+                Ungroup
+              </Button>
+            </div>
+          </section>
+        </TabsContent>
+
         <TabsContent value="elements" className="min-h-0 flex-1 overflow-hidden p-1">
           {elementsPage ? (
-            <ElementsPanel
+            <LayersPanel
               page={elementsPage}
               selectedIds={selectedIds}
               onSelect={(id) => onSelectElement?.(id)}
               onToggleLock={(id) => onToggleElementLock?.(id)}
               onToggleHidden={(id) => onToggleElementHidden?.(id)}
+              onAddLayer={onAddLayer}
+              onRemoveLayer={onRemoveLayer}
+              onRenameLayer={onRenameLayer}
+              onToggleLayerVisible={onToggleLayerVisible}
+              onToggleLayerLocked={onToggleLayerLocked}
+              onSelectLayer={onSelectLayer}
             />
           ) : (
             <p className="px-3 py-4 text-xs text-muted-foreground">No page loaded.</p>
