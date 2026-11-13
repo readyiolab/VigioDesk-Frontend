@@ -1,15 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import { resolveSeo, SITE_NAME, SITE_URL, type SeoConfig } from "@/lib/seo";
+import {
+  absoluteUrl,
+  ogImageUrl,
+  resolveSeo,
+  SITE_NAME,
+  type SeoConfig,
+} from "@/lib/seo";
+import { JsonLd } from "@/components/JsonLd";
+import {
+  breadcrumbSchema,
+  organizationSchema,
+  productServiceSchema,
+  webPageSchema,
+  websiteSchema,
+} from "@/lib/schema";
 
-function upsertMeta(
-  attr: "name" | "property",
-  key: string,
-  content: string
-) {
-  let el = document.head.querySelector<HTMLMetaElement>(
-    `meta[${attr}="${key}"]`
-  );
+function upsertMeta(attr: "name" | "property", key: string, content: string) {
+  let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
   if (!el) {
     el = document.createElement("meta");
     el.setAttribute(attr, key);
@@ -29,7 +37,8 @@ function upsertLink(rel: string, href: string) {
 }
 
 function applySeo(seo: SeoConfig) {
-  const url = `${SITE_URL}${seo.path === "/" ? "/" : seo.path}`;
+  const url = absoluteUrl(seo.path);
+  const image = ogImageUrl();
   document.title = seo.title;
 
   upsertMeta("name", "description", seo.description);
@@ -43,24 +52,46 @@ function applySeo(seo: SeoConfig) {
   upsertMeta("property", "og:type", seo.ogType ?? "website");
   upsertMeta("property", "og:url", url);
   upsertMeta("property", "og:site_name", SITE_NAME);
+  upsertMeta("property", "og:image", image);
 
   upsertMeta("property", "twitter:card", "summary_large_image");
   upsertMeta("property", "twitter:title", seo.title);
   upsertMeta("property", "twitter:description", seo.description);
+  upsertMeta("property", "twitter:image", image);
+
+  if (seo.marketing) {
+    upsertMeta("property", "og:updated_time", new Date().toISOString());
+  }
 
   upsertLink("canonical", url);
+  upsertLink("manifest", "/manifest.json");
 }
 
 /**
  * Keeps document title + meta tags in sync with the active route.
- * Mount once near the router (covers all pages including /s/:token).
+ * Also injects Organization / WebSite / WebPage JSON-LD on marketing routes.
  */
 export function RouteSeo() {
   const { pathname } = useLocation();
+  const seo = useMemo(() => resolveSeo(pathname), [pathname]);
+  const isMarketing = !!seo.marketing && !(seo.robots || "").includes("noindex");
 
   useEffect(() => {
-    applySeo(resolveSeo(pathname));
-  }, [pathname]);
+    applySeo(seo);
+  }, [seo]);
 
-  return null;
+  const schemas = useMemo(() => {
+    if (!isMarketing) return [];
+    return [
+      organizationSchema(),
+      websiteSchema(),
+      webPageSchema(seo),
+      breadcrumbSchema(seo.path),
+      productServiceSchema(seo),
+    ].filter(Boolean);
+  }, [isMarketing, seo]);
+
+  if (!schemas.length) return null;
+
+  return <JsonLd id="route-seo-jsonld" data={schemas} />;
 }

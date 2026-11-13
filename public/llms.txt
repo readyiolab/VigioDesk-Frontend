@@ -1,0 +1,31 @@
+# VigioDesk
+
+> VigioDesk (vigodesk.com) — convert, merge, split, and protect PDFs online; eSign with audit trails; employee Letter Studio; Diagram Studio; and AI website audits. Fast, privacy-first document tools for modern teams.
+
+## Main Pages
+- https://vigodesk.com/
+- https://vigodesk.com/about
+- https://vigodesk.com/pricing
+- https://vigodesk.com/docs
+- https://vigodesk.com/security
+
+## Products
+- PDF Workspace: https://vigodesk.com/workspace
+- eSign: https://vigodesk.com/esign
+- Employee Letter Studio: https://vigodesk.com/letters
+- Diagram Studio: https://vigodesk.com/diagrams
+- Web Reports (AI site audit): https://vigodesk.com/webreports
+- Desktop app: https://vigodesk.com/desktop
+- Enterprise BYOC: https://vigodesk.com/enterprise
+
+## Services
+- Online PDF tools (merge, split, compress, convert, protect, OCR)
+- Electronic signatures with cryptographic audit trails
+- Bulk employee letters from Excel
+- Browser diagram / flowchart editor
+- Website SEO + Core Web Vitals + AI-search audits
+
+## Contact
+- Site: https://vigodesk.com
+- Docs: https://vigodesk.com/docs
+- Privacy: https://vigodesk.com/privacy

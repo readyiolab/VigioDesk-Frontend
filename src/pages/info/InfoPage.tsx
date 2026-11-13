@@ -1,7 +1,9 @@
 import { ShieldCheck, Code, BookOpen, Lock, FileText, CheckCircle2, ArrowRight, HelpCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FaqSection, type FaqItem } from "@/components/common/FaqSection";
+import { MarketingBreadcrumbs } from "@/components/common/MarketingBreadcrumbs";
+import { BRAND_NAME } from "@/lib/seo";
 
 interface InfoPageProps {
   type:
@@ -336,9 +338,16 @@ const PAGE_DATA: Record<InfoPageProps["type"], PageConfig> = {
 export default function InfoPage({ type }: InfoPageProps) {
   const data = PAGE_DATA[type] ?? PAGE_DATA.about;
   const Icon = data.icon;
+  const { pathname } = useLocation();
+  const updated = new Date().toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div className="min-h-screen py-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto animate-fade-in text-left">
+      <MarketingBreadcrumbs path={pathname} className="mb-6" />
       {/* Page Header */}
       <div className="mb-10 pb-8 border-b border-border">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-foreground text-xs font-semibold mb-4 border border-border">
@@ -350,6 +359,9 @@ export default function InfoPage({ type }: InfoPageProps) {
         </h1>
         <p className="text-base text-muted-foreground mt-3 max-w-2xl font-normal">
           {data.subtitle}
+        </p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Published by {BRAND_NAME} · Last updated {updated}
         </p>
       </div>
 

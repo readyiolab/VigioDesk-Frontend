@@ -32,7 +32,7 @@ export const Footer: React.FC = () => {
             </Link>
 
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm font-medium">
-              The next-generation document platform powered by AI. Merge, compress, convert, edit, eSign, and extract intelligence from any document securely.
+              VigioDesk — PDF tools, eSign, Letter Studio, Diagram Studio, and AI website audits. Fast, privacy-first document workflows for modern teams.
             </p>
 
             {/* Newsletter Subscription Card */}
@@ -77,6 +77,8 @@ export const Footer: React.FC = () => {
               <li><Link to="/workspace/protect" className="hover:text-foreground transition-colors">Protect PDF</Link></li>
               <li><Link to="/esign" className="hover:text-foreground transition-colors flex items-center gap-1">eSign Documents</Link></li>
               <li><Link to="/letters" className="hover:text-foreground transition-colors">Letter Studio</Link></li>
+              <li><Link to="/diagrams" className="hover:text-foreground transition-colors">Diagram Studio</Link></li>
+              <li><Link to="/webreports" className="hover:text-foreground transition-colors">Web Reports</Link></li>
             </ul>
           </div>
 
@@ -103,7 +105,10 @@ export const Footer: React.FC = () => {
               <li><Link to="/billing" className="hover:text-foreground transition-colors">Plans & Pricing</Link></li>
               <li><Link to="/enterprise" className="hover:text-foreground transition-colors">Enterprise Solution</Link></li>
               <li><Link to="/letters" className="hover:text-foreground transition-colors">Employee Letter Studio</Link></li>
+              <li><Link to="/diagrams" className="hover:text-foreground transition-colors">Diagram Studio</Link></li>
+              <li><Link to="/webreports" className="hover:text-foreground transition-colors">Web Reports Audits</Link></li>
               <li><Link to="/desktop" className="hover:text-foreground transition-colors">Desktop app</Link></li>
+              <li><Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
               <li><Link to="/security" className="hover:text-foreground transition-colors">Security & Trust</Link></li>
               <li><Link to="/developer" className="hover:text-foreground transition-colors flex items-center gap-1">Developer API <span className="px-1.5 py-0.5 text-[9px] rounded-full bg-muted text-foreground font-bold">v2.0</span></Link></li>
               <li><Link to="/history" className="hover:text-foreground transition-colors">Activity History</Link></li>
@@ -127,7 +132,10 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} PDF Toolkit Inc. All rights reserved. Enterprise document architecture.</p>
+          <p>© {new Date().getFullYear()} VigioDesk ({" "}
+            <a href="https://vigodesk.com" className="hover:text-foreground">vigodesk.com</a>
+            ). All rights reserved.
+          </p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1 font-semibold text-foreground">
               <ShieldCheck className="size-3.5" /> 256-Bit Encrypted

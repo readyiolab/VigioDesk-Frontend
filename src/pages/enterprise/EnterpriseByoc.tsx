@@ -28,6 +28,7 @@ import {
 import { ProviderLogo } from "@/components/byoc/ProviderLogo";
 import { cn } from "@/lib/utils";
 import { FaqSection } from "@/components/common/FaqSection";
+import { MarketingBreadcrumbs } from "@/components/common/MarketingBreadcrumbs";
 
 const ENTERPRISE_FAQS = [
   {
@@ -181,6 +182,7 @@ export default function EnterpriseByoc() {
         />
 
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <MarketingBreadcrumbs path="/enterprise" className="mb-4" />
           <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
             
             {/* LEFT COLUMN: Clean, Left-Aligned High-Impact Copy */}

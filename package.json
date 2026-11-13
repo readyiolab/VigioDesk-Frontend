@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-seo-assets.mjs",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/generate-seo-assets.mjs --prerender",
+    "seo:generate": "node scripts/generate-seo-assets.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc -b --noEmit",

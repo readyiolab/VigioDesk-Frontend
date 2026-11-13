@@ -3,7 +3,11 @@ Allow: /
 Allow: /desktop
 Allow: /esign
 Allow: /enterprise
+Allow: /letters
+Allow: /diagrams
+Allow: /webreports
 Allow: /workspace
+Allow: /pricing
 Allow: /security
 Allow: /developer
 Allow: /api-docs
@@ -14,6 +18,7 @@ Allow: /terms
 Allow: /gdpr
 Allow: /docs
 
+# App interiors / private tokens
 Disallow: /login
 Disallow: /register
 Disallow: /verify-email
@@ -25,5 +30,33 @@ Disallow: /sign
 Disallow: /sign/
 Disallow: /s/
 Disallow: /ai/
+Disallow: /letters/
+Disallow: /diagrams/studio
+Disallow: /diagrams/new
+Disallow: /diagrams/shared/
+Disallow: /webreports/scan
+Disallow: /webreports/shared/
 
-Sitemap: https://pdf.zuvigo.com/sitemap.xml
+# Major search + AI answer crawlers welcome
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+Sitemap: https://vigodesk.com/sitemap.xml

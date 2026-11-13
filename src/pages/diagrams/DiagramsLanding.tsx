@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { OFFLINE_PRODUCTS } from "@/lib/pricing";
 import { FaqSection } from "@/components/common/FaqSection";
+import { MarketingBreadcrumbs } from "@/components/common/MarketingBreadcrumbs";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const VIEWPORT = { once: true, amount: 0.25 } as const;
@@ -146,6 +147,7 @@ export default function DiagramsLanding() {
         />
 
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <MarketingBreadcrumbs path="/diagrams" className="mb-4" />
           <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
             {/* LEFT COLUMN: Copy & CTA Buttons */}

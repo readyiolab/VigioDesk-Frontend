@@ -26,6 +26,7 @@ import {
   SALES_MAILTO,
 } from "@/components/desktop/motion";
 import { FaqSection } from "@/components/common/FaqSection";
+import { MarketingBreadcrumbs } from "@/components/common/MarketingBreadcrumbs";
 
 const DESKTOP_FAQS = [
   {
@@ -196,6 +197,7 @@ export default function DesktopToolkit() {
         />
 
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <MarketingBreadcrumbs path="/desktop" className="mb-4" />
           <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
             
             {/* LEFT COLUMN: Clean, Left-Aligned High-Impact Copy */}

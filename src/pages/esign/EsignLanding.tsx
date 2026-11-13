@@ -25,6 +25,7 @@ import {
 } from "@/components/esign/motion";
 import { EsignStatusMock } from "@/components/esign/EsignStatusMock";
 import { FaqSection } from "@/components/common/FaqSection";
+import { MarketingBreadcrumbs } from "@/components/common/MarketingBreadcrumbs";
 
 const ESIGN_FAQS = [
   {
@@ -184,6 +185,7 @@ export default function EsignLanding() {
         />
 
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
+          <MarketingBreadcrumbs path="/esign" className="mb-4" />
           <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
 
             {/* LEFT COLUMN: Copy & CTA Buttons */}
