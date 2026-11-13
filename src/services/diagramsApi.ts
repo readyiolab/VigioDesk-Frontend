@@ -8,7 +8,8 @@ import {
 } from "@/features/org";
 
 const ORG_HEADER = "X-Organization-Id";
-const AI_TIMEOUT_MS = 90_000;
+/** Covers first AI call (~60s) + optional repair (~45s). */
+const AI_TIMEOUT_MS = 150_000;
 
 function orgHeaders(organizationId?: string | null): HeadersInit {
   if (!organizationId) return {};

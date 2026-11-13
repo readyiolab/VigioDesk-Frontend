@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import {
+  History,
   ImagePlus,
   Plus,
   Send,
@@ -15,6 +16,8 @@ import { diagramsApi } from "@/services/diagramsApi";
 import type { DiagramDocument, DiagramPage } from "@/lib/diagram/model";
 
 type InsertMode = "replace" | "append" | "newPage";
+type AiMode = "generate" | "edit";
+type BusyPhase = "idle" | "generating" | "validating";
 
 type ChatMessage = {
   id: string;
@@ -25,6 +28,9 @@ type ChatMessage = {
   previewSvg?: string;
   error?: boolean;
   timedOut?: boolean;
+  /** Which action produced this message — used for Retry. */
+  action?: AiMode | "image";
+  retryText?: string;
 };
 
 type ChatSession = {
@@ -47,10 +53,24 @@ type Props = {
 };
 
 const SUGGESTED = [
-  "Create a payment gateway architecture for eMoce: customer → checkout → payment service → bank APIs, with fraud checks and webhook callbacks.",
-  "Draw a layered AWS architecture with VPC, ALB, ECS services, RDS, and Redis cache.",
-  "Sequence diagram for user signup with email verification and OAuth.",
-  "ER diagram for an e-commerce catalog: products, variants, categories, inventory.",
+  {
+    label: "ER catalog",
+    prompt:
+      "ER diagram for an e-commerce catalog: products, variants, categories, inventory.",
+  },
+  {
+    label: "Payment flow",
+    prompt:
+      "Payment flow: customer → checkout → payment service → bank APIs, with fraud checks and webhooks.",
+  },
+  {
+    label: "AWS layers",
+    prompt: "Layered AWS architecture: VPC, ALB, ECS, RDS, Redis cache.",
+  },
+  {
+    label: "Signup sequence",
+    prompt: "Sequence diagram for user signup with email verification and OAuth.",
+  },
 ];
 
 function storageKey(diagramId: string | null) {
@@ -85,6 +105,30 @@ function isTimeoutError(e: unknown) {
   return /timeout|timed out|AbortError|aborted/i.test(msg);
 }
 
+function friendlyAiError(e: unknown, kind: AiMode | "image"): string {
+  if (isTimeoutError(e)) {
+    return kind === "edit"
+      ? "Edit timed out. Tap Retry — usually faster on the second try."
+      : kind === "image"
+        ? "Image conversion timed out. Please retry with a smaller image."
+        : "That took too long. Tap Retry to try again.";
+  }
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  if (/valid diagram (document|patch)|invalid patch|invalid diagram/i.test(msg)) {
+    return "AI returned an incomplete diagram. Tap Retry, or simplify your prompt (e.g. fewer entities).";
+  }
+  if (/credit|monthly|upgrade|FREE/i.test(msg)) {
+    return msg;
+  }
+  if (/rate limit|too many/i.test(msg)) {
+    return "Too many AI requests. Wait a minute and try again.";
+  }
+  if (/not configured|OPENAI/i.test(msg)) {
+    return "Diagram AI is not configured on the server.";
+  }
+  return msg || (kind === "edit" ? "AI edit failed" : "AI generate failed");
+}
+
 export function AiChatPanel({
   open,
   onClose,
@@ -99,9 +143,12 @@ export function AiChatPanel({
   const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions(diagramId));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<AiMode>("generate");
+  const [busyPhase, setBusyPhase] = useState<BusyPhase>("idle");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const busy = busyPhase !== "idle";
 
   useEffect(() => {
     const loaded = loadSessions(diagramId);
@@ -132,6 +179,7 @@ export function AiChatPanel({
     persist([s, ...sessions]);
     setActiveId(s.id);
     setPrompt("");
+    setMode("generate");
   };
 
   const deleteSession = (id: string) => {
@@ -170,7 +218,7 @@ export function AiChatPanel({
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [active?.messages.length, busy]);
+  }, [active?.messages.length, busyPhase]);
 
   const runGenerate = async (text: string) => {
     const sessionId = ensureSession();
@@ -181,33 +229,35 @@ export function AiChatPanel({
       text.length > 48 ? `${text.slice(0, 48)}…` : text
     );
     setPrompt("");
-    setBusy(true);
+    setBusyPhase("generating");
     try {
       const { document } = await diagramsApi.aiGenerate(organizationId, text);
+      setBusyPhase("validating");
       appendMessages(sessionId, [
         {
           id: uid(),
           role: "assistant",
-          text: "Here's a diagram from your description.",
+          text: "Diagram ready — applied to your canvas.",
           document,
+          action: "generate",
+          retryText: text,
         },
       ]);
+      onInsertDocument(document, "replace");
     } catch (e) {
       appendMessages(sessionId, [
         {
           id: uid(),
           role: "assistant",
-          text: isTimeoutError(e)
-            ? "That took too long. Please try again — the request timed out."
-            : e instanceof Error
-              ? e.message
-              : "AI generate failed",
+          text: friendlyAiError(e, "generate"),
           error: true,
           timedOut: isTimeoutError(e),
+          action: "generate",
+          retryText: text,
         },
       ]);
     } finally {
-      setBusy(false);
+      setBusyPhase("idle");
     }
   };
 
@@ -219,7 +269,7 @@ export function AiChatPanel({
         {
           id: uid(),
           role: "assistant",
-          text: "Save the diagram first, then try AI edit.",
+          text: "Save the diagram first, then use Edit page.",
           error: true,
         },
       ]);
@@ -229,15 +279,18 @@ export function AiChatPanel({
     const sessionId = ensureSession();
     appendMessages(sessionId, [{ id: uid(), role: "user", text }]);
     setPrompt("");
-    setBusy(true);
+    setBusyPhase("generating");
     try {
       const { page } = await diagramsApi.aiEdit(organizationId, diagramId, text, currentPage);
+      setBusyPhase("validating");
       appendMessages(sessionId, [
         {
           id: uid(),
           role: "assistant",
-          text: "Edit applied. Insert the updated page when ready.",
+          text: "Edit applied to the current page.",
           page,
+          action: "edit",
+          retryText: text,
         },
       ]);
       onEditedPage(page);
@@ -246,17 +299,15 @@ export function AiChatPanel({
         {
           id: uid(),
           role: "assistant",
-          text: isTimeoutError(e)
-            ? "Edit timed out. Please retry."
-            : e instanceof Error
-              ? e.message
-              : "AI edit failed",
+          text: friendlyAiError(e, "edit"),
           error: true,
           timedOut: isTimeoutError(e),
+          action: "edit",
+          retryText: text,
         },
       ]);
     } finally {
-      setBusy(false);
+      setBusyPhase("idle");
     }
   };
 
@@ -274,14 +325,9 @@ export function AiChatPanel({
       return;
     }
     const sessionId = ensureSession();
-    appendMessages(sessionId, [
-      {
-        id: uid(),
-        role: "user",
-        text: hint?.trim() || `Image: ${file.name}`,
-      },
-    ]);
-    setBusy(true);
+    const label = hint?.trim() || `Image: ${file.name}`;
+    appendMessages(sessionId, [{ id: uid(), role: "user", text: label }]);
+    setBusyPhase("generating");
     try {
       const buf = await file.arrayBuffer();
       const bytes = new Uint8Array(buf);
@@ -293,42 +339,52 @@ export function AiChatPanel({
         mimeType: (file.type as "image/png" | "image/jpeg") || "image/png",
         prompt: hint || undefined,
       });
+      setBusyPhase("validating");
       appendMessages(sessionId, [
         {
           id: uid(),
           role: "assistant",
-          text: "Diagram generated from your image.",
+          text: "Diagram from your image — applied to canvas.",
           document,
+          action: "image",
+          retryText: hint,
         },
       ]);
+      onInsertDocument(document, "replace");
     } catch (e) {
       appendMessages(sessionId, [
         {
           id: uid(),
           role: "assistant",
-          text: isTimeoutError(e)
-            ? "Image conversion timed out. Please retry."
-            : e instanceof Error
-              ? e.message
-              : "Image-to-diagram failed",
+          text: friendlyAiError(e, "image"),
           error: true,
           timedOut: isTimeoutError(e),
+          action: "image",
         },
       ]);
     } finally {
-      setBusy(false);
+      setBusyPhase("idle");
     }
+  };
+
+  const retryMessage = (m: ChatMessage) => {
+    const text = m.retryText?.trim();
+    if (!text) return;
+    if (m.action === "edit") void runEdit(text);
+    else void runGenerate(text);
   };
 
   const send = () => {
     const text = prompt.trim();
     if (text.length < 2 || busy) return;
-    void runGenerate(text);
+    if (mode === "edit") void runEdit(text);
+    else void runGenerate(text);
   };
 
   if (!open) return null;
 
   const empty = !active || active.messages.length === 0;
+  const editDisabled = !diagramId;
 
   return (
     <aside
@@ -338,74 +394,127 @@ export function AiChatPanel({
       )}
     >
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-[#e2e8f0] px-3">
-        <h2 className="text-sm font-semibold text-[#0f172a]">Generate</h2>
-        <Button type="button" variant="ghost" size="icon-xs" onClick={onClose} aria-label="Close">
-          <X className="size-4" />
-        </Button>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        {/* Sessions */}
-        <div className="flex w-[112px] shrink-0 flex-col border-r border-[#e2e8f0] bg-[#f8fafc]">
+        <h2 className="text-sm font-semibold text-[#0f172a]">Diagram AI</h2>
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="m-2 justify-start gap-1.5 rounded-md text-xs"
-            onClick={newChat}
+            size="icon-xs"
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-label="Chat history"
+            title="Chat history"
           >
-            <Plus className="size-3.5" />
-            New Chat
+            <History className="size-4" />
           </Button>
-          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1.5 pb-2">
-            {sessions.map((s) => (
-              <div
-                key={s.id}
-                className={cn(
-                  "group flex items-center gap-1 rounded-md px-2 py-1.5 text-xs",
-                  s.id === activeId
-                    ? "bg-white text-[#0f172a] shadow-sm ring-1 ring-[#e2e8f0]"
-                    : "text-[#64748b] hover:bg-[#eef2f7]"
-                )}
-              >
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 truncate text-left"
-                  onClick={() => setActiveId(s.id)}
-                >
-                  {s.title}
-                </button>
-                <button
-                  type="button"
-                  className="opacity-0 transition group-hover:opacity-100"
-                  aria-label="Delete session"
-                  onClick={() => deleteSession(s.id)}
-                >
-                  <Trash2 className="size-3 text-[#94a3b8]" />
-                </button>
-              </div>
-            ))}
-          </div>
+          <Button type="button" variant="ghost" size="icon-xs" onClick={newChat} aria-label="New chat">
+            <Plus className="size-4" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-xs" onClick={onClose} aria-label="Close">
+            <X className="size-4" />
+          </Button>
         </div>
+      </header>
 
-        {/* Conversation */}
+      <div className="flex min-h-0 flex-1">
+        {historyOpen ? (
+          <div className="flex w-[112px] shrink-0 flex-col border-r border-[#e2e8f0] bg-[#f8fafc]">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="m-2 justify-start gap-1.5 rounded-md text-xs"
+              onClick={newChat}
+            >
+              <Plus className="size-3.5" />
+              New Chat
+            </Button>
+            <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-1.5 pb-2">
+              {sessions.map((s) => (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "group flex items-center gap-1 rounded-md px-2 py-1.5 text-xs",
+                    s.id === activeId
+                      ? "bg-white text-[#0f172a] shadow-sm ring-1 ring-[#e2e8f0]"
+                      : "text-[#64748b] hover:bg-[#eef2f7]"
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left"
+                    onClick={() => setActiveId(s.id)}
+                  >
+                    {s.title}
+                  </button>
+                  <button
+                    type="button"
+                    className="opacity-0 transition group-hover:opacity-100"
+                    aria-label="Delete session"
+                    onClick={() => deleteSession(s.id)}
+                  >
+                    <Trash2 className="size-3 text-[#94a3b8]" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex gap-1 border-b border-[#e2e8f0] px-3 py-2">
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium",
+                mode === "generate"
+                  ? "bg-[#eff6ff] text-[#1d4ed8] ring-1 ring-[#bfdbfe]"
+                  : "text-[#64748b] hover:bg-[#f1f5f9]"
+              )}
+              onClick={() => setMode("generate")}
+            >
+              Generate
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium",
+                mode === "edit"
+                  ? "bg-[#eff6ff] text-[#1d4ed8] ring-1 ring-[#bfdbfe]"
+                  : "text-[#64748b] hover:bg-[#f1f5f9]",
+                editDisabled && "opacity-50"
+              )}
+              disabled={editDisabled}
+              title={editDisabled ? "Save the diagram first" : "Edit the current page"}
+              onClick={() => setMode("edit")}
+            >
+              Edit page
+            </button>
+          </div>
+
           <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
             {empty ? (
               <div className="space-y-2">
-                <p className="text-xs text-[#64748b]">Try a prompt</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUGGESTED.map((chip) => (
-                    <button
-                      key={chip.slice(0, 24)}
-                      type="button"
-                      className="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-2.5 py-1 text-left text-[11px] leading-snug text-[#334155] transition hover:border-[#93c5fd] hover:bg-white"
-                      onClick={() => setPrompt(chip)}
-                    >
-                      {chip.length > 72 ? `${chip.slice(0, 72)}…` : chip}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-xs text-[#64748b]">
+                  {mode === "edit"
+                    ? "Describe a change to the current page"
+                    : "Pick a starter or describe your diagram"}
+                </p>
+                {mode === "generate" ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUGGESTED.map((chip) => (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        disabled={busy}
+                        className="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-2.5 py-1 text-left text-[11px] font-medium leading-snug text-[#334155] transition hover:border-[#93c5fd] hover:bg-white disabled:opacity-50"
+                        onClick={() => void runGenerate(chip.prompt)}
+                        title={chip.prompt}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : (
               active?.messages.map((m) => (
@@ -428,10 +537,10 @@ export function AiChatPanel({
                         type="button"
                         className="flex h-24 w-full items-center justify-center overflow-hidden rounded-md border border-[#cbd5e1] bg-white"
                         onClick={() => {
-                          if (m.document) onInsertDocument(m.document, "append");
+                          if (m.document) onInsertDocument(m.document, "replace");
                           else if (m.page) onInsertPage(m.page);
                         }}
-                        title="Click to insert"
+                        title="Apply again"
                       >
                         {m.previewSvg ? (
                           <div
@@ -444,7 +553,7 @@ export function AiChatPanel({
                           />
                         ) : (
                           <span className="text-[11px] text-[#64748b]">
-                            Diagram preview — Click to insert
+                            Applied to canvas — click to re-apply
                           </span>
                         )}
                       </button>
@@ -457,16 +566,7 @@ export function AiChatPanel({
                             className="rounded-md"
                             onClick={() => onInsertDocument(m.document!, "append")}
                           >
-                            Insert on canvas
-                          </Button>
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="outline"
-                            className="rounded-md"
-                            onClick={() => onInsertDocument(m.document!, "replace")}
-                          >
-                            Replace page
+                            Insert again
                           </Button>
                           <Button
                             type="button"
@@ -479,33 +579,17 @@ export function AiChatPanel({
                           </Button>
                         </div>
                       ) : null}
-                      {m.page && !m.document ? (
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          className="rounded-md"
-                          onClick={() => onInsertPage(m.page!)}
-                        >
-                          Insert on canvas
-                        </Button>
-                      ) : null}
                     </div>
                   ) : null}
 
-                  {m.timedOut ? (
+                  {m.error && m.retryText ? (
                     <Button
                       type="button"
                       size="xs"
                       variant="outline"
                       className="mt-2 rounded-md"
                       disabled={busy}
-                      onClick={() => {
-                        const lastUser = [...(active?.messages ?? [])]
-                          .reverse()
-                          .find((x) => x.role === "user");
-                        if (lastUser) void runGenerate(lastUser.text);
-                      }}
+                      onClick={() => retryMessage(m)}
                     >
                       Retry
                     </Button>
@@ -517,7 +601,11 @@ export function AiChatPanel({
             {busy ? (
               <div className="flex items-center gap-2 text-xs text-[#64748b]">
                 <Spinner className="size-4" />
-                Generating…
+                {busyPhase === "validating"
+                  ? "Validating…"
+                  : mode === "edit"
+                    ? "Editing page…"
+                    : "Generating diagram…"}
               </div>
             ) : null}
           </div>
@@ -527,7 +615,11 @@ export function AiChatPanel({
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe your diagram"
+                placeholder={
+                  mode === "edit"
+                    ? "e.g. Add an Inventory entity linked to Product"
+                    : "Describe your diagram"
+                }
                 className="min-h-[72px] resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -556,30 +648,20 @@ export function AiChatPanel({
                     disabled={busy}
                     onClick={() => fileRef.current?.click()}
                     aria-label="Attach image"
+                    title="Generate from image"
                   >
                     <ImagePlus className="size-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="rounded-md text-[11px]"
-                    disabled={busy || prompt.trim().length < 2 || !diagramId}
-                    onClick={() => void runEdit(prompt.trim())}
-                    title={!diagramId ? "Save diagram first" : "Edit current page with AI"}
-                  >
-                    Edit page
                   </Button>
                 </div>
                 <Button
                   type="button"
-                  size="icon-xs"
-                  className="rounded-md"
-                  disabled={busy || prompt.trim().length < 2}
+                  size="sm"
+                  className="h-7 gap-1.5 rounded-md px-3 text-xs"
+                  disabled={busy || prompt.trim().length < 2 || (mode === "edit" && editDisabled)}
                   onClick={send}
-                  aria-label="Send"
                 >
                   {busy ? <Spinner className="size-3.5" /> : <Send className="size-3.5" />}
+                  {mode === "edit" ? "Apply edit" : "Generate"}
                 </Button>
               </div>
             </div>
