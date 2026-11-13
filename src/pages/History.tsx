@@ -18,48 +18,67 @@ export const History: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const jobsPerPage = 10;
 
-  useEffect(() => {
-    if (user?.jobs) {
-      // Sort jobs by creation date descending
-      const sortedJobs = [...user.jobs].sort(
+  const loadRecent = useCallback(async () => {
+    try {
+      const data = await apiService.getRecentJobs(30);
+      const sorted = [...(data.jobs || [])].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      setJobs(sortedJobs);
+      setJobs(sorted);
+    } catch {
+      // Fallback to profile snapshot once if recent endpoint unavailable
+      if (user?.jobs?.length) {
+        setJobs(
+          [...user.jobs].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
+      }
     }
   }, [user?.jobs]);
 
-  const updateJobs = useCallback(async () => {
+  useEffect(() => {
+    void loadRecent();
+  }, [loadRecent]);
+
+  const updateActive = useCallback(async () => {
     try {
-      const data = await apiService.getProfile();
-      if (data.user?.jobs) {
-        const sorted = [...data.user.jobs].sort(
+      const active = await apiService.getActiveJobs();
+      setJobs((prev) => {
+        const byId = new Map(prev.map((j) => [j.id, j]));
+        for (const j of active.jobs || []) byId.set(j.id, { ...byId.get(j.id), ...j });
+        // Drop terminal replacements by refreshing recent when no actives
+        if (!(active.jobs || []).length) {
+          void loadRecent();
+          return prev;
+        }
+        return [...byId.values()].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        setJobs(sorted);
-      }
+      });
     } catch {
       /* ignore polling error */
     }
-  }, []);
+  }, [loadRecent]);
 
-  // Set up polling if there are any processing/queued jobs (tab visibility aware, without thrashing global auth)
+  // Poll thin /jobs/active only — never full /users/me while History is open
   useEffect(() => {
-    const hasActiveJobs = jobs.some(j => j.status === "QUEUED" || j.status === "PROCESSING");
-    
+    const hasActiveJobs = jobs.some((j) => j.status === "QUEUED" || j.status === "PROCESSING");
+
     if (hasActiveJobs) {
       const interval = setInterval(() => {
         if (typeof document !== "undefined" && document.visibilityState !== "hidden") {
-          void updateJobs();
+          void updateActive();
         }
-      }, 3000);
+      }, 4000);
       return () => clearInterval(interval);
     }
-  }, [jobs, updateJobs]);
+  }, [jobs, updateActive]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([updateJobs(), refreshProfile()]);
-    setTimeout(() => setIsRefreshing(false), 500); // UI feedback
+    await Promise.all([loadRecent(), refreshProfile()]);
+    setIsRefreshing(false);
   };
 
   const handleDownload = async (jobId: string, outputFile: string) => {

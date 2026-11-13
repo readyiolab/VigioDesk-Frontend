@@ -65,20 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [queryClient]);
 
   const applySession = useCallback((data: { user: User }) => {
+    // Trust auth response — avoid a second /users/me round-trip on every login.
     setUser({
       ...data.user,
       emailVerified: Boolean(data.user.emailVerified),
     });
     setLoading(false);
-    void apiService
-      .getProfile()
-      .then((full) => {
-        setUser((prev) => ({
-          ...full.user,
-          emailVerified: Boolean(full.user.emailVerified) || Boolean(prev?.emailVerified),
-        }));
-      })
-      .catch(() => undefined);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

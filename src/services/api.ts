@@ -241,6 +241,11 @@ export const apiService = {
 
   getUsage: () => apiFetch("/users/me/usage", { method: "GET" }),
 
+  /** Thin in-flight jobs for History polling (avoids full /users/me). */
+  getActiveJobs: () => apiFetch<{ jobs: Job[] }>("/jobs/active", { method: "GET" }),
+  getRecentJobs: (limit = 20) =>
+    apiFetch<{ jobs: Job[] }>(`/jobs/recent?limit=${limit}`, { method: "GET" }),
+
   listAssets: () => apiFetch("/assets", { method: "GET" }),
 
   createAsset: (body: Record<string, unknown>) =>

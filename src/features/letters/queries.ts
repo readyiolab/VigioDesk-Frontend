@@ -34,10 +34,14 @@ export function useTemplates(userId?: string | null, enabled = true) {
   return useQuery({
     queryKey: letterKeys.templates(orgId ?? "pending"),
     enabled,
+    staleTime: 60_000,
     queryFn: async () => {
       const oid = await resolveOrgId(userId);
       let { templates } = await lettersApi.listTemplates(oid);
-      if (!templates.length) {
+      // Seed at most once per org per browser session — avoid write storms on every visit.
+      const seedKey = `letters:seeded:${oid}`;
+      if (!templates.length && typeof sessionStorage !== "undefined" && !sessionStorage.getItem(seedKey)) {
+        sessionStorage.setItem(seedKey, "1");
         const seeded = await lettersApi.seedTemplates(oid);
         templates = seeded.templates;
       }
@@ -52,16 +56,27 @@ export function useTemplates(userId?: string | null, enabled = true) {
 }
 
 export function useLetterStudioHome(userId?: string | null) {
+  const existingOrgId = useOrgStore((s) => s.getOrgIdForUser(userId));
+  const existingOrgName = useOrgStore((s) => s.orgName ?? "");
+
   return useQuery({
     queryKey: [...letterKeys.all, "studio-home", userId ?? "anon"],
+    staleTime: 30_000,
     queryFn: async () => {
-      const boot = await lettersApi.bootstrap();
-      const id = boot.org.organization.id as string;
-      setOrgId(id, {
-        userId,
-        role: boot.org.role,
-        orgName: boot.org.organization.name,
-      });
+      let id = existingOrgId;
+      let orgName = existingOrgName || "";
+      let warning: string | undefined;
+      if (!id) {
+        const boot = await lettersApi.bootstrap();
+        id = boot.org.organization.id as string;
+        orgName = boot.org.organization.name as string;
+        warning = boot.warning;
+        setOrgId(id, {
+          userId,
+          role: boot.org.role,
+          orgName,
+        });
+      }
       const [batchRes, brandRes, templateRes] = await Promise.all([
         lettersApi.listBatches(id),
         lettersApi.listBrands(id).catch(() => ({ brands: [] as unknown[] })),
@@ -69,8 +84,8 @@ export function useLetterStudioHome(userId?: string | null) {
       ]);
       return {
         orgId: id,
-        orgName: boot.org.organization.name as string,
-        warning: boot.warning,
+        orgName,
+        warning,
         batches: batchRes.batches,
         brandCount: brandRes.brands?.length || 0,
         templateCount: templateRes.templates?.length || 0,
