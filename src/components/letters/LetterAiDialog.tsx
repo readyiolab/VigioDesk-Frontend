@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,12 @@ export function LetterAiDialog({
   const [previewJson, setPreviewJson] = useState<any | null>(null);
   const [previewText, setPreviewText] = useState("");
 
-  const reset = () => {
+  useEffect(() => {
+    if (!open) return;
+    setLetterType(defaultType || "INCREMENT");
+  }, [open, defaultType]);
+
+  const clearPreview = () => {
     setPreviewJson(null);
     setPreviewText("");
   };
@@ -74,17 +79,29 @@ export function LetterAiDialog({
       toast.error("Describe the letter you need");
       return;
     }
+    if (!organizationId) {
+      toast.error("Organization not ready — refresh and try again");
+      return;
+    }
     setBusy(true);
     try {
       const result = await lettersApi.aiDraft(organizationId, {
         instruction: buildPrompt(),
         letterType,
       });
-      const draft = result.contentJson;
+      const draft = result?.contentJson;
+      if (!draft || draft.type !== "doc") {
+        throw new Error("AI returned an empty draft — try again");
+      }
       setPreviewJson(draft);
       setPreviewText(tipTapDocToPlainText(draft));
     } catch (e: any) {
-      toast.error(e.message || "AI draft failed");
+      const msg = String(e?.message || "AI draft failed");
+      toast.error(
+        /timed out/i.test(msg)
+          ? "AI is taking longer than usual — try Generate again"
+          : msg
+      );
     } finally {
       setBusy(false);
     }
@@ -100,7 +117,7 @@ export function LetterAiDialog({
     }
     onInsert(previewJson);
     onOpenChange(false);
-    reset();
+    clearPreview();
     toast.success("Draft inserted — review and Save");
   };
 
@@ -108,7 +125,10 @@ export function LetterAiDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) reset();
+        if (!v) {
+          if (busy) return;
+          clearPreview();
+        }
         onOpenChange(v);
       }}
     >
@@ -121,7 +141,17 @@ export function LetterAiDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {!previewJson ? (
+          {busy && !previewJson ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <Spinner className="size-6" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Generating your letter…</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This can take up to a minute — keep this window open.
+                </p>
+              </div>
+            </div>
+          ) : !previewJson ? (
             <>
               <div>
                 <Label>What kind of letter would you like to write?</Label>
@@ -179,9 +209,14 @@ export function LetterAiDialog({
           ) : (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Preview
+                Preview{busy ? " · regenerating…" : ""}
               </p>
-              <div className="mt-2 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground">
+              <div className="relative mt-2 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground">
+                {busy ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70">
+                    <Spinner className="size-5" />
+                  </div>
+                ) : null}
                 {previewText || "Empty draft"}
               </div>
             </div>
@@ -191,10 +226,19 @@ export function LetterAiDialog({
         <DialogFooter className="border-t border-border px-5 py-3 sm:justify-between">
           {!previewJson ? (
             <>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onOpenChange(false)}
+              >
                 Cancel
               </Button>
-              <Button type="button" disabled={busy || !instruction.trim()} onClick={() => void generate()}>
+              <Button
+                type="button"
+                disabled={busy || !instruction.trim()}
+                onClick={() => void generate()}
+              >
                 {busy ? <Spinner className="mr-2 size-4" /> : null}
                 {busy ? "Generating…" : "Generate letter"}
               </Button>
@@ -205,19 +249,16 @@ export function LetterAiDialog({
                 type="button"
                 variant="outline"
                 disabled={busy}
-                onClick={() => {
-                  reset();
-                  void generate();
-                }}
+                onClick={() => void generate()}
               >
                 {busy ? <Spinner className="mr-2 size-4" /> : null}
                 Regenerate
               </Button>
               <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => reset()}>
+                <Button type="button" variant="ghost" disabled={busy} onClick={clearPreview}>
                   Edit prompt
                 </Button>
-                <Button type="button" onClick={insert}>
+                <Button type="button" disabled={busy} onClick={insert}>
                   Insert into editor
                 </Button>
               </div>

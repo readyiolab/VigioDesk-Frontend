@@ -1,6 +1,8 @@
 import { apiFetch } from "./api";
 
 const ORG_HEADER = "X-Organization-Id";
+/** Covers draft + optional repair/refine LLM passes (same budget as Diagram AI). */
+const AI_TIMEOUT_MS = 150_000;
 
 function orgHeaders(organizationId?: string | null): HeadersInit {
   if (!organizationId) return {};
@@ -258,7 +260,13 @@ export const lettersApi = {
       method: "POST",
       headers: orgHeaders(organizationId),
       body: JSON.stringify(body),
-    });
+      timeoutMs: AI_TIMEOUT_MS,
+    }) as Promise<{
+      contentJson: any;
+      fieldTokens?: string[];
+      repaired?: string[];
+      model?: string;
+    }>;
   },
 
   aiApplyDraft(organizationId: string, body: Record<string, unknown>) {
@@ -277,6 +285,7 @@ export const lettersApi = {
       method: "POST",
       headers: orgHeaders(organizationId),
       body: JSON.stringify(body),
+      timeoutMs: AI_TIMEOUT_MS,
     }) as Promise<{
       suggestion?: string;
       suggestionPreview?: string;
@@ -291,6 +300,7 @@ export const lettersApi = {
       method: "POST",
       headers: orgHeaders(organizationId),
       body: JSON.stringify({ headers }),
+      timeoutMs: AI_TIMEOUT_MS,
     });
   },
 
@@ -298,6 +308,7 @@ export const lettersApi = {
     return apiFetch(`/letters/batches/${batchId}/ai/anomalies`, {
       method: "POST",
       headers: orgHeaders(organizationId),
+      timeoutMs: AI_TIMEOUT_MS,
     });
   },
 
@@ -305,6 +316,7 @@ export const lettersApi = {
     return apiFetch(`/letters/batches/${batchId}/ai/summary`, {
       method: "POST",
       headers: orgHeaders(organizationId),
+      timeoutMs: AI_TIMEOUT_MS,
     });
   },
 
@@ -313,6 +325,7 @@ export const lettersApi = {
       method: "POST",
       headers: orgHeaders(organizationId),
       body: JSON.stringify({ question }),
+      timeoutMs: AI_TIMEOUT_MS,
     });
   },
 
