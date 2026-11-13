@@ -114,16 +114,16 @@ export function LetterOnboardingWizard() {
   if (checking || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4">
-      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-foreground/40 p-0 sm:items-center sm:p-4">
+      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-card shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Welcome — 3 quick steps
           </p>
-          <h2 className="font-heading mt-1 text-xl font-bold text-slate-900">
+          <h2 className="font-heading mt-1 text-xl font-bold text-foreground">
             Let’s set up Letter Studio
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             You write one letter, then fill it for many employees from Excel.
           </p>
           <ol className="mt-4 flex gap-2">
@@ -137,10 +137,10 @@ export function LetterOnboardingWizard() {
                   className={cn(
                     "flex flex-1 items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold",
                     active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-primary text-white"
                       : done
                         ? "bg-emerald-50 text-emerald-800"
-                        : "bg-slate-100 text-slate-500"
+                        : "bg-muted text-muted-foreground"
                   )}
                 >
                   <span className="flex size-6 items-center justify-center rounded-full bg-black/10">
@@ -157,7 +157,7 @@ export function LetterOnboardingWizard() {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {step === 1 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Recommended: add your logo and who signs. You can skip and do this later.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -189,7 +189,7 @@ export function LetterOnboardingWizard() {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-auto px-0 text-sm text-slate-500"
+                className="h-auto px-0 text-sm text-muted-foreground"
                 onClick={() => setStep(2)}
               >
                 Skip company look for now
@@ -199,7 +199,7 @@ export function LetterOnboardingWizard() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Pick a starter letter. You can edit the wording anytime in Letter templates.
               </p>
               <div className="grid max-h-[40vh] gap-2 overflow-y-auto sm:grid-cols-2">
@@ -211,16 +211,16 @@ export function LetterOnboardingWizard() {
                     className={cn(
                       "rounded-xl border px-3 py-3 text-left transition",
                       pickedTemplateId === t.id
-                        ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
-                        : "border-slate-200 hover:border-slate-300"
+                        ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20"
+                        : "border-border hover:border-slate-300"
                     )}
                   >
-                    <div className="text-sm font-semibold text-slate-900">{t.name}</div>
-                    <div className="mt-0.5 text-xs text-slate-500">{t.type}</div>
+                    <div className="text-sm font-semibold text-foreground">{t.name}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{t.type}</div>
                   </button>
                 ))}
                 {templates.length === 0 && (
-                  <p className="col-span-2 text-sm text-slate-500">
+                  <p className="col-span-2 text-sm text-muted-foreground">
                     Loading starter templates…
                   </p>
                 )}
@@ -230,13 +230,13 @@ export function LetterOnboardingWizard() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Next: pick your letter, add Excel, check the names, then Make PDFs and download.
               </p>
-              <ul className="space-y-2 text-sm text-slate-700">
+              <ul className="space-y-2 text-sm text-foreground">
                 {LETTER_HOW_IT_WORKS.map((line) => (
                   <li key={line} className="flex items-start gap-2">
-                    <Check className="mt-0.5 size-4 shrink-0 text-indigo-600" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-primary" />
                     {line}
                   </li>
                 ))}
@@ -245,11 +245,11 @@ export function LetterOnboardingWizard() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4">
           <Button
             type="button"
             variant="ghost"
-            className="text-slate-500"
+            className="text-muted-foreground"
             onClick={() => finish()}
           >
             Skip for now
@@ -268,7 +268,7 @@ export function LetterOnboardingWizard() {
             {step === 1 && (
               <Button
                 type="button"
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                className="rounded-xl bg-primary hover:bg-primary/90"
                 disabled={busy}
                 onClick={saveBrand}
               >
@@ -279,7 +279,7 @@ export function LetterOnboardingWizard() {
             {step === 2 && (
               <Button
                 type="button"
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                className="rounded-xl bg-primary hover:bg-primary/90"
                 disabled={!pickedTemplateId}
                 onClick={() => {
                   if (pickedTemplateId) {
@@ -295,7 +295,7 @@ export function LetterOnboardingWizard() {
             {step === 3 && (
               <Button
                 type="button"
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                className="rounded-xl bg-primary hover:bg-primary/90"
                 onClick={() => {
                   const tid = localStorage.getItem("letter_onboarding_template");
                   finish(

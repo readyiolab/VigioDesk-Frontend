@@ -50,9 +50,9 @@ export const LETTER_HOW_IT_WORKS = [
 export const LETTER_STEP_META = [
   {
     n: 1 as const,
-    title: "Your company look",
+    title: "Company look (optional)",
     short: "Company look",
-    desc: "Add your logo and who signs the letters. You can skip and add this later.",
+    desc: "Add your logo and who signs. Skip anytime — you can add this later.",
     to: "/letters/brands",
     cta: "Set up company look",
     recommended: true,

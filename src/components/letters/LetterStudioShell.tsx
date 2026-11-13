@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from "react";
+import { Suspense } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -14,12 +14,6 @@ import { Button } from "@/components/ui/button";
 import { RouteFallback } from "@/components/RouteFallback";
 import { cn } from "@/lib/utils";
 import { LetterOnboardingWizard } from "./LetterOnboardingWizard";
-
-const STUDIO_THEME = {
-  ["--studio-accent"]: "#3730a3",
-  ["--studio-paper"]: "#F4F6F8",
-  ["--studio-canvas"]: "#E8ECF0",
-} as CSSProperties;
 
 const NAV = [
   { to: "/letters/studio", label: "Home", icon: LayoutDashboard, end: true },
@@ -42,26 +36,23 @@ export function LetterStudioShell() {
     location.pathname.startsWith("/letters/batches");
 
   return (
-    <div
-      className="flex h-dvh min-h-0 w-full overflow-hidden bg-white text-slate-900"
-      style={STUDIO_THEME}
-    >
+    <div className="flex h-dvh min-h-0 w-full overflow-hidden bg-background text-foreground">
       {/* Desktop sidebar — collapsed by default, expands on hover */}
       <aside
         className={cn(
-          "group/sidebar hidden shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-[var(--studio-paper,#F4F6F8)]",
+          "group/sidebar hidden shrink-0 flex-col overflow-hidden border-r border-border bg-studio-paper",
           "w-[64px] transition-[width] duration-200 ease-out hover:w-[220px] focus-within:w-[220px] md:flex"
         )}
       >
-        <div className="flex h-14 items-center gap-2.5 border-b border-slate-200/80 px-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+        <div className="flex h-14 items-center gap-2.5 border-b border-border/80 px-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
             <FileText className="size-3.5" />
           </span>
           <div className="min-w-0 opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-            <p className="truncate font-heading text-sm font-bold tracking-tight text-slate-900">
+            <p className="truncate font-heading text-sm font-bold tracking-tight text-foreground">
               Letter Studio
             </p>
-            <p className="truncate text-[10px] font-medium text-slate-400">
+            <p className="truncate text-[10px] font-medium text-muted-foreground">
               Send the same letter to many people
             </p>
           </div>
@@ -78,10 +69,10 @@ export function LetterStudioShell() {
                 className={({ isActive }) =>
                   cn(
                     "inline-flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors duration-150",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
                     isActive
-                      ? "bg-indigo-50 text-indigo-800"
-                      : "text-slate-600 hover:bg-white hover:text-slate-900"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-card hover:text-foreground"
                   )
                 }
               >
@@ -93,13 +84,13 @@ export function LetterStudioShell() {
             );
           })}
         </nav>
-        <div className="border-t border-slate-200/80 p-2">
+        <div className="border-t border-border/80 p-2">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             title="Product overview"
-            className="h-9 w-full justify-start gap-2 rounded-lg px-2.5 text-xs text-slate-600 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+            className="h-9 w-full justify-start gap-2 rounded-lg px-2.5 text-xs text-muted-foreground"
             onClick={() => navigate("/letters")}
           >
             <FileText className="size-4 shrink-0 opacity-70" />
@@ -112,21 +103,21 @@ export function LetterStudioShell() {
 
       {/* Main column */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 md:px-4">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3 md:px-4">
           <div className="flex min-w-0 items-center gap-2 md:hidden">
-            <span className="flex size-8 items-center justify-center rounded-xl bg-slate-900 text-white">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
               <FileText className="size-3.5" />
             </span>
             <div className="min-w-0">
               <p className="truncate font-heading text-sm font-bold">Letter Studio</p>
-              <p className="truncate text-[10px] font-medium text-slate-400">
+              <p className="truncate text-[10px] font-medium text-muted-foreground">
                 Send the same letter to many people
               </p>
             </div>
           </div>
-          <p className="hidden font-heading text-sm font-semibold tracking-tight text-slate-800 md:block">
+          <p className="hidden font-heading text-sm font-semibold tracking-tight text-foreground md:block">
             Letter Studio
-            <span className="ml-2 font-sans text-xs font-normal text-slate-500">
+            <span className="ml-2 font-sans text-xs font-normal text-muted-foreground">
               Send the same letter to many people
             </span>
           </p>
@@ -135,7 +126,7 @@ export function LetterStudioShell() {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 rounded-lg text-slate-500 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+              className="size-8 rounded-lg text-muted-foreground"
               aria-label="Close studio"
               onClick={() => navigate("/")}
             >
@@ -145,7 +136,7 @@ export function LetterStudioShell() {
         </header>
 
         {/* Mobile nav */}
-        <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-slate-200 bg-[#F8FAFC] px-2 py-1.5 md:hidden">
+        <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-b border-border bg-studio-paper px-2 py-1.5 md:hidden">
           {NAV.map((item) => {
             const Icon = item.icon;
             return (
@@ -156,10 +147,10 @@ export function LetterStudioShell() {
                 className={({ isActive }) =>
                   cn(
                     "inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-150",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
                     isActive
-                      ? "bg-indigo-50 text-indigo-800"
-                      : "text-slate-600 hover:bg-white"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-card"
                   )
                 }
               >

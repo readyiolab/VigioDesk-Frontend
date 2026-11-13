@@ -8,6 +8,9 @@ import { ArrowRight, Download, Search } from "lucide-react";
 import {
   StudioPageHeader,
   StudioPageBody,
+  StudioSection,
+  StudioEmptyState,
+  StudioStatusChip,
 } from "@/components/letters/StudioPageHeader";
 import { useAuth } from "@/features/auth/useAuth";
 import { useBatches } from "@/features/letters";
@@ -37,6 +40,24 @@ function humanBatchStatus(status: string): string {
       return "In progress";
     default:
       return status?.replace(/_/g, " ") || "In progress";
+  }
+}
+
+function statusTone(
+  status: string
+): "default" | "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case "GENERATED":
+    case "SENT":
+      return "success";
+    case "GENERATING":
+    case "SENDING":
+      return "info";
+    case "FAILED":
+    case "CANCELLED":
+      return "danger";
+    default:
+      return "default";
   }
 }
 
@@ -96,9 +117,9 @@ export default function BatchHistoryPage() {
         description="Reopen a past send, download PDFs, or search by name."
       />
       <StudioPageBody>
-        <div className="flex gap-2 rounded-xl border border-slate-200 p-2">
+        <div className="flex gap-2 rounded-xl border border-border bg-card p-2">
           <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="border-0 pl-9 shadow-none focus-visible:ring-0"
               value={question}
@@ -107,39 +128,31 @@ export default function BatchHistoryPage() {
               onKeyDown={(e) => e.key === "Enter" && runQuery()}
             />
           </div>
-          <Button
-            className="shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700"
-            onClick={runQuery}
-            disabled={asking}
-          >
+          <Button className="shrink-0 rounded-xl" onClick={runQuery} disabled={asking}>
             {asking ? "Searching…" : "Ask"}
           </Button>
         </div>
 
         {results && (
-          <div className="rounded-xl border border-slate-200 p-4 text-sm">
-            <div className="mb-2 font-semibold text-slate-900">{results.length} matches</div>
-            <div className="max-h-48 space-y-1 overflow-auto text-xs text-slate-600">
+          <StudioSection title={`${results.length} matches`}>
+            <div className="max-h-48 space-y-0 overflow-auto px-4 py-2 text-xs text-muted-foreground">
               {results.map((r) => (
-                <div key={r.id} className="border-b border-slate-100 py-1.5 last:border-0">
+                <div key={r.id} className="border-b border-border py-2 last:border-0">
                   {r.employee?.Employee_Name || "Employee"} ·{" "}
                   {humanSendStatus(r.sendStatus)}
                 </div>
               ))}
             </div>
-          </div>
+          </StudioSection>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-slate-200">
-          <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
-            Recent sends
-          </div>
+        <StudioSection title="Recent sends">
           {batchesQuery.isLoading ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500">Loading…</div>
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : batches.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-500">No sends yet.</div>
+            <StudioEmptyState title="No sends yet" description="Send letters from Excel to see them here." />
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {batches.map((b: any) => (
                 <div
                   key={b.id}
@@ -147,14 +160,18 @@ export default function BatchHistoryPage() {
                 >
                   <Link
                     to={`/letters/batches/${b.id}`}
-                    className="min-w-0 flex-1 hover:text-indigo-700"
+                    className="min-w-0 flex-1 hover:text-primary"
                   >
-                    <div className="truncate font-medium text-slate-900">
-                      {b.templateName || "Letter send"}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium text-foreground">
+                        {b.templateName || "Letter send"}
+                      </span>
+                      <StudioStatusChip tone={statusTone(b.status)}>
+                        {humanBatchStatus(b.status)}
+                      </StudioStatusChip>
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-500">
-                      {b.totalRows} people · {humanBatchStatus(b.status)} ·{" "}
-                      {new Date(b.createdAt).toLocaleString()}
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {b.totalRows} people · {new Date(b.createdAt).toLocaleString()}
                     </div>
                   </Link>
                   <div className="flex shrink-0 gap-2">
@@ -201,7 +218,7 @@ export default function BatchHistoryPage() {
               ))}
             </div>
           )}
-        </div>
+        </StudioSection>
       </StudioPageBody>
     </div>
   );

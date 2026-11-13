@@ -28,7 +28,25 @@ const SYSTEM_FIELDS = [
   "Effective_Date",
   "PDF_Password",
   "Manager_Name",
-];
+] as const;
+
+const FIELD_LABELS: Record<string, string> = {
+  Employee_ID: "Employee ID",
+  Employee_Name: "Employee name",
+  Employee_Email: "Employee email",
+  Designation: "Job title",
+  Department: "Department",
+  Old_CTC: "Current CTC",
+  New_CTC: "New CTC",
+  Increment_Percent: "Raise %",
+  Effective_Date: "Effective date",
+  PDF_Password: "PDF password",
+  Manager_Name: "Manager name",
+};
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] || field.replace(/_/g, " ");
+}
 
 export function LetterEditor({
   content,
@@ -57,7 +75,7 @@ export function LetterEditor({
         class: cn(
           "prose max-w-none focus:outline-none",
           paper
-            ? "prose-p:my-3 prose-headings:mb-4 prose-headings:mt-0 min-h-[420px] px-1 py-1 text-[15px] leading-[1.65] text-slate-900"
+            ? "prose-p:my-3 prose-headings:mb-4 prose-headings:mt-0 min-h-[420px] px-1 py-1 text-[15px] leading-[1.65] text-foreground"
             : "prose-sm min-h-[320px] px-4 py-3"
         ),
         ...(fontFamily ? { style: `font-family: ${fontFamily}` } : {}),
@@ -133,14 +151,14 @@ export function LetterEditor({
       className={cn(
         paper
           ? "overflow-hidden bg-transparent"
-          : "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+          : "overflow-hidden rounded-xl border border-border bg-card shadow-sm",
         className
       )}
     >
       <div
         className={cn(
           "flex flex-wrap items-center gap-1 border-b px-2 py-1.5",
-          paper ? "border-slate-200/80 bg-slate-50/60" : "border-slate-100 bg-slate-50/80"
+          paper ? "border-border/80 bg-muted/40" : "border-border bg-muted/50"
         )}
       >
         <ToolBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
@@ -192,7 +210,7 @@ export function LetterEditor({
           </option>
           {SYSTEM_FIELDS.map((f) => (
             <option key={f} value={f}>
-              {`{{${f}}}`}
+              {fieldLabel(f)}
             </option>
           ))}
         </select>

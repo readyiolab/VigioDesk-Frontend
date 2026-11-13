@@ -129,7 +129,7 @@ export default function BrandProfilesPage() {
         description="Logo and who signs the letter — so PDFs look official. You can skip and add later. Images only (PNG/JPG)."
       />
       <div className="grid flex-1 gap-0 lg:grid-cols-[1fr_280px]">
-        <div className="space-y-5 border-b border-slate-200 p-4 sm:p-5 lg:border-b-0 lg:border-r">
+        <div className="space-y-5 border-b border-border p-4 sm:p-5 lg:border-b-0 lg:border-r">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>Company name</Label>
@@ -142,7 +142,7 @@ export default function BrandProfilesPage() {
             <div>
               <Label>Font</Label>
               <select
-                className="mt-0 flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                className="mt-0 flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm"
                 value={form.defaultFont}
                 onChange={(e) => setForm({ ...form, defaultFont: e.target.value })}
               >
@@ -204,29 +204,29 @@ export default function BrandProfilesPage() {
           <Button
             onClick={save}
             disabled={saving}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+            className="rounded-xl bg-primary hover:bg-primary/90"
           >
             {saving ? "Saving…" : "Save brand profile"}
           </Button>
         </div>
 
-        <div className="bg-[var(--studio-paper,#F4F6F8)]">
-          <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div className="bg-studio-paper">
+          <div className="border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Your company looks
           </div>
           <div className="grid gap-2 p-3 sm:grid-cols-1">
             {brands.map((b) => (
               <div
                 key={b.id}
-                className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                className="rounded-xl border border-border bg-card p-3 shadow-sm"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                     {b.name?.slice(0, 2) || "BR"}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold text-slate-900">{b.name}</div>
-                    <div className="mt-0.5 text-xs text-slate-500">
+                    <div className="truncate font-semibold text-foreground">{b.name}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
                       {b.signatoryName || "Who signs — not set"}
                       {b.signatoryDesignation ? ` · ${b.signatoryDesignation}` : ""}
                     </div>
@@ -236,7 +236,7 @@ export default function BrandProfilesPage() {
                           Logo
                         </span>
                       ) : (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                           No logo
                         </span>
                       )}
@@ -246,7 +246,7 @@ export default function BrandProfilesPage() {
                         </span>
                       ) : null}
                       {b.defaultFont ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                           {b.defaultFont}
                         </span>
                       ) : null}
@@ -256,7 +256,7 @@ export default function BrandProfilesPage() {
               </div>
             ))}
             {brands.length === 0 && (
-              <div className="px-2 py-8 text-center text-sm text-slate-500">
+              <div className="px-2 py-8 text-center text-sm text-muted-foreground">
                 No company look yet. Add logo and who signs the letter, then Save — or skip and do this
                 later when you send letters.
               </div>
@@ -286,11 +286,11 @@ function UploadPreviewCard({
   onClear: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
+    <div className="rounded-xl border border-border p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p>
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>
         </div>
         {ready && (
           <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -299,7 +299,7 @@ function UploadPreviewCard({
         )}
       </div>
 
-      <div className="mt-3 flex min-h-[120px] items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-200 bg-slate-50">
+      <div className="mt-3 flex min-h-[120px] items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted">
         {previewUrl ? (
           <img
             src={previewUrl}
@@ -307,7 +307,7 @@ function UploadPreviewCard({
             className="max-h-36 max-w-full object-contain p-2"
           />
         ) : (
-          <div className="flex flex-col items-center gap-1 px-3 py-6 text-center text-slate-400">
+          <div className="flex flex-col items-center gap-1 px-3 py-6 text-center text-muted-foreground">
             <ImageIcon className="size-8 opacity-60" />
             <span className="text-xs">No image yet</span>
           </div>
@@ -316,7 +316,7 @@ function UploadPreviewCard({
 
       <div className="mt-3 flex flex-wrap gap-2">
         <label className="cursor-pointer">
-          <span className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+          <span className="inline-flex h-8 items-center rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted">
             {uploading ? "Uploading…" : previewUrl ? "Change image" : "Choose image"}
           </span>
           <input
@@ -336,7 +336,7 @@ function UploadPreviewCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 rounded-lg text-xs text-slate-500"
+            className="h-8 rounded-lg text-xs text-muted-foreground"
             onClick={onClear}
           >
             <Trash2 className="mr-1 size-3.5" />

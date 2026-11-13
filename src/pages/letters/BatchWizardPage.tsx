@@ -24,6 +24,7 @@ import {
 } from "@/lib/letterMapping";
 import { cn } from "@/lib/utils";
 import { ensureLetterOrgId, readLetterOrgId, writeLetterOrgId } from "@/features/letters/orgHelpers";
+import { StudioStepRail, StudioStat } from "@/components/letters/StudioPageHeader";
 import { ChevronDown } from "lucide-react";
 
 function orgId() {
@@ -72,9 +73,9 @@ const MappingRow = memo(function MappingRow({
   onChange: (header: string, field: string) => void;
 }) {
   return (
-    <tr className="border-t border-slate-100 [content-visibility:auto]">
+    <tr className="border-t border-border [content-visibility:auto]">
       <td className="px-3 py-2">
-        <span className="font-medium text-slate-800">{header}</span>
+        <span className="font-medium text-foreground">{header}</span>
         {source === "ai" && (
           <span className="ml-2 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
             AI suggested
@@ -88,7 +89,7 @@ const MappingRow = memo(function MappingRow({
       </td>
       <td className="px-3 py-2">
         <select
-          className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          className="h-8 w-full rounded-lg border border-border bg-card px-2 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring/40"
           value={value}
           onChange={(e) => onChange(header, e.target.value)}
         >
@@ -639,7 +640,6 @@ export default function BatchWizardPage() {
   ];
   const stepIndex =
     step === "setup" ? 0 : step === "map" ? 1 : step === "validate" ? 2 : 3;
-  const stepHint = "";
 
   const onFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -648,58 +648,25 @@ export default function BatchWizardPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-slate-200 px-4 py-4 sm:px-5">
-        <h1 className="font-heading text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+      <div className="shrink-0 border-b border-border bg-card px-4 py-4 sm:px-6">
+        <h1 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Send letters
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Pick a letter, add your Excel file, check the names, then download the PDFs.
         </p>
-        <ol className="mt-4 flex flex-wrap gap-1.5">
-          {STEP_META.map((s, i) => {
-            const active = i === stepIndex;
-            const done = i < stepIndex;
-            return (
-              <li
-                key={s.key}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-center text-xs font-semibold transition-colors duration-150",
-                  active
-                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
-                    : done
-                      ? "bg-indigo-50 text-indigo-800"
-                      : "bg-slate-100 text-slate-400"
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex size-5 items-center justify-center rounded-full text-[10px]",
-                    active ? "bg-white/20" : done ? "bg-indigo-100" : "bg-white"
-                  )}
-                >
-                  {i + 1}
-                </span>
-                {s.label}
-              </li>
-            );
-          })}
-        </ol>
-        {stepHint && (
-          <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            {stepHint}
-          </p>
-        )}
+        <StudioStepRail steps={STEP_META} activeIndex={stepIndex} className="mt-4" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="space-y-4">
           {step === "setup" && (
-            <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="space-y-5 rounded-xl border border-border bg-card p-4 sm:p-5">
               <div>
-                <Label className="text-sm font-semibold text-slate-900">
+                <Label className="text-sm font-semibold text-foreground">
                   Which letter?
                 </Label>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Choose one. You can change the wording later under Letter templates.
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -711,32 +678,32 @@ export default function BatchWizardPage() {
                       className={cn(
                         "rounded-xl border px-3 py-3 text-left transition",
                         templateId === t.id
-                          ? "border-indigo-300 bg-indigo-50/80 shadow-sm ring-1 ring-indigo-200"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          ? "border-primary/40 bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                          : "border-border bg-card hover:border-border"
                       )}
                     >
-                      <p className="text-sm font-semibold text-slate-900">{t.name}</p>
+                      <p className="text-sm font-semibold text-foreground">{t.name}</p>
                     </button>
                   ))}
                   {templates.length === 0 && (
-                    <p className="text-sm text-slate-500 sm:col-span-2">
+                    <p className="text-sm text-muted-foreground sm:col-span-2">
                       No letters yet — open Letter templates first, then come back.
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200">
+              <div className="rounded-xl border border-border">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
                   onClick={() => setShowCompanyLook((v) => !v)}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-foreground">
                       Company look (optional)
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {brandProfileId
                         ? brands.find((b) => b.id === brandProfileId)?.name || "Selected"
                         : "Skipped — plain letter"}
@@ -744,25 +711,25 @@ export default function BatchWizardPage() {
                   </div>
                   <ChevronDown
                     className={cn(
-                      "size-4 shrink-0 text-slate-400 transition",
+                      "size-4 shrink-0 text-muted-foreground transition",
                       showCompanyLook && "rotate-180"
                     )}
                   />
                 </button>
                 {showCompanyLook && (
-                  <div className="grid gap-2 border-t border-slate-100 p-3 sm:grid-cols-2">
+                  <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => setBrandProfileId("")}
                       className={cn(
                         "rounded-xl border px-3 py-3 text-left transition",
                         !brandProfileId
-                          ? "border-indigo-300 bg-indigo-50/80 ring-1 ring-indigo-200"
-                          : "border-slate-200 hover:border-slate-300"
+                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                          : "border-border hover:border-border"
                       )}
                     >
-                      <p className="text-sm font-semibold text-slate-900">No company look</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-sm font-semibold text-foreground">No company look</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         Plain letter — add later
                       </p>
                     </button>
@@ -774,12 +741,12 @@ export default function BatchWizardPage() {
                         className={cn(
                           "rounded-xl border px-3 py-3 text-left transition",
                           brandProfileId === b.id
-                            ? "border-indigo-300 bg-indigo-50/80 ring-1 ring-indigo-200"
-                            : "border-slate-200 hover:border-slate-300"
+                            ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                            : "border-border hover:border-border"
                         )}
                       >
-                        <p className="truncate text-sm font-semibold text-slate-900">{b.name}</p>
-                        <p className="truncate text-[11px] text-slate-500">
+                        <p className="truncate text-sm font-semibold text-foreground">{b.name}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
                           {b.signatoryName || "Who signs — not set"}
                         </p>
                       </button>
@@ -789,7 +756,7 @@ export default function BatchWizardPage() {
               </div>
 
               <Button
-                className="rounded-xl bg-indigo-600 transition-colors duration-150 hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
                 disabled={busy || !templateId}
                 onClick={createBatch}
               >
@@ -802,12 +769,12 @@ export default function BatchWizardPage() {
           {step === "map" && batchId && (
             <div className="space-y-4">
               {headers.length > 0 && (
-                <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+                <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {sourceFileName || "Uploaded file"}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {columnsReady ? (
                         <>{rowCount} employees ready</>
                       ) : (
@@ -818,7 +785,7 @@ export default function BatchWizardPage() {
                     </p>
                   </div>
                   <Button
-                    className="rounded-xl bg-indigo-600 transition-colors duration-150 hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                    className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
                     disabled={busy || missingRequired.length > 0}
                     onClick={applyMap}
                   >
@@ -828,15 +795,15 @@ export default function BatchWizardPage() {
                 </div>
               )}
 
-              <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+              <div className="space-y-4 rounded-xl border border-border p-4">
                 <div>
                   <Label>Upload your employee Excel or CSV</Label>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Need a test file?{" "}
                     <a
                       href="/samples/letter-batch-sample.csv"
                       download="letter-batch-sample.csv"
-                      className="font-semibold text-indigo-700 underline underline-offset-2"
+                      className="font-semibold text-primary underline underline-offset-2"
                     >
                       Download a sample with 5 employees
                     </a>
@@ -845,13 +812,13 @@ export default function BatchWizardPage() {
                   <input
                     type="file"
                     accept=".xlsx,.xls,.csv"
-                    className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
+                    className="mt-2 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/15"
                     onChange={onFileInput}
                   />
                 </div>
 
                 {busy && headers.length === 0 && (
-                  <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="space-y-2 rounded-xl border border-border bg-muted p-4">
                     <div className="h-3 w-1/3 animate-pulse rounded bg-slate-200" />
                     <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
                     <div className="h-24 animate-pulse rounded-lg bg-slate-200" />
@@ -872,25 +839,25 @@ export default function BatchWizardPage() {
                         Check the names below. If something looks wrong, fix the column matches.
                       </p>
                     </div>
-                    <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                       {employeePreview.map((emp, i) => (
                         <li
                           key={`${emp.name}-${i}`}
                           className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
                         >
-                          <span className="font-medium text-slate-900">{emp.name}</span>
-                          <span className="truncate text-xs text-slate-500">{emp.email || "—"}</span>
+                          <span className="font-medium text-foreground">{emp.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">{emp.email || "—"}</span>
                         </li>
                       ))}
                       {rowCount > employeePreview.length && (
-                        <li className="px-4 py-2 text-xs text-slate-500">
+                        <li className="px-4 py-2 text-xs text-muted-foreground">
                           +{rowCount - employeePreview.length} more employees
                         </li>
                       )}
                     </ul>
                     <button
                       type="button"
-                      className="text-sm font-semibold text-indigo-700 underline-offset-2 hover:underline"
+                      className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
                       onClick={() => setShowFixMatches(true)}
                     >
                       Fix columns
@@ -909,20 +876,20 @@ export default function BatchWizardPage() {
                     {columnsReady && (
                       <button
                         type="button"
-                        className="text-sm font-semibold text-slate-600 underline-offset-2 hover:underline"
+                        className="text-sm font-semibold text-muted-foreground underline-offset-2 hover:underline"
                         onClick={() => setShowFixMatches(false)}
                       >
                         Hide column matching
                       </button>
                     )}
-                    <div className="overflow-auto rounded-xl border border-slate-200">
+                    <div className="overflow-auto rounded-xl border border-border">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-muted">
                           <tr>
-                            <th className="px-3 py-2.5 font-semibold text-slate-600">
+                            <th className="px-3 py-2.5 font-semibold text-muted-foreground">
                               Spreadsheet column
                             </th>
-                            <th className="px-3 py-2.5 font-semibold text-slate-600">
+                            <th className="px-3 py-2.5 font-semibold text-muted-foreground">
                               Goes into letter field
                             </th>
                           </tr>
@@ -945,7 +912,7 @@ export default function BatchWizardPage() {
                 )}
 
                 {headers.length === 0 && !busy && (
-                  <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                  <p className="rounded-xl border border-dashed border-border bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
                     Upload an Excel or CSV file with your employee list.
                   </p>
                 )}
@@ -967,9 +934,9 @@ export default function BatchWizardPage() {
               )}
               {summary && (
                 <div className="grid grid-cols-3 gap-3">
-                  <Stat label="Ready" value={summary.ready} tone="emerald" />
-                  <Stat label="Needs a look" value={summary.warning} tone="amber" />
-                  <Stat label="Can't send" value={summary.blocked} tone="rose" />
+                  <StudioStat label="Ready" value={summary.ready} tone="success" />
+                  <StudioStat label="Needs a look" value={summary.warning} tone="warning" />
+                  <StudioStat label="Can't send" value={summary.blocked} tone="danger" />
                 </div>
               )}
               {preview?.samples && (
@@ -995,18 +962,18 @@ export default function BatchWizardPage() {
                 </div>
               )}
               {causeLine && (
-                <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <p className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
                   {causeLine}
                 </p>
               )}
               {(issueGroups.length > 0 || (summary && (summary.warning > 0 || summary.blocked > 0))) && (
-                <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 bg-white text-xs">
+                <div className="max-h-80 overflow-auto rounded-xl border border-border bg-card text-xs">
                   {visibleGroups.map((g) => (
                     <div
                       key={`${g.code}-${g.severity}`}
-                      className="border-b border-slate-100 px-3 py-2.5 [content-visibility:auto]"
+                      className="border-b border-border px-3 py-2.5 [content-visibility:auto]"
                     >
-                      <div className="font-semibold text-slate-800">
+                      <div className="font-semibold text-foreground">
                         {g.label}
                         <span
                           className={cn(
@@ -1020,7 +987,7 @@ export default function BatchWizardPage() {
                           {g.rows.length === 1 ? "" : "s"}
                         </span>
                       </div>
-                      <p className="mt-1 text-slate-500">
+                      <p className="mt-1 text-muted-foreground">
                         {g.rows
                           .slice(0, 8)
                           .map((r) => rowName(r))
@@ -1032,21 +999,21 @@ export default function BatchWizardPage() {
                   {issueGroups.length > 50 && !showAllIssues && (
                     <button
                       type="button"
-                      className="w-full px-3 py-2.5 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+                      className="w-full px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/10"
                       onClick={() => setShowAllIssues(true)}
                     >
                       Show more
                     </button>
                   )}
                   {issues.length === 0 && (
-                    <div className="p-4 text-slate-500">No problems found.</div>
+                    <div className="p-4 text-muted-foreground">No problems found.</div>
                   )}
                 </div>
               )}
-              <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+              <div className="space-y-3 rounded-xl border border-border bg-muted/80 p-3">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between text-left text-xs font-semibold text-slate-700"
+                  className="flex w-full items-center justify-between text-left text-xs font-semibold text-foreground"
                   onClick={() => setShowPasswordOptions((v) => !v)}
                 >
                   Advanced: PDF password
@@ -1056,7 +1023,7 @@ export default function BatchWizardPage() {
                 </button>
                 {showPasswordOptions && (
                   <select
-                    className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                    className="flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                     value={passwordMode}
                     onChange={(e) => setPasswordMode(e.target.value)}
                   >
@@ -1070,7 +1037,7 @@ export default function BatchWizardPage() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  className="rounded-xl border-slate-200 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  className="rounded-xl border-border transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring/40"
                   onClick={() => {
                     setShowFixMatches(true);
                     setStep("map");
@@ -1079,7 +1046,7 @@ export default function BatchWizardPage() {
                   Go back
                 </Button>
                 <Button
-                  className="rounded-xl bg-indigo-600 transition-colors duration-150 hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
                   disabled={busy || (summary && summary.ready + summary.warning === 0)}
                   onClick={() => void startGenerate()}
                 >
@@ -1091,14 +1058,14 @@ export default function BatchWizardPage() {
           )}
 
           {step === "send" && (isGenerating || generateStuck) && progress && (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-slate-900">
+            <div className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-foreground">
                 {generateStuck ? "PDF creation paused" : "Making your PDFs"}
               </h2>
               <Progress value={pct} />
-              <p className="flex items-center gap-2 text-sm text-slate-600">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 {isGenerating && progress.pending > 0 && !(progress.failed > 0 && progress.generated === 0) ? (
-                  <Spinner className="size-4 text-indigo-600" />
+                  <Spinner className="size-4 text-primary" />
                 ) : null}
                 {(() => {
                   const total =
@@ -1126,7 +1093,7 @@ export default function BatchWizardPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       type="button"
-                      className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                      className="rounded-xl bg-primary hover:bg-primary/90"
                       disabled={busy}
                       onClick={() => void startGenerate()}
                     >
@@ -1153,7 +1120,7 @@ export default function BatchWizardPage() {
           )}
 
           {step === "send" && !isGenerating && !generateStuck && (
-            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
               {progress?.failed > 0 && !(progress?.generated > 0) && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
                   <p className="font-semibold">No PDFs were created</p>
@@ -1215,24 +1182,24 @@ export default function BatchWizardPage() {
                 </div>
               )}
               {progress?.aiSummary && (
-                <div className="rounded-xl bg-indigo-50 px-3 py-2.5 text-sm text-indigo-900">
+                <div className="rounded-xl bg-primary/10 px-3 py-2.5 text-sm text-primary">
                   {progress.aiSummary}
                 </div>
               )}
               {(progress?.generated > 0 || !(progress?.failed > 0)) && (
                 <div className="space-y-4">
                   {progress?.generated > 0 && (
-                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-4">
-                      <p className="text-sm font-semibold text-slate-900">
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
+                      <p className="text-sm font-semibold text-foreground">
                         Your letters are ready
                       </p>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Download all {progress.generated} PDF
                         {progress.generated === 1 ? "" : "s"} as a ZIP.
                       </p>
                       <Button
                         type="button"
-                        className="mt-3 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                        className="mt-3 rounded-xl bg-primary hover:bg-primary/90"
                         disabled={downloadingZip}
                         onClick={async () => {
                           setDownloadingZip(true);
@@ -1253,10 +1220,10 @@ export default function BatchWizardPage() {
                   )}
 
                   {progress?.generated > 0 && (
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                    <div className="rounded-xl border border-border bg-muted/80 px-4 py-3">
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between text-left text-sm font-semibold text-slate-800"
+                        className="flex w-full items-center justify-between text-left text-sm font-semibold text-foreground"
                         onClick={() => setShowEmailOptions((v) => !v)}
                       >
                         Also email
@@ -1265,8 +1232,8 @@ export default function BatchWizardPage() {
                         />
                       </button>
                       {showEmailOptions && (
-                        <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                          <p className="text-xs leading-relaxed text-slate-600">
+                        <div className="mt-3 space-y-3 border-t border-border pt-3">
+                          <p className="text-xs leading-relaxed text-muted-foreground">
                             Letters go from <span className="font-medium">your</span> Outlook or
                             Gmail (not Zuvigo).
                           </p>
@@ -1285,7 +1252,7 @@ export default function BatchWizardPage() {
                                   className={cn(
                                     "rounded-xl",
                                     sendMode === "CREATE_DRAFTS" &&
-                                      "bg-indigo-600 hover:bg-indigo-700"
+                                      "bg-primary hover:bg-primary/90"
                                   )}
                                   onClick={() => setSendMode("CREATE_DRAFTS")}
                                 >
@@ -1297,7 +1264,7 @@ export default function BatchWizardPage() {
                                   size="sm"
                                   className={cn(
                                     "rounded-xl",
-                                    sendMode === "SEND_NOW" && "bg-indigo-600 hover:bg-indigo-700"
+                                    sendMode === "SEND_NOW" && "bg-primary hover:bg-primary/90"
                                   )}
                                   onClick={() => setSendMode("SEND_NOW")}
                                 >
@@ -1309,7 +1276,7 @@ export default function BatchWizardPage() {
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="rounded-xl border-slate-200"
+                                  className="rounded-xl border-border"
                                   disabled={busy}
                                   onClick={async () => {
                                     setBusy(true);
@@ -1332,7 +1299,7 @@ export default function BatchWizardPage() {
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="rounded-xl border-slate-200"
+                                  className="rounded-xl border-border"
                                   disabled={busy}
                                   onClick={async () => {
                                     setBusy(true);
@@ -1355,7 +1322,7 @@ export default function BatchWizardPage() {
                               <div>
                                 <Label>Send as</Label>
                                 <select
-                                  className="mt-1 flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                                  className="mt-1 flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                                   value={mailAccountId}
                                   onChange={(e) => setMailAccountId(e.target.value)}
                                 >
@@ -1367,7 +1334,7 @@ export default function BatchWizardPage() {
                                   ))}
                                 </select>
                                 {mailAccountId && (
-                                  <p className="mt-1 text-xs text-slate-500">
+                                  <p className="mt-1 text-xs text-muted-foreground">
                                     Sending as{" "}
                                     {mailAccounts.find((a) => a.id === mailAccountId)?.emailAddress ||
                                       "your mailbox"}
@@ -1417,7 +1384,7 @@ export default function BatchWizardPage() {
                                 </div>
                               )}
                               <Button
-                                className="rounded-xl bg-indigo-600 transition-colors duration-150 hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                                className="rounded-xl bg-primary transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/40"
                                 disabled={busy || !(progress?.generated > 0)}
                                 onClick={() => void doSend()}
                               >
@@ -1470,16 +1437,16 @@ function SampleEmployeeCard({
   const email = data.Employee_Email || null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1.5 text-sm font-semibold text-slate-900">{name}</p>
-      <p className="text-xs text-slate-500">ID {id}</p>
-      {role ? <p className="mt-1 text-xs text-slate-600">{role}</p> : null}
+    <div className="rounded-xl border border-border bg-muted/80 p-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-foreground">{name}</p>
+      <p className="text-xs text-muted-foreground">ID {id}</p>
+      {role ? <p className="mt-1 text-xs text-muted-foreground">{role}</p> : null}
       <dl className="mt-3 space-y-1.5 text-xs">
         {(oldCtc || newCtc) && (
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">Salary</dt>
-            <dd className="text-right font-medium text-slate-800">
+            <dt className="text-muted-foreground">Salary</dt>
+            <dd className="text-right font-medium text-foreground">
               {oldCtc && newCtc ? (
                 <>
                   {oldCtc} → {newCtc}
@@ -1493,52 +1460,30 @@ function SampleEmployeeCard({
         )}
         {effective && (
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">Effective</dt>
-            <dd className="font-medium text-slate-800">{effective}</dd>
+            <dt className="text-muted-foreground">Effective</dt>
+            <dd className="font-medium text-foreground">{effective}</dd>
           </div>
         )}
         {email && (
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">Email</dt>
-            <dd className="max-w-[60%] truncate text-right font-medium text-slate-800" title={email}>
+            <dt className="text-muted-foreground">Email</dt>
+            <dd className="max-w-[60%] truncate text-right font-medium text-foreground" title={email}>
               {email}
             </dd>
           </div>
         )}
         {data.Manager_Name && (
           <div className="flex justify-between gap-2">
-            <dt className="text-slate-500">Manager</dt>
-            <dd className="font-medium text-slate-800">{data.Manager_Name}</dd>
+            <dt className="text-muted-foreground">Manager</dt>
+            <dd className="font-medium text-foreground">{data.Manager_Name}</dd>
           </div>
         )}
       </dl>
       {fileName ? (
-        <p className="mt-3 truncate border-t border-slate-200/80 pt-2 text-[10px] text-slate-400" title={fileName}>
+        <p className="mt-3 truncate border-t border-border/80 pt-2 text-[10px] text-muted-foreground" title={fileName}>
           PDF: {fileName}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "emerald" | "amber" | "rose";
-}) {
-  const colors = {
-    emerald: "border-emerald-500/30 bg-emerald-500/5 text-emerald-700",
-    amber: "border-amber-500/30 bg-amber-500/5 text-amber-700",
-    rose: "border-rose-500/30 bg-rose-500/5 text-rose-700",
-  };
-  return (
-    <div className={`rounded-xl border p-3 shadow-sm ${colors[tone]}`}>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs font-medium opacity-80">{label}</div>
     </div>
   );
 }

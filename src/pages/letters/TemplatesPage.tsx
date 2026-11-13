@@ -266,14 +266,14 @@ export default function TemplatesPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Library */}
-      <aside className="flex w-full shrink-0 flex-col border-b border-slate-200 bg-[var(--studio-paper,#F4F6F8)] lg:w-60 lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-3">
+      <aside className="flex w-full shrink-0 flex-col border-b border-border bg-studio-paper lg:w-60 lg:border-b-0 lg:border-r">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
               Your letters
             </p>
-            <h1 className="font-heading text-sm font-bold text-slate-900">Letter templates</h1>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <h1 className="font-heading text-sm font-bold text-foreground">Letter templates</h1>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
               Start from a starter on the left, or click New.
             </p>
           </div>
@@ -302,8 +302,8 @@ export default function TemplatesPage() {
               className={cn(
                 "mb-1 block w-full rounded-xl border px-2.5 py-2.5 text-left text-sm transition",
                 selectedId === t.id
-                  ? "border-indigo-200 bg-white shadow-sm font-semibold text-indigo-950"
-                  : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-white"
+                  ? "border-primary/25 bg-card shadow-sm font-semibold text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
               )}
             >
               <div className="truncate">{t.name}</div>
@@ -335,9 +335,9 @@ export default function TemplatesPage() {
       </aside>
 
       {/* Editor pane */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--studio-canvas,#E8ECF0)]">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-studio-canvas">
         {/* Sticky toolbar */}
-        <div className="shrink-0 space-y-2 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur">
+        <div className="shrink-0 space-y-2 border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[160px] flex-1">
               <Label className="text-xs">Letter name</Label>
@@ -348,23 +348,23 @@ export default function TemplatesPage() {
                 className="h-9"
               />
             </div>
-            <Button
-              onClick={save}
-              disabled={saving || generating || polishing}
-              className="h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700"
-            >
-              {saving ? "Saving…" : "Save"}
-            </Button>
             {selectedId && (
               <Button
-                variant="outline"
-                className="h-9 rounded-xl border-slate-200"
+                className="h-9 rounded-xl"
                 disabled={generating || polishing}
                 onClick={() => navigate(`/letters/batches/new?templateId=${selectedId}`)}
               >
                 Use in send
               </Button>
             )}
+            <Button
+              variant="outline"
+              onClick={save}
+              disabled={saving || generating || polishing}
+              className="h-9 rounded-xl"
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
             <div className="relative">
               <Button
                 type="button"
@@ -468,7 +468,7 @@ export default function TemplatesPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9 rounded-xl text-indigo-700"
+              className="h-9 rounded-xl text-primary"
               onClick={() => setAiOpen((v) => !v)}
             >
               Write with AI
@@ -476,7 +476,7 @@ export default function TemplatesPage() {
           </div>
 
           {aiOpen && (
-            <div className="flex gap-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-2">
+            <div className="flex gap-2 rounded-xl border border-primary/20 bg-primary/5 p-2">
               <Input
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
@@ -494,7 +494,7 @@ export default function TemplatesPage() {
                 type="button"
                 onClick={askAiDraft}
                 disabled={generating || !aiPrompt.trim()}
-                className="h-9 shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                className="h-9 shrink-0 rounded-xl bg-primary hover:bg-primary/90"
               >
                 {generating ? (
                   <>
@@ -509,7 +509,7 @@ export default function TemplatesPage() {
           )}
 
           {polishPreview && (
-            <div className="rounded-xl border border-indigo-100 bg-white p-3 text-sm shadow-sm">
+            <div className="rounded-xl border border-primary/20 bg-white p-3 text-sm shadow-sm">
               <div className="mb-1 font-semibold text-slate-900">AI suggestion</div>
               <p className="mb-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-600">
                 {polishPreview}
@@ -517,7 +517,7 @@ export default function TemplatesPage() {
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  className="h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700"
+                  className="h-8 rounded-lg bg-primary hover:bg-primary/90"
                   onClick={applyPolish}
                 >
                   Apply
@@ -622,7 +622,7 @@ export default function TemplatesPage() {
           <Button
             onClick={save}
             disabled={saving || generating || polishing}
-            className="h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+            className="h-9 rounded-xl bg-primary hover:bg-primary/90"
           >
             {saving ? "Saving…" : "Save"}
           </Button>

@@ -59,10 +59,10 @@ export default function MailCallbackPage() {
   }, [params, navigate]);
 
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-4 text-center">
-      <Spinner className="size-6 text-indigo-600" />
-      <p className="text-sm font-medium text-slate-800">{message}</p>
-      <p className="text-xs text-slate-500">Do not close this window.</p>
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 bg-background px-4 text-center">
+      <Spinner className="size-6 text-primary" />
+      <p className="text-sm font-medium text-foreground">{message}</p>
+      <p className="text-xs text-muted-foreground">Do not close this window.</p>
     </div>
   );
 }

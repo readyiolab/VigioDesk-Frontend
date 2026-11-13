@@ -33,8 +33,9 @@ export default function AcceptInvitePage() {
   }, [params, navigate]);
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
-      Accepting invitation…
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 bg-background px-4 text-center">
+      <p className="text-sm font-medium text-foreground">Accepting invitation…</p>
+      <p className="text-xs text-muted-foreground">You will enter Letter Studio shortly.</p>
     </div>
   );
 }

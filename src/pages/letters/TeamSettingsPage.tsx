@@ -68,8 +68,8 @@ export default function TeamSettingsPage() {
         description="Invite colleagues and choose how long generated PDFs are kept."
       />
       <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-        <div className="space-y-3 rounded-xl border border-slate-200 p-4 transition-colors duration-150">
-          <h2 className="text-sm font-semibold text-slate-900">Invite member</h2>
+        <div className="space-y-3 rounded-xl border border-border p-4 transition-colors duration-150">
+          <h2 className="text-sm font-semibold text-foreground">Invite member</h2>
           <div>
             <Label>Email</Label>
             <Input value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -77,7 +77,7 @@ export default function TeamSettingsPage() {
           <div>
             <Label>Role</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
@@ -86,23 +86,23 @@ export default function TeamSettingsPage() {
               <option value="VIEWER">Viewer</option>
             </select>
           </div>
-          <Button className="rounded-xl bg-indigo-600 hover:bg-indigo-700" onClick={invite}>
+          <Button className="rounded-xl" onClick={invite}>
             Send invite
           </Button>
-          {inviteToken && (
-            <p className="break-all rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          {inviteToken && import.meta.env.DEV && (
+            <p className="break-all rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
               Dev accept link: /orgs/accept-invite?token={inviteToken}
             </p>
           )}
         </div>
 
-        <div className="space-y-3 rounded-xl border border-slate-200 p-4">
-          <h2 className="text-sm font-semibold text-slate-900">PDF retention</h2>
-          <p className="text-xs text-slate-500">
+        <div className="space-y-3 rounded-xl border border-border p-4">
+          <h2 className="text-sm font-semibold text-foreground">PDF retention</h2>
+          <p className="text-xs text-muted-foreground">
             Generated PDFs older than this window are purged. Metadata is kept.
           </p>
           <select
-            className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+            className="flex h-9 w-full rounded-md border border-border bg-card px-3 text-sm"
             value={retention}
             onChange={(e) => setRetention(Number(e.target.value) as 30 | 60 | 90)}
           >
@@ -110,7 +110,7 @@ export default function TeamSettingsPage() {
             <option value={60}>60 days</option>
             <option value={90}>90 days</option>
           </select>
-          <Button className="rounded-xl border-slate-200" variant="outline" onClick={saveRetention}>
+          <Button className="rounded-xl border-border" variant="outline" onClick={saveRetention}>
             Save retention
           </Button>
         </div>

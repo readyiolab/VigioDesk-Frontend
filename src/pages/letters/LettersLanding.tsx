@@ -29,51 +29,51 @@ const HERO_CHECKS = [
 const STEPS = [
   {
     n: "01",
-    title: "Design the letter",
-    body: "Pick a starter (increment, offer, confirmation…) or ask AI to draft. Insert fields like {{Employee_Name}} — no Word macros.",
+    title: "Pick a letter",
+    body: "Choose a starter or write your own. Add fields that change per person — like name, salary, and date.",
   },
   {
     n: "02",
-    title: "Import & map Excel",
-    body: "Upload a spreadsheet, map messy columns (CTC_New → New_CTC), validate blanks and duplicates before anything generates.",
+    title: "Add your Excel file",
+    body: "Upload the employee list. We match columns for you; fix any mismatches in one place.",
   },
   {
     n: "03",
-    title: "Generate & send",
-    body: "Approve a sample, queue password-protected PDFs, then create drafts or send from your connected Outlook or Gmail.",
+    title: "Make PDFs & download",
+    body: "Check the list, click Make PDFs, then download a ZIP. Optionally email from your Outlook or Gmail.",
   },
 ] as const;
 
 const FEATURES = [
   {
     icon: FileText,
-    title: "Brand Letter Studio",
-    body: "Logo, letterhead, signatory, and TipTap editing with reusable blocks.",
+    title: "Company look",
+    body: "Logo and who signs the letter — so every PDF looks official.",
   },
   {
     icon: FileSpreadsheet,
-    title: "Excel-ready batches",
-    body: "Column detection, mapping, validation, and row-level Ready / Warning / Blocked.",
+    title: "Excel to many letters",
+    body: "Upload once, check the names, then Make PDFs for everyone on the list.",
   },
   {
     icon: Mail,
-    title: "Your mailbox sends",
-    body: "Microsoft Graph or Gmail OAuth — drafts by default, send-now only with confirmation.",
+    title: "Email from your mailbox",
+    body: "Connect Outlook or Gmail — create drafts first, or send when you are ready.",
   },
   {
     icon: Bot,
     title: "AI that stays optional",
-    body: "Draft, polish, smart mapping, anomaly flags — never auto-approve or auto-send.",
+    body: "Draft and polish letters when you want help — you always approve before send.",
   },
   {
     icon: Users,
-    title: "Org & roles",
-    body: "Invite HR and finance with Owner / Admin / HR Manager / Viewer access.",
+    title: "Team access",
+    body: "Invite HR and finance with clear roles: Owner, Admin, HR Manager, or Viewer.",
   },
   {
     icon: ShieldCheck,
-    title: "Org-scoped & audited",
-    body: "Every batch stays in your org. PDF passwords never appear in logs or API responses.",
+    title: "Private by design",
+    body: "Letters stay in your organization. PDF passwords never appear in logs.",
   },
 ] as const;
 
@@ -151,32 +151,32 @@ export default function LettersLanding() {
               transition={{ duration: 0.65, ease: EASE }}
             >
               {/* Pill Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/25 bg-indigo-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-700 shadow-xs mb-5 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-400">
-                <FileText className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-primary shadow-xs">
+                <FileText className="h-3.5 w-3.5 text-primary" />
                 <span>vigodesk.com · Letter Studio</span>
-                <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-normal">
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground uppercase tracking-normal">
                   HR &amp; Stationery
                 </span>
               </div>
 
               {/* Main Headline */}
               <h1 className="font-heading text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1] lg:text-[3.35rem] xl:text-[3.75rem] dark:text-white">
-                Automate Corporate Stationery &amp; <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">Bulk Employee Letters</span>
+                Send the same letter to many people — from Excel
               </h1>
 
               {/* Subheading */}
               <p className="mt-5 max-w-xl text-pretty text-base font-normal leading-relaxed text-slate-600 sm:text-lg sm:leading-relaxed dark:text-slate-300">
-                Design branded templates once, map messy Excel columns in seconds, and compile hundreds of password-protected PDFs sent directly from your connected Outlook or Gmail.
+                Pick a letter, add your spreadsheet, check the names, then Make PDFs and download. Email from your Outlook or Gmail when you need it.
               </p>
 
               {/* Dual Action Buttons */}
               <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:gap-4">
                 <Button
                   size="lg"
-                  className="group relative h-13 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-7 sm:px-8 text-sm sm:text-base font-bold text-white shadow-xl shadow-blue-600/30 transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
+                  className="group h-13 cursor-pointer rounded-xl px-7 text-sm font-bold sm:px-8 sm:text-base"
                   onClick={() => navigate(studioPath)}
                 >
-                  <span className="relative z-10 flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     <span>{ctaLabel}</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
@@ -271,13 +271,13 @@ export default function LettersLanding() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.65, delay: 0.45 }}
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20 dark:bg-primary/10 dark:text-primary">
                     <Lock className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">AES Encrypted</span>
-                      <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.2 text-[8px] font-bold text-indigo-600">
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[8px] font-bold text-primary">
                         Per-Row
                       </span>
                     </div>
@@ -301,9 +301,9 @@ export default function LettersLanding() {
             viewport={VIEWPORT}
             transition={{ duration: 0.55, ease: EASE }}
           >
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">How it works</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">How it works</p>
             <h2 className="font-heading mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Three steps from spreadsheet to signed-off letters
+              Pick a letter · add Excel · Make PDFs
             </h2>
           </motion.div>
 
