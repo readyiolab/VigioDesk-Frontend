@@ -31,6 +31,14 @@ vi.mock("@/services/webreportsApi", () => ({
     remove: vi.fn(),
     updateBranding: vi.fn(),
     getPublic: vi.fn(),
+    integrationsStatus: vi.fn(),
+    integrationsMetrics: vi.fn(),
+    integrationsAuthorize: vi.fn(),
+    integrationsExchange: vi.fn(),
+    integrationsDisconnect: vi.fn(),
+    integrationsSaveBacklinks: vi.fn(),
+    integrationsListProperties: vi.fn(),
+    integrationsSetProperty: vi.fn(),
   },
 }))
 
@@ -159,6 +167,31 @@ beforeEach(() => {
   api.list.mockResolvedValue({ reports: [], pagination: { limit: 20, offset: 0, total: 0 } })
   api.history.mockResolvedValue({ host: "example.com", points: [] })
   api.historyForReport.mockResolvedValue({ host: "example.com", points: [] })
+  api.integrationsStatus.mockResolvedValue({
+    google_analytics: { provider: "google_analytics", connected: false, accountEmail: null, propertyId: null, propertyLabel: null },
+    google_search_console: {
+      provider: "google_search_console",
+      connected: false,
+      accountEmail: null,
+      propertyId: null,
+      propertyLabel: null,
+    },
+    backlinks: {
+      provider: "backlinks",
+      connected: false,
+      accountEmail: null,
+      propertyId: null,
+      propertyLabel: null,
+      mode: "none",
+      platformBacklinksReady: false,
+    },
+  })
+  api.integrationsMetrics.mockResolvedValue({
+    host: "example.com",
+    google_analytics: { connected: false, series: [], sessions: null, users: null },
+    google_search_console: { connected: false, series: [], clicks: null, impressions: null, keywords: [] },
+    backlinks: { connected: false, authorityScore: null, referringDomains: null, backlinks: null },
+  })
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },

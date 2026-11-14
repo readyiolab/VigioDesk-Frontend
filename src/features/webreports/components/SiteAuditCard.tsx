@@ -33,8 +33,8 @@ export function SiteAuditCard({
         </div>
       </div>
 
-      <div className={cn(wrClass.card, "p-4 shadow-sm")}>
-        <div className="grid gap-6 md:grid-cols-3">
+      <div className={cn(wrClass.card, "p-4 shadow-sm sm:p-5")}>
+        <div className="grid gap-6 md:grid-cols-3 md:gap-8">
           <div>
             <div className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#6b7280]">
               Site Health

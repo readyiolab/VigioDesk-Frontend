@@ -17,7 +17,7 @@ export function SitePerformanceCard({
       <h2 id="site-performance-heading" className={wrClass.sectionTitle}>
         Site Performance
       </h2>
-      <div className={cn(wrClass.card, "p-4 shadow-sm")}>
+      <div className={cn(wrClass.card, "p-4 shadow-sm sm:p-5")}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-1.5 text-sm font-semibold text-[#1f232b]">
@@ -88,7 +88,9 @@ export function SitePerformanceCard({
               </table>
             </div>
             <p className="mt-2 text-[11px] text-[#9ca3af]">
-              Rank positions require Search Console or a rank-tracking connection. Showing topic hints from this audit.
+              {metrics.topKeywords.some((k) => k.position !== null)
+                ? "Keyword positions from Google Search Console."
+                : "Connect Search Console for live positions, or showing topic hints from this audit."}
             </p>
           </div>
         </div>

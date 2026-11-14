@@ -4,6 +4,8 @@ export const webReportKeys = {
   detail: (id: string) => ["webreports", "detail", id] as const,
   history: (host: string) => ["webreports", "history", host] as const,
   historyByReport: (id: string) => ["webreports", "history-by-report", id] as const,
+  integrations: ["webreports", "integrations"] as const,
+  integrationMetrics: (host: string) => ["webreports", "integration-metrics", host] as const,
   publicReport: (token: string) => ["webreports", "public", token] as const,
 };
 

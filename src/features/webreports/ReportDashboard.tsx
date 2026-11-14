@@ -532,6 +532,8 @@ export function ReportDashboard({
   onRescan,
   rescanPending,
   history = [],
+  integrations,
+  integrationMetrics,
 }: {
   report: WebReport;
   publicView?: boolean;
@@ -540,10 +542,37 @@ export function ReportDashboard({
   onRescan?: () => void;
   rescanPending?: boolean;
   history?: HistoryPoint[];
+  integrations?: import("./integrationsTypes").IntegrationsStatus;
+  integrationMetrics?: import("./integrationsTypes").IntegrationMetrics | null;
 }) {
   const finished = report.status === "completed";
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const dashMetrics = useMemo(() => buildDashboardMetrics(report), [report]);
+  const [dataSourceTab, setDataSourceTab] = useState<"zuvigo" | "ga" | "gsc" | "backlinks" | undefined>();
+  const dashMetrics = useMemo(() => {
+    const base = buildDashboardMetrics(report);
+    if (!integrationMetrics) return base;
+    const gscKeywords = integrationMetrics.google_search_console.keywords || [];
+    return {
+      ...base,
+      organicTraffic: integrationMetrics.google_analytics.sessions ?? base.organicTraffic,
+      organicKeywords:
+        integrationMetrics.google_search_console.keywords?.length ||
+        integrationMetrics.google_search_console.clicks ||
+        base.organicKeywords,
+      authorityScore: integrationMetrics.backlinks.authorityScore ?? base.authorityScore,
+      refDomains: integrationMetrics.backlinks.referringDomains ?? base.refDomains,
+      topKeywords:
+        gscKeywords.length > 0
+          ? gscKeywords.map((k) => ({
+              keyword: k.query,
+              position: k.position || null,
+              visibility: k.impressions > 0 ? Math.min(100, Math.round((k.clicks / k.impressions) * 100)) : 0,
+            }))
+          : base.topKeywords,
+      top3: gscKeywords.filter((k) => k.position > 0 && k.position <= 3).length,
+      top10: gscKeywords.filter((k) => k.position > 0 && k.position <= 10).length,
+    };
+  }, [report, integrationMetrics]);
   const [showAllSeo, setShowAllSeo] = useState(
     () => report.scores.seo === null || report.completeness.unavailableSections.includes("seo")
   );
@@ -646,7 +675,7 @@ export function ReportDashboard({
 
   return (
     <>
-      <div className="audit-screen mx-auto flex w-full max-w-6xl flex-col gap-3 bg-[#f4f5f9] px-3 py-4 text-slate-900 print:hidden sm:px-5 sm:py-5">
+      <div className="audit-screen mx-auto flex w-full max-w-6xl flex-col gap-4 bg-[#f4f5f9] px-3 py-5 text-slate-900 print:hidden sm:gap-5 sm:px-6 sm:py-6">
         {/* Header */}
         <section className="rounded-xl border border-[#e3e5eb] bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -822,23 +851,43 @@ export function ReportDashboard({
 
         {finished ? (
           <>
-            <SeoMetricStrip metrics={dashMetrics} />
-            <DataSourcePanel
-              history={history}
-              currentSeo={report.scores.seo}
-              currentAi={report.scores.aiSearch}
-              pagesCrawled={htmlPages}
-              errors={dashMetrics.errors}
-              warnings={dashMetrics.warnings}
-              scannedAt={report.scannedAt}
+            <SeoMetricStrip
+              metrics={dashMetrics}
+              backlinksConnected={Boolean(integrations?.backlinks.connected || integrationMetrics?.backlinks.connected)}
+              onConnectBacklinks={
+                publicView
+                  ? undefined
+                  : () => {
+                      setDataSourceTab("backlinks");
+                      requestAnimationFrame(() => {
+                        document.getElementById("data-sources")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      });
+                    }
+              }
             />
+            <div id="data-sources" className="scroll-mt-4">
+              <DataSourcePanel
+                history={history}
+                currentSeo={report.scores.seo}
+                currentAi={report.scores.aiSearch}
+                pagesCrawled={htmlPages}
+                errors={dashMetrics.errors}
+                warnings={dashMetrics.warnings}
+                scannedAt={report.scannedAt}
+                host={domain}
+                integrations={integrations}
+                metrics={integrationMetrics}
+                publicView={publicView}
+                focusTab={dataSourceTab}
+              />
+            </div>
             <SitePerformanceCard metrics={dashMetrics} onViewFull={() => jumpToAudit("seo")} />
             <SiteAuditCard metrics={dashMetrics} onViewFull={() => jumpToAudit("overview")} />
           </>
         ) : null}
 
         {/* Detailed audit */}
-        <div id="detailed-audit" className="scroll-mt-4 space-y-3">
+        <div id="detailed-audit" className="scroll-mt-4 space-y-4">
           <h2 className="text-base font-bold text-[#1f232b]">Detailed audit</h2>
         {/* Score strip */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">

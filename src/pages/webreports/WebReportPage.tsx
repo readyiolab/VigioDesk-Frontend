@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,13 @@ import { ReportDashboard } from "@/features/webreports/ReportDashboard";
 import { ScanProgress } from "@/features/webreports/ScanProgress";
 import { scanStepTitle } from "@/features/webreports/stageLabel";
 import { downloadWebReportPdf } from "@/features/webreports/buildWebReportPdf";
-import { useWebReport, useWebReportActions, useWebReportHistoryById } from "@/features/webreports/queries";
+import {
+  useWebReport,
+  useWebReportActions,
+  useWebReportHistoryById,
+  useWebReportIntegrationMetrics,
+  useWebReportIntegrations,
+} from "@/features/webreports/queries";
 import { ArrowLeft, Download, Share2, ShieldX, RefreshCw, Trash2, Globe, ExternalLink, Loader2 } from "lucide-react";
 
 export default function WebReportPage() {
@@ -17,6 +23,16 @@ export default function WebReportPage() {
   const actions = useWebReportActions(id);
   const report = query.data?.report;
   const historyQuery = useWebReportHistoryById(id || undefined);
+  const host = useMemo(() => {
+    if (!report?.url) return undefined;
+    try {
+      return new URL(report.url).hostname;
+    } catch {
+      return undefined;
+    }
+  }, [report?.url]);
+  const integrationsQuery = useWebReportIntegrations();
+  const integrationMetricsQuery = useWebReportIntegrationMetrics(host);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   async function share() {
@@ -225,6 +241,8 @@ export default function WebReportPage() {
           <ReportDashboard
             report={report}
             history={historyQuery.data?.points || []}
+            integrations={integrationsQuery.data}
+            integrationMetrics={integrationMetricsQuery.data || null}
             onUpdateBranding={(b) => actions.updateBranding.mutateAsync(b)}
             isUpdatingBranding={actions.updateBranding.isPending}
             onRescan={() => void rescan()}

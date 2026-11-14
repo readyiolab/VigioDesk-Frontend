@@ -329,8 +329,8 @@ export default function WebReportsHome() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-[#f4f5f9]">
-      <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {MODULE_CARDS.map((card) => (
             <div key={card.title} className={cn(wrClass.card, "p-4 shadow-sm")}>
               <div className="text-sm font-bold text-[#1f232b]" style={{ color: card.accent }}>

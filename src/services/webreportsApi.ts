@@ -1,5 +1,10 @@
 import { apiFetch } from "@/services/api";
 import type { HistoryPoint } from "@/features/webreports/dashboardMetrics";
+import type {
+  IntegrationMetrics,
+  IntegrationProvider,
+  IntegrationsStatus,
+} from "@/features/webreports/integrationsTypes";
 import type { ReportListResponse, WebReport } from "@/features/webreports/types";
 
 export const webreportsApi = {
@@ -51,4 +56,44 @@ export const webreportsApi = {
 
   getPublic: (token: string) =>
     apiFetch(`/public/webreports/${token}`) as Promise<{ report: WebReport }>,
+
+  integrationsStatus: () =>
+    apiFetch("/webreports/integrations") as Promise<IntegrationsStatus>,
+
+  integrationsMetrics: (host: string) =>
+    apiFetch(`/webreports/integrations/metrics?host=${encodeURIComponent(host)}`) as Promise<IntegrationMetrics>,
+
+  integrationsAuthorize: (provider: "google_analytics" | "google_search_console") =>
+    apiFetch(`/webreports/integrations/${provider}/authorize`) as Promise<{ url: string; redirectUri: string }>,
+
+  integrationsExchange: (code: string, state: string) =>
+    apiFetch("/webreports/integrations/exchange", {
+      method: "POST",
+      body: JSON.stringify({ code, state }),
+    }) as Promise<{ provider: string; accountEmail: string | null }>,
+
+  integrationsDisconnect: (provider: IntegrationProvider) =>
+    apiFetch(`/webreports/integrations/${provider}`, { method: "DELETE" }) as Promise<{ ok: boolean }>,
+
+  integrationsSaveBacklinks: (login: string, password: string) =>
+    apiFetch("/webreports/integrations/backlinks", {
+      method: "POST",
+      body: JSON.stringify({ login, password }),
+    }) as Promise<{ ok: boolean }>,
+
+  integrationsListProperties: (provider: "google_analytics" | "google_search_console") =>
+    apiFetch(`/webreports/integrations/${provider}/properties`) as Promise<{
+      properties?: { id: string; label: string }[];
+      sites?: { id: string; label: string }[];
+    }>,
+
+  integrationsSetProperty: (
+    provider: "google_analytics" | "google_search_console",
+    propertyId: string,
+    propertyLabel?: string
+  ) =>
+    apiFetch(`/webreports/integrations/${provider}/property`, {
+      method: "PATCH",
+      body: JSON.stringify({ propertyId, propertyLabel }),
+    }) as Promise<{ ok: boolean }>,
 };

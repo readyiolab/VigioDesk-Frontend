@@ -103,6 +103,59 @@ export function useCreateWebReport() {
   });
 }
 
+export function useWebReportIntegrations() {
+  return useQuery({
+    queryKey: webReportKeys.integrations,
+    queryFn: () => webreportsApi.integrationsStatus(),
+    staleTime: 30_000,
+  });
+}
+
+export function useWebReportIntegrationMetrics(host: string | undefined) {
+  return useQuery({
+    queryKey: webReportKeys.integrationMetrics(host || "none"),
+    enabled: Boolean(host),
+    queryFn: () => webreportsApi.integrationsMetrics(host as string),
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+export function useWebReportIntegrationActions() {
+  const client = useQueryClient();
+  const invalidate = () => {
+    void client.invalidateQueries({ queryKey: webReportKeys.integrations });
+    void client.invalidateQueries({ queryKey: ["webreports", "integration-metrics"] });
+  };
+  return {
+    authorize: useMutation({
+      mutationFn: (provider: "google_analytics" | "google_search_console") =>
+        webreportsApi.integrationsAuthorize(provider),
+    }),
+    disconnect: useMutation({
+      mutationFn: webreportsApi.integrationsDisconnect,
+      onSuccess: invalidate,
+    }),
+    saveBacklinks: useMutation({
+      mutationFn: (body: { login: string; password: string }) =>
+        webreportsApi.integrationsSaveBacklinks(body.login, body.password),
+      onSuccess: invalidate,
+    }),
+    setProperty: useMutation({
+      mutationFn: (body: {
+        provider: "google_analytics" | "google_search_console";
+        propertyId: string;
+        propertyLabel?: string;
+      }) => webreportsApi.integrationsSetProperty(body.provider, body.propertyId, body.propertyLabel),
+      onSuccess: invalidate,
+    }),
+    listProperties: useMutation({
+      mutationFn: (provider: "google_analytics" | "google_search_console") =>
+        webreportsApi.integrationsListProperties(provider),
+    }),
+  };
+}
+
 export function useWebReportActions(id: string) {
   const client = useQueryClient();
   const refresh = () => {

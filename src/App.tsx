@@ -62,6 +62,7 @@ const WebReportsLanding = lazy(() => import("./pages/webreports/WebReportsLandin
 const WebReportsHome = lazy(() => import("./pages/webreports/WebReportsHome"));
 const WebReportPage = lazy(() => import("./pages/webreports/WebReportPage"));
 const SharedWebReportPage = lazy(() => import("./pages/webreports/SharedWebReportPage"));
+const WebReportsOAuthCallback = lazy(() => import("./pages/webreports/WebReportsOAuthCallback"));
 const WebReportStudioShell = lazy(() =>
   import("./components/webreports/WebReportStudioShell").then((m) => ({
     default: m.WebReportStudioShell,
@@ -230,6 +231,16 @@ function App() {
 
                 <Route path="webreports/shared/:token" element={<SharedWebReportPage />} />
                 <Route path="webreports" element={<WebReportsLanding />} />
+                <Route
+                  path="webreports/oauth/callback"
+                  element={
+                    <ProtectedRoute>
+                      <VerifiedRoute>
+                        <WebReportsOAuthCallback />
+                      </VerifiedRoute>
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   element={
                     <ProtectedRoute>
