@@ -102,7 +102,7 @@ export const Footer: React.FC = () => {
             <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Platform</h4>
             <ul className="space-y-2 text-xs text-muted-foreground font-medium">
               <li><Link to="/workspace" className="hover:text-foreground transition-colors">Workspace Dashboard</Link></li>
-              <li><Link to="/billing" className="hover:text-foreground transition-colors">Plans & Pricing</Link></li>
+              <li><Link to="/pricing" className="hover:text-foreground transition-colors">Plans & Pricing</Link></li>
               <li><Link to="/enterprise" className="hover:text-foreground transition-colors">Enterprise Solution</Link></li>
               <li><Link to="/letters" className="hover:text-foreground transition-colors">Employee Letter Studio</Link></li>
               <li><Link to="/diagrams" className="hover:text-foreground transition-colors">Diagram Studio</Link></li>

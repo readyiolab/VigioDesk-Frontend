@@ -243,7 +243,7 @@ export default function DesktopToolkit() {
                   variant="outline"
                   size="lg"
                   className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
-                  onClick={() => navigate("/billing")}
+                  onClick={() => navigate("/pricing")}
                 >
                   Plans &amp; pricing
                 </Button>
@@ -529,7 +529,7 @@ export default function DesktopToolkit() {
               </Button>
               <p className="mt-4 text-sm text-slate-500">
                 Prefer the cloud?{" "}
-                <Link to="/billing" className="font-semibold text-blue-600 hover:text-blue-700">
+                <Link to="/pricing" className="font-semibold text-blue-600 hover:text-blue-700">
                   See online plans
                 </Link>{" "}
                 — Free, Pro $12/mo, Enterprise.
@@ -627,7 +627,7 @@ export default function DesktopToolkit() {
                 support@zuvigo.com
               </a>
               — usually the same day. For cloud SaaS pricing,{" "}
-              <Link to="/billing" className="font-semibold text-sky-300 underline-offset-2 hover:underline">
+              <Link to="/pricing" className="font-semibold text-sky-300 underline-offset-2 hover:underline">
                 see online plans
               </Link>
               .

@@ -68,7 +68,7 @@ export const ONLINE_PLANS: OnlinePlan[] = [
     period: "mo",
     blurb: "High-volume tools, eSign & AI credits",
     cta: "Upgrade",
-    path: "/billing",
+    path: "/pricing",
     featured: true,
     features: [
       "1,000 PDF ops / day",

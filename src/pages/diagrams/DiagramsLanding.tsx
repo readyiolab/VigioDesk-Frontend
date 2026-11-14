@@ -193,7 +193,7 @@ export default function DiagramsLanding() {
                   variant="outline"
                   size="lg"
                   className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
-                  onClick={() => navigate("/billing")}
+                  onClick={() => navigate("/pricing")}
                 >
                   Plans &amp; pricing
                 </Button>
@@ -508,7 +508,7 @@ export default function DiagramsLanding() {
               variant="outline"
               size="lg"
               className="h-12 cursor-pointer rounded-full px-8 font-semibold"
-              onClick={() => navigate("/billing")}
+              onClick={() => navigate("/pricing")}
             >
               View plans
             </Button>

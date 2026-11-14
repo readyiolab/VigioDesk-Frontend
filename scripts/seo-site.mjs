@@ -26,7 +26,6 @@ export const SITEMAP_PATHS = [
   "/pricing",
   "/security",
   "/developer",
-  "/api-docs",
   "/blog",
   "/about",
   "/privacy",
@@ -80,10 +79,6 @@ export const PAGE_SEO = {
   "/developer": {
     title: `Developer API | ${SITE_NAME}`,
     description: "REST and webhook APIs for PDF, eSign, OCR, and AI.",
-  },
-  "/api-docs": {
-    title: `API Documentation | ${SITE_NAME}`,
-    description: "VigioDesk developer API documentation.",
   },
   "/blog": {
     title: `Engineering Blog | ${SITE_NAME}`,

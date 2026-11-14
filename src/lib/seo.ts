@@ -145,8 +145,8 @@ const EXACT: Record<string, Omit<SeoConfig, "path">> = {
   "/api-docs": {
     title: `API Documentation | ${SITE_NAME}`,
     description: "VigioDesk developer API docs — conversion, eSign, OCR, and AI endpoints.",
-    robots: "index, follow",
-    marketing: true,
+    robots: "noindex, follow",
+    marketing: false,
   },
   "/blog": {
     title: `Engineering Blog | ${SITE_NAME}`,
@@ -300,12 +300,13 @@ export function resolveSeo(pathname: string): SeoConfig {
   if (workspaceMatch) {
     const toolName = titleForWorkspaceTool(workspaceMatch[1]);
     return {
-      path,
+      // Canonical to /workspace until each tool has unique prerendered copy
+      path: "/workspace",
       title: `${toolName} | ${SITE_NAME}`,
       description: `${toolName} online with VigioDesk — fast, private PDF processing.`,
-      robots: "index, follow",
+      robots: "noindex, follow",
       ogType: "website",
-      marketing: true,
+      marketing: false,
       product: "pdf",
     };
   }
@@ -340,11 +341,14 @@ export function resolveSeo(pathname: string): SeoConfig {
     };
   }
 
+  // Unknown paths → 404 NotFound; never invite indexing (Soft 404 prevention)
   return {
-    ...DEFAULT_SEO,
     path,
-    title: `${SITE_NAME}`,
-    robots: "index, follow",
+    title: `Page not found | ${SITE_NAME}`,
+    description: "This URL is not a published VigioDesk page.",
+    robots: "noindex, follow",
+    ogType: "website",
+    marketing: false,
   };
 }
 
@@ -361,7 +365,6 @@ export const SITEMAP_PATHS = [
   "/pricing",
   "/security",
   "/developer",
-  "/api-docs",
   "/blog",
   "/about",
   "/privacy",

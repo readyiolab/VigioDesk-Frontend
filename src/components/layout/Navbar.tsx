@@ -739,9 +739,9 @@ export const Navbar: React.FC = () => {
 
             {/* 5. PRICING DIRECT LINK */}
             <Link
-              to="/billing"
-              className={navButtonClass(navActive(location.pathname, "/billing"))}
-              {...prefetchHandlers("/billing")}
+              to="/pricing"
+              className={navButtonClass(navActive(location.pathname, "/pricing"))}
+              {...prefetchHandlers("/pricing")}
             >
               <span>Pricing</span>
             </Link>
@@ -900,10 +900,10 @@ export const Navbar: React.FC = () => {
                       </Link>
 
                       <Link
-                        to="/billing"
+                        to="/pricing"
                         onClick={() => setIsProfileOpen(false)}
                         className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        {...prefetchHandlers("/billing")}
+                        {...prefetchHandlers("/pricing")}
                       >
                         <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                         Manage Subscription
@@ -1148,7 +1148,7 @@ export const Navbar: React.FC = () => {
                   { to: "/ai/summarize", match: "/ai", label: "AI Suite", icon: Bot, tone: "text-fuchsia-500" },
                   { to: "/enterprise", match: "/enterprise", label: "Your Cloud (BYOK)", icon: Cloud, tone: "text-sky-500" },
                   { to: "/desktop", match: "/desktop", label: "Desktop App", icon: Monitor, tone: "text-blue-600" },
-                  { to: "/billing", match: "/billing", label: "Pricing & Plans", icon: Zap, tone: "text-amber-500" },
+                  { to: "/pricing", match: "/pricing", label: "Pricing & Plans", icon: Zap, tone: "text-amber-500" },
                 ].map((item) => {
                   const Icon = item.icon;
                   const active = navActive(location.pathname, item.match);

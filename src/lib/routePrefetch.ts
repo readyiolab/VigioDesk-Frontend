@@ -11,6 +11,7 @@ const PREFETCHERS: { prefix: string; load: PrefetchFn; key: string }[] = [
   { prefix: "/", key: "home", load: () => import("@/pages/Home") },
   { prefix: "/workspace", key: "workspace", load: () => import("@/pages/Workspace") },
   { prefix: "/history", key: "history", load: () => import("@/pages/History") },
+  { prefix: "/pricing", key: "billing", load: () => import("@/pages/Billing") },
   { prefix: "/billing", key: "billing", load: () => import("@/pages/Billing") },
   { prefix: "/profile", key: "profile", load: () => import("@/pages/Profile") },
   {

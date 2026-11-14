@@ -166,8 +166,8 @@ export const Home: React.FC = () => {
                   variant="outline"
                   size="lg"
                   className="h-13 cursor-pointer rounded-xl border-2 border-slate-900 bg-transparent px-7 text-sm sm:text-base font-bold text-slate-900 shadow-xs transition-all hover:bg-slate-900/5 active:scale-95 dark:border-white dark:text-white dark:hover:bg-white/10"
-                  onClick={() => navigate("/billing")}
-                  onMouseEnter={warmNav("/billing")}
+                  onClick={() => navigate("/pricing")}
+                  onMouseEnter={warmNav("/pricing")}
                 >
                   Plans & pricing
                 </Button>
@@ -769,9 +769,9 @@ export const Home: React.FC = () => {
                   variant="outline"
                   size="lg"
                   className="h-12 cursor-pointer rounded-xl border-slate-600 bg-transparent px-7 text-sm font-semibold text-slate-100 hover:bg-white/5 hover:text-white"
-                  onClick={() => navigate("/billing")}
-                  onMouseEnter={warmNav("/billing")}
-                  onFocus={warmNav("/billing")}
+                  onClick={() => navigate("/pricing")}
+                  onMouseEnter={warmNav("/pricing")}
+                  onFocus={warmNav("/pricing")}
                 >
                   View plans
                 </Button>
@@ -1107,7 +1107,7 @@ export const Home: React.FC = () => {
               </div>
               <div className="pt-8">
                 <Link
-                  to="/billing"
+                  to="/pricing"
                   className="inline-flex items-center gap-1.5 text-base font-bold text-blue-600 transition-all duration-200 group-hover:gap-2.5 group-hover:text-blue-700 dark:text-blue-400"
                 >
                   <span>Start your free trial</span>

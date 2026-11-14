@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: "Workspace Dashboard", path: "/workspace", icon: LayoutDashboard },
     { name: "Asset Library", path: "/assets", icon: FolderOpen, requiresAuth: true },
     { name: "History Logs", path: "/history", icon: History, requiresAuth: true },
-    { name: "Pricing & Plans", path: "/billing", icon: CreditCard },
+    { name: "Pricing & Plans", path: "/pricing", icon: CreditCard },
     { name: "My Settings", path: "/profile", icon: User, requiresAuth: true },
   ];
 

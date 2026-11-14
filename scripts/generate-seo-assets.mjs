@@ -34,6 +34,8 @@ function escapeHtml(s) {
 }
 
 function writeRobots() {
+  // Single User-agent: * group — do NOT add bare "User-agent: Googlebot / Allow: /"
+  // groups; those replace * rules for Googlebot and wipe Disallows.
   const body = `User-agent: *
 Allow: /
 Allow: /desktop
@@ -46,7 +48,6 @@ Allow: /workspace
 Allow: /pricing
 Allow: /security
 Allow: /developer
-Allow: /api-docs
 Allow: /blog
 Allow: /about
 Allow: /privacy
@@ -58,6 +59,8 @@ Allow: /docs
 Disallow: /login
 Disallow: /register
 Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
 Disallow: /history
 Disallow: /profile
 Disallow: /billing
@@ -72,28 +75,7 @@ Disallow: /diagrams/new
 Disallow: /diagrams/shared/
 Disallow: /webreports/scan
 Disallow: /webreports/shared/
-
-# Major search + AI answer crawlers welcome
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Applebot
-Allow: /
+Disallow: /workspace/
 
 Sitemap: ${SITE_URL}/sitemap.xml
 `;

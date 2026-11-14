@@ -147,7 +147,7 @@ export default function EnterpriseByoc() {
   const diagramY = useTransform(scrollYProgress, [0, 1], [14, -14]);
 
   const isEnterprise = user?.plan === "ENTERPRISE";
-  const primaryPath = isEnterprise ? "/settings/cloud" : "/billing";
+  const primaryPath = isEnterprise ? "/settings/cloud" : "/pricing";
   const primaryLabel = isEnterprise ? "Connect your bucket" : "See Enterprise plans";
   const secondaryPath = isEnterprise ? "/workspace" : "/sign";
   const secondaryLabel = isEnterprise ? "Back to workspace" : "Try eSign first";

@@ -68,6 +68,7 @@ const WebReportStudioShell = lazy(() =>
   }))
 );
 const AssetLibraryPage = lazy(() => import("./pages/assets/AssetLibraryPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function App() {
   return (
@@ -245,7 +246,7 @@ function App() {
                 <Route path="desktop" element={<DesktopToolkit />} />
                 <Route path="security" element={<InfoPage type="security" />} />
                 <Route path="developer" element={<InfoPage type="developer" />} />
-                <Route path="api-docs" element={<InfoPage type="developer" />} />
+                <Route path="api-docs" element={<Navigate to="/developer" replace />} />
                 <Route path="blog" element={<InfoPage type="blog" />} />
                 <Route path="about" element={<InfoPage type="about" />} />
                 <Route path="privacy" element={<InfoPage type="privacy" />} />
@@ -253,7 +254,7 @@ function App() {
                 <Route path="gdpr" element={<InfoPage type="gdpr" />} />
                 <Route path="docs" element={<InfoPage type="docs" />} />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
         </Router>
