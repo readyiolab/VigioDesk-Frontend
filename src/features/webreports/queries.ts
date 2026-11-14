@@ -27,6 +27,15 @@ export function useWebReport(id: string | undefined) {
   });
 }
 
+export function useWebReportHistory(host: string | undefined) {
+  return useQuery({
+    queryKey: webReportKeys.history(host || "none"),
+    enabled: Boolean(host),
+    queryFn: () => webreportsApi.history(host as string, 24),
+    staleTime: 60_000,
+  });
+}
+
 export function usePublicWebReport(token: string | undefined) {
   return useQuery({
     queryKey: webReportKeys.publicReport(token || "none"),

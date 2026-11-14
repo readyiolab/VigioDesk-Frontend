@@ -1,0 +1,36 @@
+/** Semrush-inspired visual tokens for Web Reports (Zuvigo branding). */
+export const wr = {
+  bg: "#f4f5f9",
+  card: "#ffffff",
+  border: "#e3e5eb",
+  borderMuted: "#eceef3",
+  text: "#1f232b",
+  textMuted: "#6b7280",
+  textLabel: "#8b919c",
+  purple: "#6b46c1",
+  purpleSoft: "#f3eefc",
+  purpleRing: "#7c5cbf",
+  link: "#3b5bdb",
+  teal: "#0d9488",
+  tealLine: "#14b8a6",
+  error: "#dc2626",
+  warning: "#ea580c",
+  warningBar: "#f59e0b",
+  healthy: "#14b8a6",
+  broken: "#ef4444",
+  issues: "#f59e0b",
+  redirect: "#60a5fa",
+  blocked: "#cbd5e1",
+  growth: "#16a34a",
+  tabActive: "#e8f1ff",
+  tabBorder: "#3b82f6",
+} as const;
+
+export const wrClass = {
+  card: "rounded-lg border border-[#e3e5eb] bg-white",
+  label: "text-[11px] font-medium uppercase tracking-wide text-[#8b919c]",
+  metricPurple: "text-2xl font-bold tabular-nums text-[#6b46c1] sm:text-3xl",
+  metricLink: "text-sm font-semibold tabular-nums text-[#3b5bdb]",
+  metricMuted: "text-2xl font-bold tabular-nums text-[#9ca3af] sm:text-3xl",
+  sectionTitle: "text-base font-bold text-[#1f232b]",
+} as const;

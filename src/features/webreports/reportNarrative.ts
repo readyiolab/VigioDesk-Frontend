@@ -18,14 +18,58 @@ export function isFinding(check: AuditCheck) {
   return check.status === "present" && check.severity !== "pass";
 }
 
+export function isUnavailableCheck(check: AuditCheck) {
+  return check.status === "unavailable" || check.status === "inconclusive";
+}
+
+export function hasMeasurableFindings(checks: AuditCheck[]) {
+  return checks.some(isFinding);
+}
+
+export function unavailableChecks(checks: AuditCheck[]) {
+  return checks.filter(isUnavailableCheck);
+}
+
+const SECTION_LABELS: Record<string, string> = {
+  seo: "SEO",
+  "ai-search": "AI Search",
+  mobile: "Mobile",
+  desktop: "Desktop",
+  "field-data": "Field data (CrUX)",
+  pending: "Pending stages",
+};
+
+export function sectionLabel(key: string): string {
+  return SECTION_LABELS[key] || key;
+}
+
+export function sectionUnavailableMessage(report: WebReport, section: "seo" | "ai"): string {
+  if (section === "seo") {
+    const check = report.seo.checks.find((c) => c.id === "seo-unavailable" || isUnavailableCheck(c));
+    if (check?.description) return check.description;
+    if (report.crawl?.seoSource === "unavailable" || (report.crawl && report.crawl.htmlPages === 0)) {
+      return "No measurable HTML pages were crawled for on-page SEO.";
+    }
+    return "SEO was not measured on this scan.";
+  }
+  const check = report.aiSearch.checks.find(isUnavailableCheck);
+  if (check?.description) return check.description;
+  return "AI search was not measured on this scan.";
+}
+
 export function issueDistribution(checks: AuditCheck[]) {
   let errors = 0;
   let warnings = 0;
   let notices = 0;
   let passed = 0;
+  let unavailable = 0;
   for (const c of checks) {
     if (c.severity === "pass" || c.status === "absent") {
       passed += 1;
+      continue;
+    }
+    if (c.status === "unavailable" || c.status === "inconclusive") {
+      unavailable += 1;
       continue;
     }
     if (c.status !== "present") continue;
@@ -33,7 +77,7 @@ export function issueDistribution(checks: AuditCheck[]) {
     else if (c.severity === "warning") warnings += 1;
     else if (c.severity === "info") notices += 1;
   }
-  return { errors, warnings, notices, passed, total: checks.length };
+  return { errors, warnings, notices, passed, unavailable, total: checks.length };
 }
 
 export type CategoryHealth = {
@@ -43,6 +87,7 @@ export type CategoryHealth = {
   warnings: number;
   notices: number;
   passed: number;
+  unavailable: number;
   passRate: number;
 };
 
@@ -52,17 +97,25 @@ export function categoryHealth(checks: AuditCheck[]): CategoryHealth[] {
     const key = c.category || "General";
     let row = map.get(key);
     if (!row) {
-      row = { category: key, total: 0, errors: 0, warnings: 0, notices: 0, passed: 0, passRate: 0 };
+      row = {
+        category: key,
+        total: 0,
+        errors: 0,
+        warnings: 0,
+        notices: 0,
+        passed: 0,
+        unavailable: 0,
+        passRate: 0,
+      };
       map.set(key, row);
     }
     row.total += 1;
     if (c.severity === "pass" || c.status === "absent") row.passed += 1;
+    else if (c.status === "unavailable" || c.status === "inconclusive") row.unavailable += 1;
     else if (c.status === "present") {
       if (c.severity === "critical") row.errors += 1;
       else if (c.severity === "warning") row.warnings += 1;
       else if (c.severity === "info") row.notices += 1;
-    } else {
-      row.passed += 1;
     }
   }
   return [...map.values()]
@@ -71,6 +124,16 @@ export function categoryHealth(checks: AuditCheck[]): CategoryHealth[] {
       passRate: r.total ? Math.round((r.passed / r.total) * 100) : 0,
     }))
     .sort((a, b) => a.errors + a.warnings - (b.errors + b.warnings) || a.category.localeCompare(b.category));
+}
+
+export function seoProblems(report: WebReport): string[] {
+  const present = report.seo.checks.filter((check) => check.status === "present");
+  const notMeasured =
+    report.scores.seo === null ||
+    report.completeness.unavailableSections.includes("seo");
+  if (notMeasured) return [sectionUnavailableMessage(report, "seo")];
+  if (present.length === 0) return ["No SEO problems stood out in this scan."];
+  return present.slice(0, 4).map((check) => check.title);
 }
 
 export function keyProblems(report: WebReport): ProblemGroup[] {
@@ -110,17 +173,6 @@ function deviceProblems(name: string, device: DevicePerformance): string[] {
     );
   }
   return lines.slice(0, 4);
-}
-
-function seoProblems(report: WebReport): string[] {
-  const present = report.seo.checks.filter((check) => check.status === "present");
-  const notMeasured =
-    report.scores.seo === null ||
-    report.completeness.unavailableSections.includes("seo") ||
-    (report.seo.checks.length > 0 && present.length === 0 && report.seo.checks.every((check) => check.status !== "absent"));
-  if (present.length === 0 && notMeasured) return ["SEO was not measured on this scan."];
-  if (present.length === 0) return ["No SEO problems stood out in this scan."];
-  return present.slice(0, 4).map((check) => check.title);
 }
 
 function aiProblems(report: WebReport): string[] {

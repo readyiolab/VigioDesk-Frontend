@@ -65,6 +65,13 @@ export interface WebReport {
   scannedAt: string | null;
   createdAt?: string;
   pagesCrawled: number;
+  crawl?: {
+    pagesAttempted: number;
+    htmlPages: number;
+    timedOutPages: number;
+    sitemapSeeds: number;
+    seoSource?: "http" | "browser-fallback" | "unavailable";
+  };
   completeness: { complete: boolean; unavailableSections: string[] };
   scores: {
     overall: number | null;

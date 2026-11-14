@@ -5,11 +5,12 @@ import {
   Globe,
   Search,
   ExternalLink,
-  ArrowRight,
+  Plus,
   RefreshCw,
   Share2,
   Trash2,
   AlertTriangle,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/services/api";
 import { useCreateWebReport, useWebReportList, useWebReportActions } from "@/features/webreports/queries";
+import { projectRowMetrics } from "@/features/webreports/dashboardMetrics";
+import { ProgressRing } from "@/features/webreports/components/ProgressRing";
+import { wr, wrClass } from "@/features/webreports/semrushTheme";
 import { scanStepTitle } from "@/features/webreports/stageLabel";
 import type { WebReport } from "@/features/webreports/types";
 import { cn } from "@/lib/utils";
@@ -29,45 +33,73 @@ const QUICK_SAMPLES = [
   { label: "Apple", url: "https://apple.com" },
 ];
 
-function scoreColor(score: number | null): string {
-  if (score === null) return "text-slate-400";
-  if (score >= 90) return "text-emerald-600";
-  if (score >= 50) return "text-amber-600";
-  return "text-red-600";
+const MODULE_CARDS = [
+  {
+    title: "Content",
+    body: "Create SEO-friendly content with AI and competitive data.",
+    accent: "#16a34a",
+  },
+  {
+    title: "Zuvigo One",
+    body: "Win every search, from traditional SEO to AI discovery.",
+    accent: "#0d9488",
+  },
+  {
+    title: "AI Visibility",
+    body: "Get discovered in ChatGPT, Google AI, and other AI search engines.",
+    accent: wr.purple,
+  },
+  {
+    title: "Traffic & Market",
+    body: "Track competitors, analyze markets, uncover growth opportunities.",
+    accent: wr.purple,
+  },
+];
+
+function fmt(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "n/a";
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return String(value);
 }
 
-function MiniScoreRing({ score }: { score: number | null }) {
-  const radius = 16;
-  const circumference = 2 * Math.PI * radius;
-  const value = score ?? 0;
-  const dash = score === null ? 0 : (value / 100) * circumference;
-
+function MetricCol({
+  label,
+  value,
+  sub,
+  ring,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  ring?: number | null;
+}) {
   return (
-    <div className="relative flex size-10 shrink-0 items-center justify-center">
-      <svg className="size-10 -rotate-90" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r={radius} stroke="currentColor" strokeWidth="3" fill="none" className="text-slate-200" />
-        <circle
-          cx="20"
-          cy="20"
-          r={radius}
-          stroke="currentColor"
-          strokeWidth="3"
-          fill="none"
-          strokeDasharray={`${dash} ${circumference}`}
-          strokeLinecap="round"
-          className={scoreColor(score)}
-        />
-      </svg>
-      <span className={cn("absolute text-[11px] font-bold tabular-nums", scoreColor(score))}>
-        {score === null ? "—" : score}
-      </span>
+    <div className="min-w-[4.5rem] text-center">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-[#8b919c]">{label}</div>
+      <div className="mt-1 flex items-center justify-center gap-1.5">
+        {ring !== undefined ? (
+          <ProgressRing value={ring} size={28} stroke={3}>
+            <span className="text-[9px] font-bold text-[#6b46c1]">{ring === null ? "—" : ""}</span>
+          </ProgressRing>
+        ) : null}
+        <span
+          className={cn(
+            "text-base font-bold tabular-nums",
+            value === "n/a" ? "text-[#9ca3af]" : "text-[#6b46c1]"
+          )}
+        >
+          {value}
+        </span>
+      </div>
+      {sub ? <div className="mt-0.5 text-[10px] text-[#16a34a]">{sub}</div> : null}
     </div>
   );
 }
 
-function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) => void }) {
+function ProjectRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) => void }) {
   const actions = useWebReportActions(report.id || "");
   const [isDeleting, setIsDeleting] = useState(false);
+  const metrics = projectRowMetrics(report);
 
   let hostname = report.url;
   try {
@@ -107,13 +139,13 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete audit for "${hostname}"?`)) return;
+    if (!window.confirm(`Delete project for "${hostname}"?`)) return;
     setIsDeleting(true);
     try {
       await actions.remove.mutateAsync();
-      toast.success("Audit deleted.");
+      toast.success("Project deleted.");
     } catch {
-      toast.error("Could not delete audit.");
+      toast.error("Could not delete project.");
     } finally {
       setIsDeleting(false);
     }
@@ -130,9 +162,12 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
           onOpen(report.id);
         }
       }}
-      className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 transition hover:border-blue-300 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+      className={cn(
+        wrClass.card,
+        "group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition hover:border-[#c4b5fd] hover:shadow-sm lg:flex-row lg:items-center lg:justify-between"
+      )}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3 lg:w-56 lg:shrink-0">
         <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
           <img
             src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=64`}
@@ -144,9 +179,9 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
           />
           <Globe className="size-4 text-slate-400" />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-mono text-sm font-medium text-slate-900">{hostname}</span>
+            <span className="truncate text-sm font-semibold text-[#3b5bdb]">{hostname}</span>
             <a
               href={report.url}
               target="_blank"
@@ -158,81 +193,68 @@ function ScanRow({ report, onOpen }: { report: WebReport; onOpen: (id: string) =
               <ExternalLink className="size-3" />
             </a>
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
+          <div className="mt-0.5 text-[11px] text-[#8b919c]">
             {isRunning ? (
               <span className="font-medium text-blue-600">
                 {scanStepTitle(report.stage)} · {report.progress}%
               </span>
-            ) : isCompleted ? (
-              <span>
-                {report.scannedAt
-                  ? new Date(report.scannedAt).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "Completed"}
-              </span>
             ) : isFailed ? (
               <span className="font-medium text-red-600">Failed</span>
             ) : (
-              <span>Queued</span>
+              <>
+                {report.crawl?.htmlPages ?? report.pagesCrawled} pages
+                {!report.completeness.complete || report.scores.seo === null ? " · Incomplete" : ""}
+              </>
             )}
-            <span>·</span>
-            <span>
-              {report.pagesCrawled || 1} page{(report.pagesCrawled || 1) === 1 ? "" : "s"}
-            </span>
           </div>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-        {isCompleted ? (
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-1.5 text-[10px] sm:flex">
-              <span className="rounded border border-slate-200 px-1.5 py-0.5 tabular-nums text-slate-600">
-                M {report.scores.mobile ?? "—"}
-              </span>
-              <span className="rounded border border-slate-200 px-1.5 py-0.5 tabular-nums text-slate-600">
-                SEO {report.scores.seo ?? "—"}
-              </span>
-              <span className="rounded border border-slate-200 px-1.5 py-0.5 tabular-nums text-slate-600">
-                AI {report.scores.aiSearch ?? "—"}
-              </span>
-            </div>
-            <MiniScoreRing score={report.scores.overall} />
-          </div>
-        ) : null}
-        {isRunning ? <Spinner className="size-4 text-blue-600" /> : null}
-        <div className="flex items-center gap-0.5">
-          <Button size="sm" variant="ghost" className="size-8 p-0" onClick={handleShare} title="Share">
-            <Share2 className="size-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" className="size-8 p-0" onClick={handleRescan} title="Rescan">
-            <RefreshCw className="size-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="size-8 p-0 text-slate-500 hover:text-red-600"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            title="Delete"
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            className="ml-1 h-8 px-2.5 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (report.id) onOpen(report.id);
-            }}
-          >
-            Open
-          </Button>
+      {isCompleted ? (
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-4 overflow-x-auto lg:justify-end">
+          <MetricCol
+            label="AI Visibility"
+            value={metrics.aiVisibility === null ? "n/a" : `${metrics.aiVisibility}%`}
+            ring={metrics.aiVisibility}
+          />
+          <MetricCol label="Mentions" value={fmt(metrics.mentions)} />
+          <MetricCol
+            label="Site Health"
+            value={metrics.siteHealth === null ? "n/a" : `${metrics.siteHealth}%`}
+          />
+          <MetricCol label="Visibility" value={`${metrics.visibility}%`} sub="0, last scan" />
+          <MetricCol label="Organic Traffic" value={fmt(metrics.organicTraffic)} />
+          <MetricCol label="Organic Keywords" value={fmt(metrics.organicKeywords)} />
+          <MetricCol label="Backlinks" value={fmt(metrics.backlinks)} />
         </div>
+      ) : isRunning ? (
+        <div className="flex flex-1 items-center justify-end">
+          <Spinner className="size-4 text-blue-600" />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
+
+      <div className="flex shrink-0 items-center gap-0.5 lg:pl-2">
+        <Button size="sm" variant="ghost" className="size-8 p-0" onClick={handleShare} title="Share">
+          <Share2 className="size-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" className="size-8 p-0" onClick={handleRescan} title="Rescan">
+          <RefreshCw className="size-3.5" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="size-8 p-0 text-slate-500 hover:text-red-600"
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title="Delete"
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" className="size-8 p-0" title="More" onClick={(e) => e.stopPropagation()}>
+          <MoreVertical className="size-3.5" />
+        </Button>
       </div>
     </div>
   );
@@ -249,6 +271,7 @@ export default function WebReportsHome() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "running" | "failed">("all");
+  const [showCreate, setShowCreate] = useState(false);
 
   const reports = list.data?.reports || [];
 
@@ -304,37 +327,62 @@ export default function WebReportsHome() {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto w-full max-w-4xl space-y-5 px-4 py-5 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
+    <div className="h-full min-h-0 overflow-y-auto bg-[#f4f5f9]">
+      <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-5 sm:px-6">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {MODULE_CARDS.map((card) => (
+            <div key={card.title} className={cn(wrClass.card, "p-4 shadow-sm")}>
+              <div className="text-sm font-bold text-[#1f232b]" style={{ color: card.accent }}>
+                {card.title}
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-[#6b7280]">{card.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Site audits</h1>
-            <p className="mt-0.5 text-sm text-slate-500">Performance, SEO, and AI-search readiness.</p>
+            <h1 className="text-xl font-bold tracking-tight text-[#1f232b]">Projects</h1>
+            <p className="mt-0.5 text-sm text-[#6b7280]">
+              {stats.total} projects
+              {stats.avgScore !== null ? ` · avg health ${stats.avgScore}` : ""}
+              {stats.active > 0 ? ` · ${stats.active} scanning` : ""}
+            </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <span>
-              <span className="font-semibold tabular-nums text-slate-800">{stats.total}</span> audits
-            </span>
-            <span>
-              Avg{" "}
-              <span className={cn("font-semibold tabular-nums", scoreColor(stats.avgScore))}>
-                {stats.avgScore ?? "—"}
-              </span>
-            </span>
-            {stats.active > 0 ? (
-              <span className="font-medium text-blue-600">
-                {stats.active} scanning
-              </span>
-            ) : null}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 border-[#e3e5eb] bg-white"
+              onClick={() => toast.message("Share a project from its row actions.")}
+            >
+              <Share2 className="size-3.5" />
+              Share
+            </Button>
+            <Button
+              type="button"
+              className="h-9 gap-1.5 bg-[#1f232b] text-white hover:bg-black"
+              onClick={() => {
+                setShowCreate(true);
+                requestAnimationFrame(() => document.getElementById("audit-url")?.focus());
+              }}
+            >
+              <Plus className="size-3.5" />
+              Create Project
+            </Button>
           </div>
         </div>
 
         <form
           id="new-scan"
           onSubmit={onSubmit}
-          className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          className={cn(
+            wrClass.card,
+            "space-y-3 p-4 shadow-sm",
+            !showCreate && reports.length > 0 ? "hidden sm:block" : ""
+          )}
         >
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500" htmlFor="audit-url">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-[#8b919c]" htmlFor="audit-url">
             Website URL
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -353,7 +401,7 @@ export default function WebReportsHome() {
                 className="h-10 pl-9 font-mono text-sm"
               />
             </div>
-            <Button type="submit" disabled={create.isPending} className="h-10 shrink-0 px-5">
+            <Button type="submit" disabled={create.isPending} className="h-10 shrink-0 bg-[#1f232b] px-5 hover:bg-black">
               {create.isPending ? (
                 <>
                   <Spinner className="mr-2 size-4" />
@@ -361,8 +409,8 @@ export default function WebReportsHome() {
                 </>
               ) : (
                 <>
-                  Start audit
-                  <ArrowRight className="ml-1.5 size-4" />
+                  <Plus className="mr-1.5 size-4" />
+                  Create Project
                 </>
               )}
             </Button>
@@ -377,6 +425,7 @@ export default function WebReportsHome() {
                 onClick={() => {
                   setUrl(sample.url);
                   setError(null);
+                  setShowCreate(true);
                 }}
                 className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-700"
               >
@@ -417,10 +466,10 @@ export default function WebReportsHome() {
           ) : null}
         </form>
 
-        <section className="space-y-3" aria-labelledby="history-heading">
+        <section className="space-y-3" aria-labelledby="projects-heading">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="history-heading" className="text-sm font-semibold text-slate-900">
-              Recent audits
+            <h2 id="projects-heading" className="sr-only">
+              Project list
             </h2>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
@@ -428,8 +477,8 @@ export default function WebReportsHome() {
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter…"
-                  className="h-8 w-36 pl-7 text-xs"
+                  placeholder="Filter projects…"
+                  className="h-8 w-40 pl-7 text-xs"
                 />
               </div>
               <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
@@ -454,22 +503,22 @@ export default function WebReportsHome() {
           {list.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                <Skeleton key={i} className="h-20 w-full rounded-lg" />
               ))}
             </div>
           ) : reports.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center">
-              <p className="text-sm font-medium text-slate-800">No audits yet</p>
-              <p className="mt-1 text-xs text-slate-500">Enter a URL above to run your first site audit.</p>
+            <div className="rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center">
+              <p className="text-sm font-medium text-slate-800">No projects yet</p>
+              <p className="mt-1 text-xs text-slate-500">Enter a URL above to create your first SEO project.</p>
             </div>
           ) : filteredReports.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-              No audits match your filter.
+            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+              No projects match your filter.
             </div>
           ) : (
             <div className="space-y-2">
               {filteredReports.map((report) => (
-                <ScanRow key={report.id} report={report} onOpen={(id) => navigate(`/webreports/${id}`)} />
+                <ProjectRow key={report.id} report={report} onOpen={(id) => navigate(`/webreports/${id}`)} />
               ))}
             </div>
           )}

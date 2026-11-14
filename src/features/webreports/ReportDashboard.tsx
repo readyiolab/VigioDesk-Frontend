@@ -17,10 +17,19 @@ import {
   categoryHealth,
   issueDistribution,
   isFinding,
+  isUnavailableCheck,
   letterGrade,
+  sectionLabel,
+  sectionUnavailableMessage,
+  seoProblems,
 } from "./reportNarrative";
 import { ReportPrint } from "./ReportPrint";
 import { downloadWebReportPdf } from "./buildWebReportPdf";
+import { buildDashboardMetrics, type HistoryPoint } from "./dashboardMetrics";
+import { SeoMetricStrip } from "./components/SeoMetricStrip";
+import { DataSourcePanel } from "./components/DataSourcePanel";
+import { SitePerformanceCard } from "./components/SitePerformanceCard";
+import { SiteAuditCard } from "./components/SiteAuditCard";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -37,6 +46,7 @@ import {
   Loader2,
   Minus,
   Monitor,
+  RefreshCw,
   Save,
   Smartphone,
   XCircle,
@@ -266,7 +276,14 @@ function DeviceVitals({ label, icon, device }: { label: string; icon: ReactNode;
 
 function FindingRow({ check, dense }: { check: AuditCheck; dense?: boolean }) {
   const [open, setOpen] = useState(false);
-  const meta = severityMeta(check.severity);
+  const meta =
+    check.status === "unavailable" || check.status === "inconclusive"
+      ? {
+          label: "Not measured",
+          className: "bg-amber-50 text-amber-800 border-amber-200",
+          Icon: Minus,
+        }
+      : severityMeta(check.severity);
   const Icon = meta.Icon;
   return (
     <div className={cn("border-b border-slate-100 last:border-0", dense && "odd:bg-slate-50/40")}>
@@ -341,17 +358,32 @@ function FindingsPanel({
   onFilter,
   showAll,
   onToggleShowAll,
+  sectionMeasured,
+  unavailableReason,
+  onRescan,
+  rescanPending,
 }: {
   checks: AuditCheck[];
   filter: SeverityFilter;
   onFilter: (f: SeverityFilter) => void;
   showAll: boolean;
   onToggleShowAll: () => void;
+  sectionMeasured: boolean;
+  unavailableReason?: string;
+  onRescan?: () => void;
+  rescanPending?: boolean;
 }) {
   const findings = checks.filter(isFinding);
-  const filtered = (showAll ? checks : findings).filter((c) => {
+  const unavailable = checks.filter(isUnavailableCheck);
+  // Always surface unavailable/inconclusive when the section wasn't measured
+  const baseList =
+    showAll || !sectionMeasured || (findings.length === 0 && unavailable.length > 0)
+      ? checks
+      : findings;
+  const filtered = baseList.filter((c) => {
     if (filter === "all") return true;
     if (filter === "pass") return c.severity === "pass" || c.status === "absent";
+    if (c.status === "unavailable" || c.status === "inconclusive") return filter === "info";
     return c.severity === filter && c.status === "present";
   });
 
@@ -376,6 +408,27 @@ function FindingsPanel({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      {!sectionMeasured && unavailableReason ? (
+        <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-amber-800">Not measured</p>
+            <p className="mt-0.5 text-sm text-amber-900">{unavailableReason}</p>
+          </div>
+          {onRescan ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5 border-amber-300 bg-white"
+              disabled={rescanPending}
+              onClick={onRescan}
+            >
+              <RefreshCw className={cn("size-3.5", rescanPending && "animate-spin")} />
+              Rescan
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
         <div className="flex flex-wrap gap-1">
           {chips.map((chip) => (
@@ -403,7 +456,11 @@ function FindingsPanel({
         </button>
       </div>
       {byCategory.length === 0 ? (
-        <p className="px-3 py-8 text-center text-sm text-slate-500">No checks match this filter.</p>
+        <p className="px-3 py-8 text-center text-sm text-slate-500">
+          {!sectionMeasured
+            ? unavailableReason || "This section was not measured."
+            : "No checks match this filter."}
+        </p>
       ) : (
         byCategory.map(([cat, list]) => (
           <div key={cat}>
@@ -470,16 +527,29 @@ export function ReportDashboard({
   report,
   publicView,
   onUpdateBranding,
+  onRescan,
+  rescanPending,
+  history = [],
 }: {
   report: WebReport;
   publicView?: boolean;
   onUpdateBranding?: (branding: { companyName?: string | null; logoUrl?: string | null }) => Promise<unknown>;
   isUpdatingBranding?: boolean;
+  onRescan?: () => void;
+  rescanPending?: boolean;
+  history?: HistoryPoint[];
 }) {
   const finished = report.status === "completed";
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [showAllSeo, setShowAllSeo] = useState(false);
-  const [showAllAi, setShowAllAi] = useState(false);
+  const dashMetrics = useMemo(() => buildDashboardMetrics(report), [report]);
+  const [showAllSeo, setShowAllSeo] = useState(
+    () => report.scores.seo === null || report.completeness.unavailableSections.includes("seo")
+  );
+  const [showAllAi, setShowAllAi] = useState(
+    () =>
+      report.scores.aiSearch === null ||
+      report.completeness.unavailableSections.some((s) => /ai/i.test(s))
+  );
   const [seoFilter, setSeoFilter] = useState<SeverityFilter>("all");
   const [aiFilter, setAiFilter] = useState<SeverityFilter>("all");
   const [brandingModalOpen, setBrandingModalOpen] = useState(false);
@@ -526,6 +596,15 @@ export function ReportDashboard({
       !report.completeness.unavailableSections.some((s) => /ai/i.test(s)),
   };
 
+  const htmlPages = report.crawl?.htmlPages ?? report.pagesCrawled;
+  const pagesAttempted = report.crawl?.pagesAttempted ?? report.pagesCrawled;
+  const limitedCrawl = htmlPages <= 1;
+  const incomplete =
+    !report.completeness.complete ||
+    report.scores.seo === null ||
+    report.scores.aiSearch === null ||
+    report.completeness.unavailableSections.length > 0;
+
   async function handleSaveBranding(e: FormEvent) {
     e.preventDefault();
     if (!onUpdateBranding) return;
@@ -544,11 +623,11 @@ export function ReportDashboard({
     }
   }
 
-  const tabs: { id: TabId; label: string; count?: number }[] = [
+  const tabs: { id: TabId; label: string; count?: number | string }[] = [
     { id: "overview", label: "Overview" },
     { id: "vitals", label: "Core Web Vitals" },
-    { id: "seo", label: "SEO", count: seoFindings },
-    { id: "ai", label: "AI Search", count: aiFindings },
+    { id: "seo", label: "SEO", count: sectionMeasured.seo ? seoFindings : "—" },
+    { id: "ai", label: "AI Search", count: sectionMeasured.ai ? aiFindings : "—" },
     { id: "fixes", label: "Fixes", count: report.topFixes.length },
   ];
 
@@ -556,14 +635,22 @@ export function ReportDashboard({
   const botsAllowed = botEntries.filter(([, v]) => /allow|yes|ok/i.test(String(v))).length;
   const mobileOps = report.performance.mobile.issues || [];
 
+  const jumpToAudit = (tab: TabId = "overview") => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      document.getElementById("detailed-audit")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   return (
     <>
-      <div className="audit-screen mx-auto flex w-full max-w-5xl flex-col gap-3 bg-[#f4f6f9] px-3 py-4 text-slate-900 print:hidden sm:px-5 sm:py-5">
+      <div className="audit-screen mx-auto flex w-full max-w-6xl flex-col gap-3 bg-[#f4f5f9] px-3 py-4 text-slate-900 print:hidden sm:px-5 sm:py-5">
         {/* Header */}
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-xl border border-[#e3e5eb] bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[#8b919c]">Home · SEO</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <img
                   src={customerLogo || fallbackFavicon}
                   alt=""
@@ -573,7 +660,7 @@ export function ReportDashboard({
                   }}
                 />
                 <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
-                  {customerName}
+                  SEO Dashboard: {domain || customerName}
                 </h1>
                 {onUpdateBranding ? (
                   <button
@@ -608,14 +695,61 @@ export function ReportDashboard({
                   <Clock className="size-3" />
                   {report.scannedAt ? new Date(report.scannedAt).toLocaleString() : report.status}
                 </span>
-                <span className="inline-flex items-center gap-1">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1",
+                    limitedCrawl && "font-semibold text-amber-700"
+                  )}
+                >
                   <Layers className="size-3" />
-                  {report.pagesCrawled} pages analyzed
+                  {htmlPages} HTML · {pagesAttempted} URLs
+                  {limitedCrawl ? " · limited crawl" : ""}
+                  {report.crawl?.seoSource === "browser-fallback" ? " · SEO via browser" : ""}
                 </span>
               </div>
             </div>
             <HealthRing score={report.scores.overall} />
           </div>
+
+          {report.status === "failed" && report.error?.message ? (
+            <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800">
+              {report.error.message}
+            </div>
+          ) : null}
+
+          {incomplete ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-800">
+                    Incomplete measurement
+                  </p>
+                  <p className="mt-1 text-sm text-amber-950">
+                    {report.completeness.unavailableSections.length
+                      ? `Unavailable: ${report.completeness.unavailableSections.map(sectionLabel).join(", ")}.`
+                      : "Some score sections could not be measured."}
+                    {!sectionMeasured.seo ? ` ${sectionUnavailableMessage(report, "seo")}` : ""}
+                    {limitedCrawl
+                      ? " Only one HTML page was analyzed — results may be incomplete."
+                      : ""}
+                  </p>
+                </div>
+                {onRescan && !publicView ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 gap-1.5 border-amber-300 bg-white"
+                    disabled={rescanPending}
+                    onClick={onRescan}
+                  >
+                    <RefreshCw className={cn("size-3.5", rescanPending && "animate-spin")} />
+                    Rescan
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* Completeness checklist */}
           <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-4">
@@ -681,6 +815,26 @@ export function ReportDashboard({
           ) : null}
         </section>
 
+        {finished ? (
+          <>
+            <SeoMetricStrip metrics={dashMetrics} />
+            <DataSourcePanel
+              history={history}
+              currentSeo={report.scores.seo}
+              currentAi={report.scores.aiSearch}
+              pagesCrawled={htmlPages}
+              errors={dashMetrics.errors}
+              warnings={dashMetrics.warnings}
+              scannedAt={report.scannedAt}
+            />
+            <SitePerformanceCard metrics={dashMetrics} onViewFull={() => jumpToAudit("seo")} />
+            <SiteAuditCard metrics={dashMetrics} onViewFull={() => jumpToAudit("overview")} />
+          </>
+        ) : null}
+
+        {/* Detailed audit */}
+        <div id="detailed-audit" className="scroll-mt-4 space-y-3">
+          <h2 className="text-base font-bold text-[#1f232b]">Detailed audit</h2>
         {/* Score strip */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <ScoreTile label="Overall" score={report.scores.overall} />
@@ -713,7 +867,7 @@ export function ReportDashboard({
               )}
             >
               {tab.label}
-              {typeof tab.count === "number" && tab.count > 0 ? (
+              {tab.count !== undefined && tab.count !== 0 ? (
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
@@ -860,7 +1014,12 @@ export function ReportDashboard({
                     Top issues
                   </h2>
                   {allFindings.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-slate-500">No issues found.</p>
+                    <p className="py-4 text-center text-sm text-slate-500">
+                      {!sectionMeasured.seo || !sectionMeasured.ai
+                        ? seoProblems(report)[0] ||
+                          "Some sections were not measured — open SEO or AI Search for details."
+                        : "No issues found."}
+                    </p>
                   ) : (
                     <div className="-mx-1">
                       {allFindings.slice(0, 6).map((c) => (
@@ -935,6 +1094,10 @@ export function ReportDashboard({
             onFilter={setSeoFilter}
             showAll={showAllSeo}
             onToggleShowAll={() => setShowAllSeo((v) => !v)}
+            sectionMeasured={sectionMeasured.seo}
+            unavailableReason={sectionUnavailableMessage(report, "seo")}
+            onRescan={!publicView ? onRescan : undefined}
+            rescanPending={rescanPending}
           />
         ) : null}
 
@@ -1030,6 +1193,10 @@ export function ReportDashboard({
               onFilter={setAiFilter}
               showAll={showAllAi}
               onToggleShowAll={() => setShowAllAi((v) => !v)}
+              sectionMeasured={sectionMeasured.ai}
+              unavailableReason={sectionUnavailableMessage(report, "ai")}
+              onRescan={!publicView ? onRescan : undefined}
+              rescanPending={rescanPending}
             />
           </div>
         ) : null}
@@ -1071,6 +1238,7 @@ export function ReportDashboard({
             )}
           </div>
         ) : null}
+        </div>
 
         <p className="pb-2 text-center text-[11px] text-slate-400">
           Audited with Zuvigo Web Reports · Scores omit unavailable sections

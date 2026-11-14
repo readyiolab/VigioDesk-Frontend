@@ -21,12 +21,14 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/services/webreportsApi", () => ({
   webreportsApi: {
     list: vi.fn(),
+    history: vi.fn(),
     create: vi.fn(),
     get: vi.fn(),
     rescan: vi.fn(),
     share: vi.fn(),
     revoke: vi.fn(),
     remove: vi.fn(),
+    updateBranding: vi.fn(),
     getPublic: vi.fn(),
   },
 }))
@@ -62,6 +64,13 @@ function report(overrides: Partial<WebReport> = {}): WebReport {
     progress: 100,
     scannedAt: "2026-10-12T12:00:00.000Z",
     pagesCrawled: 3,
+    crawl: {
+      pagesAttempted: 3,
+      htmlPages: 3,
+      timedOutPages: 0,
+      sitemapSeeds: 2,
+      seoSource: "http",
+    },
     completeness: { complete: true, unavailableSections: [] },
     scores: { overall: 82, mobile: 80, desktop: 90, seo: 78, aiSearch: 84 },
     scoringVersion: "webreports-scoring-v1",
@@ -147,6 +156,7 @@ beforeEach(() => {
   writeText.mockReset()
   writeText.mockResolvedValue(undefined)
   api.list.mockResolvedValue({ reports: [], pagination: { limit: 20, offset: 0, total: 0 } })
+  api.history.mockResolvedValue({ host: "example.com", points: [] })
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },
@@ -170,17 +180,17 @@ describe("scan polling", () => {
 describe("website audit home", () => {
   it("shows an empty history", async () => {
     renderRoutes("/webreports")
-    expect(await screen.findByText("No scans yet. Submit a URL to start.")).toBeTruthy()
+    expect(await screen.findByText("No projects yet")).toBeTruthy()
   })
 
   it("validates the URL before submitting", async () => {
     const user = userEvent.setup()
     renderRoutes("/webreports")
-    await screen.findByText("No scans yet. Submit a URL to start.")
-    await user.click(screen.getByRole("button", { name: "Start scan" }))
+    await screen.findByText("No projects yet")
+    await user.click(screen.getAllByRole("button", { name: "Create Project" }).at(-1)!)
     expect(screen.getByRole("alert").textContent).toContain("Enter a website URL.")
     await user.type(screen.getByLabelText("Website URL"), "ftp://example.com")
-    await user.click(screen.getByRole("button", { name: "Start scan" }))
+    await user.click(screen.getAllByRole("button", { name: "Create Project" }).at(-1)!)
     expect(screen.getByRole("alert").textContent).toContain("Use an http or https URL.")
     expect(api.create).not.toHaveBeenCalled()
   })
@@ -190,10 +200,10 @@ describe("website audit home", () => {
     api.create.mockResolvedValue({ cached: false, report: report({ status: "queued", stage: "validating", progress: 5 }) })
     api.get.mockResolvedValue({ report: report({ status: "queued", stage: "validating", progress: 5, summary: { headline: null, text: null } }) })
     renderRoutes("/webreports")
-    await screen.findByText("No scans yet. Submit a URL to start.")
+    await screen.findByText("No projects yet")
     await user.type(screen.getByLabelText("Website URL"), "https://example.com/")
-    await user.click(screen.getByRole("button", { name: "Start scan" }))
-    expect(await screen.findByRole("heading", { name: "Checking the address" })).toBeTruthy()
+    await user.click(screen.getAllByRole("button", { name: "Create Project" }).at(-1)!)
+    expect(await screen.findByText("Checking the address")).toBeTruthy()
     expect(api.create.mock.calls[0][0]).toEqual({ url: "https://example.com/", maxPages: undefined, force: false })
   })
 
@@ -201,9 +211,9 @@ describe("website audit home", () => {
     const user = userEvent.setup()
     api.create.mockRejectedValue(new ApiError("Daily website audit limit reached.", 403))
     renderRoutes("/webreports")
-    await screen.findByText("No scans yet. Submit a URL to start.")
+    await screen.findByText("No projects yet")
     await user.type(screen.getByLabelText("Website URL"), "https://example.com/")
-    await user.click(screen.getByRole("button", { name: "Start scan" }))
+    await user.click(screen.getAllByRole("button", { name: "Create Project" }).at(-1)!)
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Daily website audit limit reached.")
   })
 })
@@ -214,11 +224,11 @@ describe("report progress and results", () => {
       report: report({ status: "running", stage: "crawling", progress: 20, summary: { headline: null, text: null } }),
     })
     renderRoutes("/webreports/rep-1")
-    expect(await screen.findByRole("heading", { name: "Reading public pages" })).toBeTruthy()
+    expect(await screen.findByText("Reading public pages")).toBeTruthy()
     expect(screen.getByRole("progressbar", { name: "Scan progress" })).toBeTruthy()
     expect(screen.getByText("20%")).toBeTruthy()
-    expect(screen.getByText("Measuring mobile performance")).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Back to scans" })).toBeTruthy()
+    expect(screen.getByText("Mobile")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Scans" })).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Share" })).toBeNull()
     expect(screen.queryByText("Unavailable")).toBeNull()
   })
@@ -226,12 +236,16 @@ describe("report progress and results", () => {
   it("shows a completed report", async () => {
     api.get.mockResolvedValue({ report: report() })
     renderRoutes("/webreports/rep-1")
-    expect(await screen.findByRole("heading", { name: "Mostly ready" })).toBeTruthy()
-    expect(screen.getByRole("heading", { name: "Key problems" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Back to scans" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: /SEO Dashboard: example.com/i })).toBeTruthy()
+    expect(screen.getAllByText("Mostly ready").length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Site Audit/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Site Performance/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Detailed audit/i)).toBeTruthy()
+    expect(screen.getAllByText(/Top issues/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole("link", { name: "Scans" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Share" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy()
-    expect(screen.getByText(/Rewrite short titles/)).toBeTruthy()
+    expect(screen.getAllByText(/Rewrite short titles|Title length/).length).toBeGreaterThan(0)
     expect(screen.getAllByText("82").length).toBeGreaterThan(0)
   })
 
@@ -240,15 +254,21 @@ describe("report progress and results", () => {
       report: report({
         scores: { overall: 70, mobile: null, desktop: 90, seo: 78, aiSearch: 84 },
         completeness: { complete: false, unavailableSections: ["mobile", "field-data"] },
+        crawl: {
+          pagesAttempted: 1,
+          htmlPages: 1,
+          timedOutPages: 0,
+          sitemapSeeds: 0,
+          seoSource: "http",
+        },
         performance: { mobile: device({ score: null, unavailableReason: "Lighthouse did not return a result." }), desktop: device() },
       }),
     })
     renderRoutes("/webreports/rep-1")
-    expect((await screen.findAllByText(/Incomplete measurement: mobile, field-data/)).length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Lighthouse did not return a result.").length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/Incomplete measurement/i)).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Unavailable:.*Mobile/i)).toBeTruthy()
     expect(screen.getAllByText("Not measured").length).toBeGreaterThan(0)
-    expect(screen.queryByText("0")).toBeNull()
-    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0)
+    expect(screen.getByText(/limited crawl/i)).toBeTruthy()
   })
 
   it("shows a failed scan", async () => {
@@ -276,7 +296,7 @@ describe("report progress and results", () => {
     await screen.findByRole("button", { name: "Share" })
     await user.click(screen.getByRole("button", { name: "Share" }))
     await waitFor(() => expect(write).toHaveBeenCalled())
-    await user.click(screen.getByRole("button", { name: "Revoke share" }))
+    await user.click(screen.getByRole("button", { name: "Revoke" }))
     await waitFor(() => expect(api.revoke).toHaveBeenCalled())
     await user.click(screen.getByRole("button", { name: "Rescan" }))
     await waitFor(() => expect(api.rescan).toHaveBeenCalled())
@@ -287,10 +307,11 @@ describe("public share", () => {
   it("renders a read-only report", async () => {
     api.getPublic.mockResolvedValue({ report: report({ id: undefined, shareToken: undefined }) })
     renderRoutes("/webreports/shared/abc")
-    expect(await screen.findByRole("heading", { name: "Mostly ready" })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: /SEO Dashboard: example.com/i })).toBeTruthy()
+    expect(screen.getAllByText("Mostly ready").length).toBeGreaterThan(0)
     expect(screen.queryByRole("button", { name: "Share" })).toBeNull()
     expect(screen.queryByRole("button", { name: "Rescan" })).toBeNull()
-    expect(screen.getByText("Bot access does not guarantee inclusion in AI answers.")).toBeTruthy()
+    expect(screen.getAllByText(/Site Health/i).length).toBeGreaterThan(0)
   })
 
   it("explains a revoked link", async () => {

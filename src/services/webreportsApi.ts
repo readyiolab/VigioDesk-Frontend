@@ -1,4 +1,5 @@
 import { apiFetch } from "@/services/api";
+import type { HistoryPoint } from "@/features/webreports/dashboardMetrics";
 import type { ReportListResponse, WebReport } from "@/features/webreports/types";
 
 export const webreportsApi = {
@@ -10,6 +11,12 @@ export const webreportsApi = {
 
   list: (limit = 20, offset = 0) =>
     apiFetch(`/webreports?limit=${limit}&offset=${offset}`) as Promise<ReportListResponse>,
+
+  history: (host: string, limit = 24) =>
+    apiFetch(`/webreports/history?host=${encodeURIComponent(host)}&limit=${limit}`) as Promise<{
+      host: string;
+      points: HistoryPoint[];
+    }>,
 
   get: (id: string) =>
     apiFetch(`/webreports/${id}`) as Promise<{ report: WebReport }>,
