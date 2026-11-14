@@ -22,6 +22,7 @@ import { useCreateWebReport, useWebReportList, useWebReportActions } from "@/fea
 import { projectRowMetrics } from "@/features/webreports/dashboardMetrics";
 import { ProgressRing } from "@/features/webreports/components/ProgressRing";
 import { wr, wrClass } from "@/features/webreports/semrushTheme";
+import { siteIconUrl } from "@/features/webreports/siteIcon";
 import { scanStepTitle } from "@/features/webreports/stageLabel";
 import type { WebReport } from "@/features/webreports/types";
 import { cn } from "@/lib/utils";
@@ -170,7 +171,7 @@ function ProjectRow({ report, onOpen }: { report: WebReport; onOpen: (id: string
       <div className="flex min-w-0 items-center gap-3 lg:w-56 lg:shrink-0">
         <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
           <img
-            src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=64`}
+            src={siteIconUrl(hostname, 64)}
             alt=""
             className="size-5 rounded-sm object-contain"
             onError={(e) => {

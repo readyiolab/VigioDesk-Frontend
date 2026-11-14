@@ -1,5 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { scanStepTitle } from "./stageLabel";
+import { siteIconUrl } from "./siteIcon";
 import type { WebReport } from "./types";
 import { cn } from "@/lib/utils";
 import { Check, Globe, Layers } from "lucide-react";
@@ -74,7 +75,7 @@ export function ScanProgress({ report }: { report: WebReport }) {
   const current = found === -1 ? 0 : found;
   const active = STEPS[current];
   const host = hostnameOf(report.url);
-  const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+  const favicon = siteIconUrl(host, 64);
   const queued = report.status === "queued";
   const pct = Math.max(0, Math.min(100, report.progress ?? 0));
 

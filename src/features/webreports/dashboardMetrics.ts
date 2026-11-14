@@ -219,3 +219,35 @@ export function historyToChartSeries(points: HistoryPoint[]) {
       warnings: p.warnings,
     }));
 }
+
+function hostKey(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+/** Build trend points from the user's report list when the history API is unavailable. */
+export function historyFromReports(reports: WebReport[], host: string): {
+  host: string;
+  points: HistoryPoint[];
+} {
+  const key = host.replace(/^www\./i, "").toLowerCase();
+  const points = reports
+    .filter((r) => r.status === "completed" && hostKey(r.url) === key)
+    .map((r) => {
+      const dist = issueDistribution([...r.seo.checks, ...r.aiSearch.checks]);
+      return {
+        scannedAt: r.scannedAt || r.createdAt || new Date(0).toISOString(),
+        seo: r.scores.seo,
+        aiSearch: r.scores.aiSearch,
+        overall: r.scores.overall,
+        pagesCrawled: r.crawl?.htmlPages ?? r.pagesCrawled,
+        errors: dist.errors,
+        warnings: dist.warnings,
+      };
+    })
+    .sort((a, b) => new Date(a.scannedAt).getTime() - new Date(b.scannedAt).getTime());
+  return { host: key, points };
+}

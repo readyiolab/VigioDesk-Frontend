@@ -31,6 +31,7 @@ import { SeoMetricStrip } from "./components/SeoMetricStrip";
 import { DataSourcePanel } from "./components/DataSourcePanel";
 import { SitePerformanceCard } from "./components/SitePerformanceCard";
 import { SiteAuditCard } from "./components/SiteAuditCard";
+import { resolveSiteIcon } from "./siteIcon";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -566,8 +567,7 @@ export function ReportDashboard({
     domain = report.url;
   }
   const customerName = report.customerBranding?.companyName || domain;
-  const customerLogo = report.customerBranding?.logoUrl;
-  const fallbackFavicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  const displayIcon = resolveSiteIcon(report.customerBranding?.logoUrl, domain || report.url, 128);
 
   const allChecks = useMemo(
     () => [...report.seo.checks, ...report.aiSearch.checks],
@@ -654,11 +654,11 @@ export function ReportDashboard({
               <p className="text-[11px] font-medium uppercase tracking-wide text-[#8b919c]">Home · SEO</p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <img
-                  src={customerLogo || fallbackFavicon}
+                  src={displayIcon}
                   alt=""
                   className="size-8 rounded-md border border-slate-200 object-contain"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = fallbackFavicon;
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
                 <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">

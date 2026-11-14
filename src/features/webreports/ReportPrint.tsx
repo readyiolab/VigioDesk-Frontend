@@ -1,5 +1,6 @@
 import type { AuditCheck, WebReport } from "./types";
 import { categoryHealth, issueDistribution, isFinding, letterGrade } from "./reportNarrative";
+import { siteIconUrl } from "./siteIcon";
 
 function scoreText(score: number | null): string {
   return score === null ? "—" : String(score);
@@ -32,7 +33,7 @@ export function ReportPrint({ report }: { report: WebReport }) {
   const domain = getHostname(report.url);
   const customerName = report.customerBranding?.companyName || domain;
   const customerLogo = report.customerBranding?.logoUrl;
-  const fallbackFavicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  const fallbackFavicon = siteIconUrl(domain, 128);
   const grade = letterGrade(report.scores.overall);
 
   const allChecks = [...report.seo.checks, ...report.aiSearch.checks];

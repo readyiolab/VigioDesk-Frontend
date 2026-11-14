@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/services/api";
 import { webreportsApi } from "@/services/webreportsApi";
+import { historyFromReports } from "./dashboardMetrics";
+import type { ReportListResponse, WebReport } from "./types";
 import { shouldPollReport, webReportKeys } from "./keys";
 
 export function useWebReportList() {
@@ -40,7 +43,42 @@ export function useWebReportHistoryById(id: string | undefined) {
   return useQuery({
     queryKey: webReportKeys.historyByReport(id || "none"),
     enabled: Boolean(id),
-    queryFn: () => webreportsApi.historyForReport(id as string, 24),
+    queryFn: async ({ client }) => {
+      try {
+        return await webreportsApi.historyForReport(id as string, 24);
+      } catch (err) {
+        const status = err instanceof ApiError ? err.status : 0;
+        // Production may not have /:id/history deployed yet — fall back to list.
+        if (status !== 404 && status !== 400) throw err;
+        const detail = client.getQueryData<{ report: WebReport }>(webReportKeys.detail(id as string));
+        let host = "";
+        try {
+          host = new URL(detail?.report.url || "").hostname;
+        } catch {
+          host = "";
+        }
+        const cached = client.getQueryData<ReportListResponse>(webReportKeys.list(0));
+        const list = cached ?? (await webreportsApi.list(50, 0));
+        if (!host && detail?.report.url) {
+          try {
+            host = new URL(detail.report.url).hostname;
+          } catch {
+            /* ignore */
+          }
+        }
+        if (!host && list.reports[0]) {
+          const match = list.reports.find((r) => r.id === id);
+          if (match) {
+            try {
+              host = new URL(match.url).hostname;
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        return historyFromReports(list.reports, host);
+      }
+    },
     staleTime: 60_000,
     retry: false,
   });
