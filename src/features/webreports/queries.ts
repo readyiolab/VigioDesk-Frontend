@@ -36,6 +36,16 @@ export function useWebReportHistory(host: string | undefined) {
   });
 }
 
+export function useWebReportHistoryById(id: string | undefined) {
+  return useQuery({
+    queryKey: webReportKeys.historyByReport(id || "none"),
+    enabled: Boolean(id),
+    queryFn: () => webreportsApi.historyForReport(id as string, 24),
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
 export function usePublicWebReport(token: string | undefined) {
   return useQuery({
     queryKey: webReportKeys.publicReport(token || "none"),

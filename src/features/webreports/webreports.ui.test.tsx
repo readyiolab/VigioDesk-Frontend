@@ -22,6 +22,7 @@ vi.mock("@/services/webreportsApi", () => ({
   webreportsApi: {
     list: vi.fn(),
     history: vi.fn(),
+    historyForReport: vi.fn(),
     create: vi.fn(),
     get: vi.fn(),
     rescan: vi.fn(),
@@ -157,6 +158,7 @@ beforeEach(() => {
   writeText.mockResolvedValue(undefined)
   api.list.mockResolvedValue({ reports: [], pagination: { limit: 20, offset: 0, total: 0 } })
   api.history.mockResolvedValue({ host: "example.com", points: [] })
+  api.historyForReport.mockResolvedValue({ host: "example.com", points: [] })
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },
@@ -269,6 +271,46 @@ describe("report progress and results", () => {
     expect(screen.getByText(/Unavailable:.*Mobile/i)).toBeTruthy()
     expect(screen.getAllByText("Not measured").length).toBeGreaterThan(0)
     expect(screen.getByText(/limited crawl/i)).toBeTruthy()
+  })
+
+  it("does not claim HTML was analyzed when SEO was unavailable", async () => {
+    api.get.mockResolvedValue({
+      report: report({
+        scores: { overall: 86, mobile: 73, desktop: 97, seo: null, aiSearch: 96 },
+        completeness: { complete: false, unavailableSections: ["seo"] },
+        pagesCrawled: 1,
+        crawl: {
+          pagesAttempted: 1,
+          htmlPages: 0,
+          timedOutPages: 0,
+          sitemapSeeds: 0,
+          seoSource: "unavailable",
+        },
+        seo: {
+          checks: [
+            {
+              id: "seo-unavailable",
+              category: "seo",
+              status: "unavailable",
+              severity: "info",
+              title: "SEO checks unavailable",
+              description: "No HTML pages were fetched, so on-page SEO checks could not run.",
+              affectedCount: 0,
+              affectedUrls: [],
+              fix: "Confirm the URL returns HTML.",
+              impact: "medium",
+              effort: "easy",
+            },
+          ],
+        },
+      }),
+    })
+    renderRoutes("/webreports/rep-1")
+    expect((await screen.findAllByText(/Incomplete measurement/i)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/No HTML pages were fetched/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Rescan to retry SEO with browser HTML fallback/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Only one HTML page was analyzed/i)).toBeNull()
+    expect(screen.getAllByText(/0 HTML/i).length).toBeGreaterThan(0)
   })
 
   it("shows a failed scan", async () => {

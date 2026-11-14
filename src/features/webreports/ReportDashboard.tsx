@@ -15,6 +15,7 @@ import type { AuditCheck, DevicePerformance, VitalRating, WebReport } from "./ty
 import { stageLabel } from "./stageLabel";
 import {
   categoryHealth,
+  crawlCoverageLabel,
   issueDistribution,
   isFinding,
   isUnavailableCheck,
@@ -596,9 +597,10 @@ export function ReportDashboard({
       !report.completeness.unavailableSections.some((s) => /ai/i.test(s)),
   };
 
-  const htmlPages = report.crawl?.htmlPages ?? report.pagesCrawled;
-  const pagesAttempted = report.crawl?.pagesAttempted ?? report.pagesCrawled;
-  const limitedCrawl = htmlPages <= 1;
+  const coverage = crawlCoverageLabel(report);
+  const htmlPages = coverage.htmlPages;
+  const pagesAttempted = coverage.pagesAttempted;
+  const limitedCrawl = coverage.limitedCrawl;
   const incomplete =
     !report.completeness.complete ||
     report.scores.seo === null ||
@@ -729,8 +731,11 @@ export function ReportDashboard({
                       ? `Unavailable: ${report.completeness.unavailableSections.map(sectionLabel).join(", ")}.`
                       : "Some score sections could not be measured."}
                     {!sectionMeasured.seo ? ` ${sectionUnavailableMessage(report, "seo")}` : ""}
-                    {limitedCrawl
+                    {limitedCrawl && !coverage.noHtmlForSeo
                       ? " Only one HTML page was analyzed — results may be incomplete."
+                      : ""}
+                    {coverage.noHtmlForSeo
+                      ? " Rescan to retry SEO with browser HTML fallback."
                       : ""}
                   </p>
                 </div>

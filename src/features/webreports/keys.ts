@@ -3,6 +3,7 @@ export const webReportKeys = {
   list: (offset: number) => ["webreports", "list", offset] as const,
   detail: (id: string) => ["webreports", "detail", id] as const,
   history: (host: string) => ["webreports", "history", host] as const,
+  historyByReport: (id: string) => ["webreports", "history-by-report", id] as const,
   publicReport: (token: string) => ["webreports", "public", token] as const,
 };
 

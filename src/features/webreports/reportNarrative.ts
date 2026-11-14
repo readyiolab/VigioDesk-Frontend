@@ -57,6 +57,34 @@ export function sectionUnavailableMessage(report: WebReport, section: "seo" | "a
   return "AI search was not measured on this scan.";
 }
 
+/** True when on-page SEO had measurable HTML (not the seo-unavailable stub). */
+export function seoHtmlMeasured(report: WebReport): boolean {
+  if (report.scores.seo === null) return false;
+  if (report.seo.checks.some((c) => c.id === "seo-unavailable")) return false;
+  if (report.crawl?.seoSource === "unavailable") return false;
+  if (report.crawl && report.crawl.htmlPages === 0) return false;
+  return true;
+}
+
+export function crawlCoverageLabel(report: WebReport): {
+  htmlPages: number;
+  pagesAttempted: number;
+  limitedCrawl: boolean;
+  noHtmlForSeo: boolean;
+} {
+  const noHtmlForSeo = !seoHtmlMeasured(report) && report.scores.seo === null;
+  const htmlPages = noHtmlForSeo
+    ? report.crawl?.htmlPages ?? 0
+    : (report.crawl?.htmlPages ?? report.pagesCrawled);
+  const pagesAttempted = report.crawl?.pagesAttempted ?? Math.max(report.pagesCrawled, 1);
+  return {
+    htmlPages,
+    pagesAttempted,
+    limitedCrawl: htmlPages > 0 && htmlPages <= 1,
+    noHtmlForSeo,
+  };
+}
+
 export function issueDistribution(checks: AuditCheck[]) {
   let errors = 0;
   let warnings = 0;

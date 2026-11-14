@@ -18,6 +18,12 @@ export const webreportsApi = {
       points: HistoryPoint[];
     }>,
 
+  historyForReport: (id: string, limit = 24) =>
+    apiFetch(`/webreports/${id}/history?limit=${limit}`) as Promise<{
+      host: string;
+      points: HistoryPoint[];
+    }>,
+
   get: (id: string) =>
     apiFetch(`/webreports/${id}`) as Promise<{ report: WebReport }>,
 
