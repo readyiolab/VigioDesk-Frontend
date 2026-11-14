@@ -80,6 +80,8 @@ export interface WebReport {
   aiSearch: {
     botAccess: Record<string, string>;
     llmsTxt: { present: boolean; status: string };
+    manifest?: { present: boolean; status: string };
+    humansTxt?: { present: boolean; status: string };
     jsDependency: { rawVsRenderedRatio: number | null; status: CheckStatus };
     checks: AuditCheck[];
   };

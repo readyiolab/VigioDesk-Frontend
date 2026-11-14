@@ -87,6 +87,8 @@ function report(overrides: Partial<WebReport> = {}): WebReport {
     aiSearch: {
       botAccess: { GPTBot: "allowed" },
       llmsTxt: { present: true, status: "present" },
+      manifest: { present: true, status: "ok" },
+      humansTxt: { present: true, status: "present" },
       jsDependency: { rawVsRenderedRatio: 0.8, status: "absent" },
       checks: [],
     },

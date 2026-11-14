@@ -940,8 +940,8 @@ export function ReportDashboard({
 
         {activeTab === "ai" ? (
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-1">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                   <Bot className="size-3.5" />
                   Bot access
@@ -957,6 +957,24 @@ export function ReportDashboard({
                   {report.aiSearch.llmsTxt.present ? "Present" : "Missing"}
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-500">{report.aiSearch.llmsTxt.status}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="text-xs font-semibold text-slate-500">Web Manifest</div>
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {report.aiSearch.manifest?.present ? "Present" : "Missing"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {report.aiSearch.manifest?.status ?? "unavailable"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="text-xs font-semibold text-slate-500">humans.txt</div>
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {report.aiSearch.humansTxt?.present ? "Present" : "Missing"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {report.aiSearch.humansTxt?.status ?? "unavailable"}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="text-xs font-semibold text-slate-500">JS dependency</div>
