@@ -71,6 +71,11 @@ export interface WebReport {
     timedOutPages: number;
     sitemapSeeds: number;
     seoSource?: "http" | "browser-fallback" | "unavailable";
+    seoRecovery?: {
+      attempted: boolean;
+      succeeded: boolean;
+      error: string | null;
+    };
   };
   completeness: { complete: boolean; unavailableSections: string[] };
   scores: {

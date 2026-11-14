@@ -344,6 +344,10 @@ describe("report progress and results", () => {
     expect(screen.getAllByText(/Rescan to retry SEO with browser HTML fallback/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Only one HTML page was analyzed/i)).toBeNull()
     expect(screen.getAllByText(/0 HTML/i).length).toBeGreaterThan(0)
+    // Site Audit: attempted URLs still show, but Healthy stays 0 without measurable HTML
+    const healthyLabel = screen.getAllByText("Healthy")[0]
+    const healthyRow = healthyLabel?.closest("li")
+    expect(healthyRow?.textContent || "").toMatch(/Healthy\s*0/)
   })
 
   it("shows a failed scan", async () => {

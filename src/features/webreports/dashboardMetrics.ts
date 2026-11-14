@@ -98,17 +98,22 @@ function extractKeywords(checks: AuditCheck[], limit = 8): PositionKeyword[] {
 }
 
 function crawledBreakdown(report: WebReport, errors: number, warnings: number): CrawledPageBreakdown {
-  const total = Math.max(report.crawl?.htmlPages ?? report.pagesCrawled, 0);
-  const timedOut = report.crawl?.timedOutPages ?? 0;
-  const broken = Math.min(total, timedOut || (errors > 0 ? Math.min(4, total) : 0));
-  const haveIssues = Math.min(
-    Math.max(total - broken, 0),
-    Math.max(warnings > 0 ? Math.ceil(total * 0.6) : 0, errors > 0 ? Math.ceil(total * 0.3) : 0)
+  // Site Audit "Crawled Pages" = URLs attempted; segment bars use measurable HTML only.
+  const attempted = Math.max(
+    report.crawl?.pagesAttempted ?? report.pagesCrawled ?? 0,
+    0
   );
-  const redirect = Math.min(Math.max(total - broken - haveIssues, 0), Math.floor(total * 0.2));
+  const measurable = Math.max(report.crawl?.htmlPages ?? 0, 0);
+  const timedOut = report.crawl?.timedOutPages ?? 0;
+  const broken = Math.min(measurable, timedOut || (errors > 0 ? Math.min(4, measurable) : 0));
+  const haveIssues = Math.min(
+    Math.max(measurable - broken, 0),
+    Math.max(warnings > 0 ? Math.ceil(measurable * 0.6) : 0, errors > 0 ? Math.ceil(measurable * 0.3) : 0)
+  );
+  const redirect = Math.min(Math.max(measurable - broken - haveIssues, 0), Math.floor(measurable * 0.2));
   const blocked = 0;
-  const healthy = Math.max(total - broken - haveIssues - redirect - blocked, 0);
-  return { healthy, broken, haveIssues, redirect, blocked, total };
+  const healthy = Math.max(measurable - broken - haveIssues - redirect - blocked, 0);
+  return { healthy, broken, haveIssues, redirect, blocked, total: attempted };
 }
 
 export function buildDashboardMetrics(report: WebReport): DashboardMetrics {
@@ -169,7 +174,7 @@ export function buildDashboardMetrics(report: WebReport): DashboardMetrics {
     top3,
     top10,
     visibilityPct: 0,
-    pagesCrawled: report.crawl?.htmlPages ?? report.pagesCrawled,
+    pagesCrawled: report.crawl?.pagesAttempted ?? report.pagesCrawled,
     scannedLabel,
   };
 }
