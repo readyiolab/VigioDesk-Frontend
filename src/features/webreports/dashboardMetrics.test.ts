@@ -4,6 +4,7 @@ import type { WebReport } from "./types";
 
 function baseReport(overrides: Partial<WebReport> = {}): WebReport {
   return {
+    contractVersion: 1,
     id: "rep-1",
     url: "https://apple.com/",
     status: "completed",
@@ -67,7 +68,7 @@ function baseReport(overrides: Partial<WebReport> = {}): WebReport {
     shareToken: null,
     error: null,
     ...overrides,
-  };
+  } as WebReport;
 }
 
 describe("buildDashboardMetrics site audit crawl counts", () => {
