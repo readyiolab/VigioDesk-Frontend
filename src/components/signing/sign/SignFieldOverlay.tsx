@@ -92,10 +92,9 @@ export function SignFieldOverlay({
               className={cn(
                 "group absolute flex items-center justify-center overflow-hidden rounded-sm transition-all",
                 !readOnly && "cursor-pointer",
-                // A pulsing ring on the field the signer is being sent to. This is
-                // the single most useful affordance in the whole page — on a
-                // 40-page contract, "where do I sign" is the entire question.
-                isFocused && "z-20 ring-2 ring-offset-2 ring-primary animate-pulse-ring",
+                // Amber pulse matches the "Go to next field" CTA so signers can
+                // spot the target on long contracts without hunting for blue boxes.
+                isFocused && "z-20 ring-[3px] ring-offset-2 ring-amber-400 animate-pulse-ring shadow-[0_0_0_4px_rgba(251,191,36,0.35)]",
                 !isFilled && !readOnly && "hover:brightness-95"
               )}
               style={{
@@ -103,8 +102,16 @@ export function SignFieldOverlay({
                 top: `${field.y * 100}%`,
                 width: `${field.width * 100}%`,
                 height: `${field.height * 100}%`,
-                backgroundColor: isFilled ? "transparent" : `${field.isMine ? "#2563eb" : "#94a3b8"}1f`,
-                border: isFilled ? "none" : `2px solid ${owner?.color ?? "#2563eb"}`,
+                backgroundColor: isFilled
+                  ? "transparent"
+                  : isFocused
+                    ? "rgba(251, 191, 36, 0.28)"
+                    : `${field.isMine ? "#2563eb" : "#94a3b8"}1f`,
+                border: isFilled
+                  ? "none"
+                  : isFocused
+                    ? "2px solid #f59e0b"
+                    : `2px solid ${owner?.color ?? "#2563eb"}`,
               }}
             >
               {isFilled ? (

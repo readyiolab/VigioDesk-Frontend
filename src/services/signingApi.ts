@@ -265,6 +265,7 @@ export interface SendResult {
   documentId: string;
   status: string;
   notified: NotifyResult[];
+  deliveryPending?: boolean;
 }
 
 export interface DocumentVersionInfo {
@@ -276,6 +277,14 @@ export interface DocumentVersionInfo {
   selfSignedCert: boolean;
   tsaTimestamp: string | null;
   createdAt: string;
+}
+
+export interface DocumentSealInfo {
+  state: "sealing" | "sealed" | "completed_unsigned" | "not_applicable";
+  digitallySigned: boolean;
+  selfSignedCert: boolean;
+  tsaTimestamp: boolean;
+  message: string | null;
 }
 
 export interface DocumentStatus {
@@ -292,4 +301,5 @@ export interface DocumentStatus {
   progress: { signed: number; total: number; fieldsFilled: number; fieldsTotal: number };
   recipients: SignRecipient[];
   versions: DocumentVersionInfo[];
+  seal?: DocumentSealInfo;
 }

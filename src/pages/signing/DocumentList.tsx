@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -21,6 +21,17 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileDropzone } from "@/components/ui/file-dropzone";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { loadPdfDocument } from "@/lib/pdf";
 import { signingApi, type SignTemplateSummary, type SigningStats } from "@/services/signingApi";
@@ -101,6 +112,12 @@ export default function DocumentList() {
     total: number;
     totalPages: number;
   } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<
+    | { kind: "document"; doc: SignDocumentSummary }
+    | { kind: "template"; tpl: SignTemplateSummary }
+    | null
+  >(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
@@ -233,14 +250,38 @@ export default function DocumentList() {
     }
   };
 
-  const handleDelete = async (doc: SignDocumentSummary) => {
-    if (!window.confirm(`Delete "${doc.title}"? This can't be undone.`)) return;
+  const requestDeleteDocument = (doc: SignDocumentSummary) => {
+    setConfirmDelete({ kind: "document", doc });
+  };
+
+  const requestDeleteTemplate = (tpl: SignTemplateSummary) => {
+    setConfirmDelete({ kind: "template", tpl });
+  };
+
+  const confirmPendingDelete = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
     try {
-      await signingApi.deleteDocument(doc.id);
-      setDocuments((current) => current.filter((d) => d.id !== doc.id));
-      toast.success("Document deleted.");
+      if (confirmDelete.kind === "document") {
+        await signingApi.deleteDocument(confirmDelete.doc.id);
+        setDocuments((current) => current.filter((d) => d.id !== confirmDelete.doc.id));
+        toast.success("Document deleted.");
+      } else {
+        await signingApi.deleteTemplate(confirmDelete.tpl.id);
+        setTemplates((current) => current.filter((t) => t.id !== confirmDelete.tpl.id));
+        toast.success("Template deleted.");
+      }
+      setConfirmDelete(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't delete the document.");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : confirmDelete.kind === "document"
+            ? "Couldn't delete the document."
+            : "Couldn't delete the template."
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -272,17 +313,6 @@ export default function DocumentList() {
       toast.error(err instanceof Error ? err.message : "Couldn't use this template.");
     } finally {
       setIsUsingTemplate(false);
-    }
-  };
-
-  const handleDeleteTemplate = async (tpl: SignTemplateSummary) => {
-    if (!window.confirm(`Delete template "${tpl.name}"?`)) return;
-    try {
-      await signingApi.deleteTemplate(tpl.id);
-      setTemplates((current) => current.filter((t) => t.id !== tpl.id));
-      toast.success("Template deleted.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't delete the template.");
     }
   };
 
@@ -345,10 +375,28 @@ export default function DocumentList() {
             ) : (
               <Upload />
             )}
-            {isUploading ? `Uploading ${uploadProgress}%` : "New document"}
+            {isUploading ? `Uploading ${uploadProgress}%` : "Upload PDF or Word"}
           </Button>
         </div>
       </div>
+
+      {mainTab === "documents" && (
+        <FileDropzone
+          accept={SIGNING_UPLOAD_ACCEPT}
+          multiple={false}
+          maxSizeMB={SIGNING_LIMITS.maxFileSize / (1024 * 1024)}
+          disabled={isUploading}
+          toolName="PDF or Word"
+          onFiles={(files) => {
+            const file = files[0];
+            if (file) {
+              uploadModeRef.current = "normal";
+              void handleUpload(file, "normal");
+            }
+          }}
+          className="min-h-[7.5rem] rounded-2xl py-6"
+        />
+      )}
 
       <ESignHowItWorks forceOpen={!isLoading && documents.length === 0 && !search && status === "ALL" && mainTab === "documents"} />
 
@@ -366,11 +414,16 @@ export default function DocumentList() {
       )}
 
       {stats && mainTab === "documents" && stats.quota.plan === "FREE" && stats.quota.remaining <= 1 && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
-          <AlertTriangle className="size-3.5 shrink-0" />
-          {stats.quota.remaining === 0
-            ? "You've used all your free sends this month. Upgrade to PRO to send more documents for signature."
-            : "You have 1 free send left this month. Upgrade to PRO for more."}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            {stats.quota.remaining === 0
+              ? "You've used all your free sends this month."
+              : "You have 1 free send left this month."}
+          </span>
+          <Button asChild size="sm" variant="outline" className="h-7 border-amber-500/40 text-amber-800 dark:text-amber-400">
+            <Link to="/pricing">Upgrade to PRO</Link>
+          </Button>
         </div>
       )}
 
@@ -388,29 +441,31 @@ export default function DocumentList() {
 
       {mainTab === "documents" && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={status} onValueChange={(v) => handleStatusChange(v as SignDocumentStatus | "ALL")}>
-              <TabsList>
-                {STATUS_TABS.map((tab) => (
-                  <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
-                    {tab.label}
-                    {stats && tab.value !== "ALL" && stats.byStatus[tab.value] > 0 && (
-                      <span className="ml-1.5 text-[10px] tabular-nums opacity-60">
-                        {stats.byStatus[tab.value]}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1 overflow-x-auto pb-0.5">
+              <Tabs value={status} onValueChange={(v) => handleStatusChange(v as SignDocumentStatus | "ALL")}>
+                <TabsList className="inline-flex h-auto w-max max-w-none flex-nowrap justify-start gap-0.5">
+                  {STATUS_TABS.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 text-xs">
+                      {tab.label}
+                      {stats && tab.value !== "ALL" && stats.byStatus[tab.value] > 0 && (
+                        <span className="ml-1.5 text-[10px] tabular-nums opacity-60">
+                          {stats.byStatus[tab.value]}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
 
-            <div className="relative ml-auto">
+            <div className="relative shrink-0 sm:ml-auto">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search documents…"
-                className="h-9 w-56 pl-8 text-sm"
+                className="h-9 w-full pl-8 text-sm sm:w-56"
                 aria-label="Search documents"
               />
             </div>
@@ -493,7 +548,7 @@ export default function DocumentList() {
                       size="icon-sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(doc);
+                        requestDeleteDocument(doc);
                       }}
                       disabled={doc.status === "COMPLETED"}
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
@@ -579,7 +634,7 @@ export default function DocumentList() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => handleDeleteTemplate(tpl)}
+                    onClick={() => requestDeleteTemplate(tpl)}
                     aria-label={`Delete ${tpl.name}`}
                   >
                     <Trash2 className="text-destructive" />
@@ -636,6 +691,36 @@ export default function DocumentList() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={Boolean(confirmDelete)} onOpenChange={(open) => !open && !isDeleting && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDelete?.kind === "template" ? "Delete template?" : "Delete document?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDelete?.kind === "template"
+                ? `Delete "${confirmDelete.tpl.name}"? This can't be undone.`
+                : confirmDelete?.kind === "document"
+                  ? `Delete "${confirmDelete.doc.title}"? This can't be undone.`
+                  : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmPendingDelete();
+              }}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

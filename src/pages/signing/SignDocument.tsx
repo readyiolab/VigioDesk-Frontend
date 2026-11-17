@@ -366,7 +366,9 @@ export default function SignDocument() {
           </Button>
           {nextRequired ? (
             <Button onClick={goToNext} className="flex-1">
-              Go to next yellow box
+              {nextRequired.type === "SIGNATURE" || nextRequired.type === "INITIALS"
+                ? "Go to next signature"
+                : "Go to next field"}
               <ArrowRight />
             </Button>
           ) : (

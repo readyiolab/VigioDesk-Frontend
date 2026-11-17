@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -18,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -27,6 +36,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { signingApi } from "@/services/signingApi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,6 +94,66 @@ function SaveIndicator({ state }: { state: ReturnType<typeof useFieldDesigner>["
       <Icon className={cn("size-3", entry.spin && "animate-spin")} aria-hidden="true" />
       {entry.text}
     </span>
+  );
+}
+
+function SentTrackingLayout({
+  documentId,
+  fileUrl,
+  viewerRef,
+  renderPageOverlay,
+  pagesWithFields,
+  onPageChange,
+}: {
+  documentId: string;
+  fileUrl: string | null;
+  viewerRef: RefObject<PdfViewerHandle | null>;
+  renderPageOverlay: (
+    pageNumber: number,
+    size: { width: number; height: number },
+    scale: number
+  ) => ReactNode;
+  pagesWithFields: Set<number>;
+  onPageChange: (page: number) => void;
+}) {
+  const [mobileTab, setMobileTab] = useState("document");
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <div className="shrink-0 border-b border-border bg-card px-3 pt-2 lg:hidden">
+        <Tabs value={mobileTab} onValueChange={setMobileTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="document">Document</TabsTrigger>
+            <TabsTrigger value="status">Status</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div
+        className={cn(
+          "min-h-0 min-w-0 flex-1 bg-muted/40",
+          mobileTab === "status" && "hidden lg:block"
+        )}
+      >
+        <PdfViewer
+          ref={viewerRef}
+          source={fileUrl}
+          className="h-full"
+          renderPageOverlay={renderPageOverlay}
+          pagesWithFields={pagesWithFields}
+          onPageChange={onPageChange}
+        />
+      </div>
+
+      <div
+        className={cn(
+          "min-h-0 w-full shrink-0 overflow-y-auto bg-card p-4 lg:w-96 lg:border-l lg:border-border",
+          mobileTab === "document" && "hidden lg:block"
+        )}
+      >
+        <StatusTracker documentId={documentId} />
+      </div>
+    </div>
   );
 }
 
@@ -155,6 +233,8 @@ export default function DocumentEditor() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isSelfSending, setIsSelfSending] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
 
   // Once sent, placement is frozen — see assertDraft on the API side. The UI
   // mirrors that rule rather than letting the user edit into a 409.
@@ -227,9 +307,16 @@ export default function DocumentEditor() {
 
   const handleQuickAdd = useCallback(
     (type: SignFieldType) => {
-      // Click-to-place drops in the middle of the page the user is looking at.
-      designer.addField(type, currentPage, 0.5, 0.5, activeRecipientId);
+      // Place near the top of the visible page and stagger so rapid taps don't
+      // stack every field on the exact same spot (common on mobile click-to-place).
+      const onPage = designer.fields.filter((f) => f.page === currentPage).length;
+      const x = 0.5 + ((onPage % 5) - 2) * 0.04;
+      const y = 0.28 + Math.floor(onPage / 5) * 0.08;
+      designer.addField(type, currentPage, x, Math.min(y, 0.75), activeRecipientId);
       setFieldsOpen(false);
+      if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+        toast.message("Field added — drag it into place on the page.");
+      }
     },
     [designer, currentPage, activeRecipientId]
   );
@@ -361,22 +448,29 @@ export default function DocumentEditor() {
     }
   }, [designer, id, navigate]);
 
-  const handleSaveTemplate = useCallback(async () => {
+  const openSaveTemplate = useCallback(async () => {
     if (designer.saveState === "dirty" || designer.saveState === "saving") {
       await designer.save();
     }
+    setTemplateName(document?.title || "Untitled template");
+    setTemplateDialogOpen(true);
+  }, [designer, document?.title]);
+
+  const confirmSaveTemplate = useCallback(async () => {
     setIsSavingTemplate(true);
     try {
-      const name = window.prompt("Template name", document?.title || "Untitled template");
-      if (name === null) return;
-      await signingApi.createTemplate({ documentId: id, name: name.trim() || undefined });
+      await signingApi.createTemplate({
+        documentId: id,
+        name: templateName.trim() || undefined,
+      });
+      setTemplateDialogOpen(false);
       toast.success("Template saved.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save the template.");
     } finally {
       setIsSavingTemplate(false);
     }
-  }, [designer, document?.title, id]);
+  }, [id, templateName]);
 
   const renderPageOverlay = useCallback(
     (pageNumber: number, size: { width: number; height: number }, scale: number) => (
@@ -507,7 +601,7 @@ export default function DocumentEditor() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={handleSaveTemplate}
+                  onClick={() => void openSaveTemplate()}
                   disabled={isSavingTemplate || recipients.length === 0}
                   aria-label="Save as template"
                 >
@@ -685,7 +779,9 @@ export default function DocumentEditor() {
             <SheetContent side="bottom" className="flex h-[min(70vh,28rem)] flex-col p-0">
               <SheetHeader className="border-b border-border px-4 py-3 text-left">
                 <SheetTitle>Place fields</SheetTitle>
-                <SheetDescription>Tap a field type to drop it on the current page.</SheetDescription>
+                <SheetDescription>
+                  Tap a field type to place it on the page you&apos;re viewing, then drag it into position.
+                </SheetDescription>
               </SheetHeader>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <FieldPalette
@@ -714,22 +810,15 @@ export default function DocumentEditor() {
           </Sheet>
         </div>
       ) : (
-        // SENT / COMPLETED: PDF + tracker side by side (same language as draft).
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <div className="min-h-0 min-w-0 flex-1 bg-muted/40">
-            <PdfViewer
-              ref={viewerRef}
-              source={fileUrl}
-              className="h-full"
-              renderPageOverlay={renderPageOverlay}
-              pagesWithFields={designer.pagesWithFields}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-          <div className="w-full shrink-0 overflow-y-auto border-l border-border bg-card p-4 sm:w-80 lg:w-96">
-            <StatusTracker documentId={id} />
-          </div>
-        </div>
+        // SENT / COMPLETED: Document | Status tabs under lg; side panel from lg up.
+        <SentTrackingLayout
+          documentId={id}
+          fileUrl={fileUrl}
+          viewerRef={viewerRef}
+          renderPageOverlay={renderPageOverlay}
+          pagesWithFields={designer.pagesWithFields}
+          onPageChange={setCurrentPage}
+        />
       )}
 
       {showSend && document && (
@@ -747,6 +836,44 @@ export default function DocumentEditor() {
           }}
         />
       )}
+
+      <Dialog open={templateDialogOpen} onOpenChange={(open) => !isSavingTemplate && setTemplateDialogOpen(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save as template</DialogTitle>
+            <DialogDescription>
+              Reuse this layout and recipient roles for the next document.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder="Template name"
+            className="h-9"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void confirmSaveTemplate();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSavingTemplate}
+              onClick={() => setTemplateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" disabled={isSavingTemplate} onClick={() => void confirmSaveTemplate()}>
+              {isSavingTemplate ? <Spinner className="size-4" /> : null}
+              Save template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

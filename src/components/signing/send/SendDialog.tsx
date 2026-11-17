@@ -55,6 +55,12 @@ export function SendDialog({
           `Document sent, but ${failed.length} email(s) failed (${failed.map((f) => f.email).join(", ")}). Use Resend in the tracker.`,
           { duration: 8000 }
         );
+      } else if (result.deliveryPending) {
+        toast.success(
+          flowType === "SEQUENTIAL"
+            ? "Sent! The first signer’s invitation is on its way."
+            : `Sent! Invitations are going out to ${signers.length} recipient${signers.length === 1 ? "" : "s"}.`
+        );
       } else {
         toast.success(
           flowType === "SEQUENTIAL"

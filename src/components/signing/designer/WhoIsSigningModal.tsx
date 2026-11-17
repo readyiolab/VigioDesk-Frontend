@@ -1,14 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  FileSignature,
-  Info,
-  Plus,
-  Trash2,
-  User,
-  Users,
-} from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { Info, Plus, Trash2, User, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +9,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -60,50 +53,34 @@ interface WhoIsSigningModalProps {
   }) => void;
 }
 
-const MODES: {
+const MODE_CHIPS: {
   id: WhoSigningMode;
   label: string;
-  previewTitle: string;
-  previewSteps: string[];
-  previewTone: "sky" | "emerald" | "violet";
+  hint: string;
+  icon: "user" | "users" | "both";
 }[] = [
   {
     id: "only_you",
-    label: "Only you",
-    previewTitle: "Only you",
-    previewSteps: [
-      "Sign a document and click “Finish and sign” when you’re done.",
-    ],
-    previewTone: "sky",
+    label: "Only me",
+    hint: "Place fields, then Sign now",
+    icon: "user",
   },
   {
     id: "only_others",
-    label: "Only others",
-    previewTitle: "Only others",
-    previewSteps: [
-      "Add all signees details.",
-      "Set a signing order if needed.",
-      "Assign fields to show signees where to sign.",
-      "Send the document out for signature.",
-    ],
-    previewTone: "emerald",
+    label: "Someone else",
+    hint: "Send for others to sign",
+    icon: "users",
   },
   {
     id: "you_and_others",
-    label: "You and others",
-    previewTitle: "You and others",
-    previewSteps: [
-      "Add all signee details—including yours.",
-      "Set a signing order if needed.",
-      "Assign fields to show others where to sign.",
-      "Sign the document and send it out for signature.",
-    ],
-    previewTone: "violet",
+    label: "Several people",
+    hint: "You and others sign",
+    icon: "both",
   },
 ];
 
 const ROLE_OPTIONS: { value: SignRecipientRole; label: string }[] = [
-  { value: "SIGNER", label: "Signee" },
+  { value: "SIGNER", label: "Signer" },
   { value: "APPROVER", label: "Approver" },
   { value: "VIEWER", label: "Viewer" },
   { value: "CC", label: "CC" },
@@ -119,7 +96,7 @@ function splitName(name?: string): { firstName: string; lastName: string } {
 function joinName(firstName: string, lastName: string, email: string): string {
   const full = `${firstName.trim()} ${lastName.trim()}`.trim();
   if (full) return full;
-  return email.trim().split("@")[0] || "Signee";
+  return email.trim().split("@")[0] || "Signer";
 }
 
 function newDraft(partial?: Partial<DraftPerson>): DraftPerson {
@@ -137,26 +114,13 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-function ModeIcon({ mode, className }: { mode: WhoSigningMode; className?: string }) {
-  if (mode === "only_you") {
-    return <User className={cn("size-5", className)} aria-hidden />;
-  }
-  if (mode === "only_others") {
-    return (
-      <span className={cn("relative inline-flex", className)}>
-        <Users className="size-5" aria-hidden />
-        <CheckCircle2 className="absolute -right-1 -top-1 size-3.5 text-emerald-500" aria-hidden />
-      </span>
-    );
-  }
+function ChipIcon({ icon }: { icon: "user" | "users" | "both" }) {
+  if (icon === "user") return <User className="size-4" aria-hidden />;
+  if (icon === "users") return <Users className="size-4" aria-hidden />;
   return (
-    <span className={cn("inline-flex items-center gap-1", className)}>
-      <User className="size-4" aria-hidden />
-      <span className="text-xs font-semibold text-muted-foreground">+</span>
-      <span className="relative inline-flex">
-        <Users className="size-4" aria-hidden />
-        <CheckCircle2 className="absolute -right-1 -top-1 size-3 text-emerald-500" aria-hidden />
-      </span>
+    <span className="inline-flex items-center gap-0.5">
+      <User className="size-3.5" aria-hidden />
+      <Users className="size-3.5" aria-hidden />
     </span>
   );
 }
@@ -229,7 +193,7 @@ function PersonRow({
           size="icon"
           className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
           onClick={onRemove}
-          aria-label="Remove signee"
+          aria-label="Remove signer"
         >
           <Trash2 className="size-4" />
         </Button>
@@ -250,10 +214,8 @@ export function WhoIsSigningModal({
 }: WhoIsSigningModalProps) {
   const selfParts = useMemo(() => splitName(defaultSelf?.name), [defaultSelf?.name]);
 
-  const [hoveredMode, setHoveredMode] = useState<WhoSigningMode | null>(null);
   const [selectedMode, setSelectedMode] = useState<WhoSigningMode | null>(null);
   const [setSigningOrder, setSetSigningOrder] = useState(false);
-  const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selfDraft, setSelfDraft] = useState<DraftPerson>(() =>
     newDraft({
       email: defaultSelf?.email ?? "",
@@ -265,28 +227,8 @@ export function WhoIsSigningModal({
   const [others, setOthers] = useState<DraftPerson[]>([newDraft()]);
   const [submitting, setSubmitting] = useState(false);
 
-  const clearHoverSoon = () => {
-    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
-    hoverClearTimer.current = setTimeout(() => setHoveredMode(null), 120);
-  };
-
-  const setHoverNow = (mode: WhoSigningMode) => {
-    if (hoverClearTimer.current) {
-      clearTimeout(hoverClearTimer.current);
-      hoverClearTimer.current = null;
-    }
-    setHoveredMode(mode);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
-    };
-  }, []);
-
   useEffect(() => {
     if (!isOpen) return;
-    setHoveredMode(null);
     setSelectedMode(initialMode);
     setSetSigningOrder(false);
     setSelfDraft(
@@ -300,9 +242,6 @@ export function WhoIsSigningModal({
     setOthers([newDraft()]);
     setSubmitting(false);
   }, [isOpen, initialMode, defaultSelf?.email, selfParts.firstName, selfParts.lastName]);
-
-  const previewMode = selectedMode ?? hoveredMode;
-  const preview = MODES.find((m) => m.id === previewMode) ?? null;
 
   const updateOther = (id: string, next: DraftPerson) => {
     setOthers((rows) => rows.map((r) => (r.id === id ? next : r)));
@@ -321,9 +260,12 @@ export function WhoIsSigningModal({
   };
 
   const handleContinue = async () => {
-    if (!selectedMode) return;
+    if (!selectedMode) {
+      toast.error("Choose who will sign.");
+      return;
+    }
 
-    if (selectedMode === "only_you") {
+    if (selectedMode === "only_you" || selectedMode === "you_and_others") {
       if (!isValidEmail(selfDraft.email)) {
         toast.error("Enter a valid email for yourself.");
         return;
@@ -331,13 +273,9 @@ export function WhoIsSigningModal({
     }
 
     if (selectedMode === "only_others" || selectedMode === "you_and_others") {
-      if (selectedMode === "you_and_others" && !isValidEmail(selfDraft.email)) {
-        toast.error("Enter a valid email for yourself.");
-        return;
-      }
       const filled = others.filter((o) => o.email.trim());
       if (filled.length === 0) {
-        toast.error("Add at least one other signee with an email.");
+        toast.error("Add at least one other signer with an email.");
         return;
       }
       const bad = filled.find((o) => !isValidEmail(o.email));
@@ -384,255 +322,132 @@ export function WhoIsSigningModal({
       onComplete({ recipients: created, flowType, selfSign });
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save signees.");
+      toast.error(err instanceof Error ? err.message : "Couldn't save signers.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const toneClass =
-    preview?.previewTone === "emerald"
-      ? "border-emerald-200/90 bg-emerald-50/90"
-      : preview?.previewTone === "violet"
-        ? "border-violet-200/90 bg-violet-50/80"
-        : preview?.previewTone === "sky"
-          ? "border-sky-200/90 bg-sky-50/90"
-          : "border-transparent bg-transparent";
+  const modeMeta = MODE_CHIPS.find((m) => m.id === selectedMode);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        className={cn(
-          "flex max-h-[min(92vh,880px)] w-[min(96vw,960px)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl"
-        )}
-      >
-        <DialogTitle className="sr-only">Who&apos;s signing?</DialogTitle>
-        <DialogDescription className="sr-only">
-          Choose whether only you, only others, or you and others will sign this document.
-        </DialogDescription>
+      <DialogContent className="flex max-h-[min(90vh,720px)] w-[min(96vw,640px)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 py-4 pr-12 text-left">
+          <DialogTitle>Who&apos;s signing?</DialogTitle>
+          <DialogDescription>
+            Pick a quick option, add emails, then place signature fields on the PDF.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          {/* Left modes */}
-          <aside
-            className="shrink-0 border-b border-border bg-muted/20 p-4 md:w-[220px] md:border-b-0 md:border-r md:p-5"
-            onMouseLeave={clearHoverSoon}
-          >
-            <p className="mb-3 text-sm font-bold tracking-tight text-foreground">Who&apos;s signing?</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:gap-2.5 md:overflow-visible md:pb-0">
-              {MODES.map((mode) => {
-                const selected = selectedMode === mode.id;
-                const hovered = !selectedMode && hoveredMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onMouseEnter={() => setHoverNow(mode.id)}
-                    onFocus={() => setHoverNow(mode.id)}
-                    onClick={() => {
-                      if (hoverClearTimer.current) {
-                        clearTimeout(hoverClearTimer.current);
-                        hoverClearTimer.current = null;
-                      }
-                      setSelectedMode(mode.id);
-                      setHoveredMode(mode.id);
-                    }}
-                    className={cn(
-                      "relative flex min-w-[7.5rem] flex-col items-center gap-2 rounded-xl border bg-background px-3 py-3 text-center transition-[border-color,background-color,box-shadow] duration-200 ease-out md:min-w-0 md:flex-row md:items-center md:justify-start md:text-left",
-                      selected
-                        ? "border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-500/20"
-                        : hovered
-                          ? "border-blue-300/80 bg-blue-50/50"
-                          : "border-border hover:border-foreground/15"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-lg transition-colors duration-200",
-                        selected || hovered
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-muted text-foreground"
-                      )}
-                    >
-                      <ModeIcon mode={mode.id} />
-                    </span>
-                    <span className="text-xs font-semibold text-foreground">{mode.label}</span>
-                    {selected && (
-                      <span
-                        aria-hidden
-                        className="absolute -right-1.5 top-1/2 hidden size-2.5 -translate-y-1/2 rounded-full bg-emerald-500 md:block"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          {/* Right panel */}
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            {!selectedMode ? (
-              <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-10">
-                {/* Idle hint — stays mounted, fades out when preview shows */}
-                <div
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {MODE_CHIPS.map((mode) => {
+              const selected = selectedMode === mode.id;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setSelectedMode(mode.id)}
                   className={cn(
-                    "pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-muted-foreground transition-opacity duration-200 ease-out",
-                    preview ? "opacity-0" : "opacity-100"
+                    "flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-colors",
+                    selected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border hover:border-foreground/20 hover:bg-muted/40"
                   )}
-                  aria-hidden={!!preview}
                 >
-                  <ArrowLeft className="mb-3 size-10 rotate-180 opacity-30 md:rotate-0" />
-                  <p className="text-sm font-medium">Choose an option</p>
-                </div>
-
-                {/* Preview card — stays mounted, crossfades content */}
-                <div
-                  className={cn(
-                    "relative z-[1] w-full max-w-md rounded-2xl border px-6 py-7 shadow-sm transition-[opacity,border-color,background-color,transform] duration-200 ease-out",
-                    preview
-                      ? cn("translate-y-0 opacity-100", toneClass)
-                      : "pointer-events-none translate-y-1 opacity-0"
-                  )}
-                  aria-hidden={!preview}
-                >
-                  <div className="mb-4 flex justify-center text-foreground/80 transition-opacity duration-200">
-                    <FileSignature className="size-10 opacity-70" aria-hidden />
-                  </div>
-                  <h3 className="text-center text-lg font-bold text-foreground transition-opacity duration-150">
-                    {preview?.previewTitle ?? "\u00a0"}
-                  </h3>
-                  <div className="mt-3 min-h-[7.5rem]">
-                    {preview && preview.previewSteps.length === 1 ? (
-                      <p className="text-center text-sm leading-relaxed text-muted-foreground">
-                        {preview.previewSteps[0]}
-                      </p>
-                    ) : preview ? (
-                      <ol className="space-y-2.5 text-sm leading-relaxed text-muted-foreground">
-                        {preview.previewSteps.map((step, i) => (
-                          <li key={`${preview.id}-${i}`} className="flex gap-2.5">
-                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-background text-[11px] font-bold text-foreground shadow-sm ring-1 ring-border">
-                              {i + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : null}
-                  </div>
-                  <p
+                  <span
                     className={cn(
-                      "mt-5 text-center text-xs text-muted-foreground transition-opacity duration-200",
-                      preview ? "opacity-100" : "opacity-0"
+                      "flex size-8 items-center justify-center rounded-lg",
+                      selected ? "bg-primary/15 text-primary" : "bg-muted text-foreground"
                     )}
                   >
-                    Click the option to continue
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between border-b border-border px-5 py-4 pr-12">
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">
-                      {selectedMode === "only_you" ? "Confirm your details" : "Add signee information"}
-                    </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {MODES.find((m) => m.id === selectedMode)?.label}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
-                  {selectedMode !== "only_you" && (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <span>Set signing order</span>
-                        <Info className="size-3.5 text-muted-foreground" aria-hidden />
-                      </div>
-                      <Switch
-                        checked={setSigningOrder}
-                        onCheckedChange={setSetSigningOrder}
-                        aria-label="Set signing order"
-                      />
-                    </div>
-                  )}
-
-                  {(selectedMode === "only_you" || selectedMode === "you_and_others") && (
-                    <section className="space-y-3">
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        Your details
-                        <Info className="size-3.5 text-muted-foreground" aria-hidden />
-                      </div>
-                      <PersonRow
-                        person={selfDraft}
-                        emailRequired
-                        emailLabel="Your email"
-                        onChange={setSelfDraft}
-                      />
-                    </section>
-                  )}
-
-                  {(selectedMode === "only_others" || selectedMode === "you_and_others") && (
-                    <section className="space-y-3">
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        Other signees
-                        <Info className="size-3.5 text-muted-foreground" aria-hidden />
-                      </div>
-                      <div className="space-y-4">
-                        {others.map((row) => (
-                          <PersonRow
-                            key={row.id}
-                            person={row}
-                            emailRequired
-                            emailLabel="Email"
-                            onChange={(next) => updateOther(row.id, next)}
-                            canRemove={others.length > 1}
-                            onRemove={() => removeOther(row.id)}
-                          />
-                        ))}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full"
-                        onClick={addOther}
-                      >
-                        <Plus className="mr-1 size-3.5" />
-                        Add
-                      </Button>
-                    </section>
-                  )}
-
-                  {selectedMode === "only_you" && (
-                    <p className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm leading-relaxed text-sky-900">
-                      You&apos;ll place your signature fields on the PDF, then click{" "}
-                      <span className="font-semibold">Sign now</span> when you&apos;re ready.
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setSelectedMode(null)}
-                    disabled={submitting}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    type="button"
-                    className="min-w-[7.5rem] rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-                    onClick={handleContinue}
-                    disabled={submitting}
-                  >
-                    {submitting ? "Saving…" : "Continue"}
-                  </Button>
-                </div>
-              </>
-            )}
+                    <ChipIcon icon={mode.icon} />
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">{mode.label}</span>
+                  <span className="text-[11px] leading-snug text-muted-foreground">{mode.hint}</span>
+                </button>
+              );
+            })}
           </div>
+
+          {selectedMode ? (
+            <div className="space-y-5">
+              <p className="text-xs font-medium text-muted-foreground">
+                {modeMeta?.label} — {modeMeta?.hint}
+              </p>
+
+              {selectedMode !== "only_you" && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <span>Sign one after another</span>
+                    <Info className="size-3.5 text-muted-foreground" aria-hidden />
+                  </div>
+                  <Switch
+                    checked={setSigningOrder}
+                    onCheckedChange={setSetSigningOrder}
+                    aria-label="Sign one after another"
+                  />
+                </div>
+              )}
+
+              {(selectedMode === "only_you" || selectedMode === "you_and_others") && (
+                <section className="space-y-3">
+                  <div className="text-sm font-semibold text-foreground">Your details</div>
+                  <PersonRow
+                    person={selfDraft}
+                    emailRequired
+                    emailLabel="Your email"
+                    onChange={setSelfDraft}
+                  />
+                </section>
+              )}
+
+              {(selectedMode === "only_others" || selectedMode === "you_and_others") && (
+                <section className="space-y-3">
+                  <div className="text-sm font-semibold text-foreground">Other signers</div>
+                  <div className="space-y-4">
+                    {others.map((row) => (
+                      <PersonRow
+                        key={row.id}
+                        person={row}
+                        emailRequired
+                        emailLabel="Email"
+                        onChange={(next) => updateOther(row.id, next)}
+                        canRemove={others.length > 1}
+                        onRemove={() => removeOther(row.id)}
+                      />
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={addOther}>
+                    <Plus className="mr-1 size-3.5" />
+                    Add signer
+                  </Button>
+                </section>
+              )}
+
+              {selectedMode === "only_you" && (
+                <p className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm leading-relaxed text-sky-900">
+                  Place your signature fields on the PDF, then click{" "}
+                  <span className="font-semibold">Sign now</span> when you&apos;re ready.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+              Choose who will sign to continue.
+            </p>
+          )}
         </div>
+
+        <DialogFooter className="shrink-0 gap-2 border-t border-border px-5 py-4 sm:justify-end">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleContinue} disabled={submitting || !selectedMode}>
+            {submitting ? "Saving…" : "Continue"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

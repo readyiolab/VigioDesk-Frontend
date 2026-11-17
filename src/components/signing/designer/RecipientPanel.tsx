@@ -9,6 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { signingApi } from "@/services/signingApi";
 import { SIGNING_LIMITS, type SignFlowType, type SignRecipient } from "@/lib/signing/types";
@@ -47,6 +57,8 @@ export function RecipientPanel({
 }: RecipientPanelProps) {
   const [whoOpen, setWhoOpen] = useState(false);
   const [whoInitialMode, setWhoInitialMode] = useState<WhoSigningMode | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<SignRecipient | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const openWhoModal = (mode: WhoSigningMode | null = null) => {
     if (readOnly) return;
@@ -54,18 +66,17 @@ export function RecipientPanel({
     setWhoOpen(true);
   };
 
-  const handleRemove = async (recipient: SignRecipient) => {
+  const requestRemove = (recipient: SignRecipient) => {
     const fieldCount = fieldCountByRecipient.get(recipient.id) ?? 0;
-    if (
-      fieldCount > 0 &&
-      !window.confirm(
-        `${recipient.name} has ${fieldCount} field${fieldCount === 1 ? "" : "s"} placed. ` +
-          `Removing them leaves those fields unassigned. Continue?`
-      )
-    ) {
+    if (fieldCount > 0) {
+      setRemoveTarget(recipient);
       return;
     }
+    void performRemove(recipient);
+  };
 
+  const performRemove = async (recipient: SignRecipient) => {
+    setIsRemoving(true);
     try {
       await signingApi.removeRecipient(documentId, recipient.id);
       const remaining = recipients.filter((r) => r.id !== recipient.id);
@@ -77,8 +88,11 @@ export function RecipientPanel({
       if (remaining.length === 0) {
         onSelfSignModeChange?.(false);
       }
+      setRemoveTarget(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't remove recipient.");
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -176,7 +190,7 @@ export function RecipientPanel({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => handleRemove(r)}
+                  onClick={() => requestRemove(r)}
                   className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                   aria-label={`Remove ${r.name}`}
                 >
@@ -199,7 +213,7 @@ export function RecipientPanel({
             </span>
             <span className="text-xs font-semibold text-foreground">Who&apos;s signing?</span>
             <span className="max-w-[14rem] text-[11px] leading-relaxed text-muted-foreground">
-              Choose only you, only others, or you and others — then add details and continue.
+              Only me, someone else, or several people — then add emails and continue.
             </span>
           </button>
         )}
@@ -220,11 +234,42 @@ export function RecipientPanel({
           if (created[0]) onActiveChange(created[0].id);
           toast.success(
             created.length === 1
-              ? "Signee added — place fields on the PDF."
-              : `${created.length} signees added — place fields on the PDF.`
+              ? "Signer added — place fields on the PDF."
+              : `${created.length} signers added — place fields on the PDF.`
           );
         }}
       />
+
+      <AlertDialog
+        open={Boolean(removeTarget)}
+        onOpenChange={(open) => !open && !isRemoving && setRemoveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeTarget
+                ? `${removeTarget.name} has ${fieldCountByRecipient.get(removeTarget.id) ?? 0} field${
+                    (fieldCountByRecipient.get(removeTarget.id) ?? 0) === 1 ? "" : "s"
+                  } placed. Removing them leaves those fields unassigned.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isRemoving || !removeTarget}
+              onClick={(e) => {
+                e.preventDefault();
+                if (removeTarget) void performRemove(removeTarget);
+              }}
+            >
+              {isRemoving ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

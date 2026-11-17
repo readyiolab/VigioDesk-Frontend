@@ -18,6 +18,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { signingApi, type DocumentStatus } from "@/services/signingApi";
 import type { SignRecipientStatus } from "@/lib/signing/types";
@@ -64,6 +74,7 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
   const [downloading, setDownloading] = useState<"doc" | "cert" | "source" | null>(null);
   const [showActivity, setShowActivity] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -130,18 +141,12 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
   };
 
   const handleVoid = async () => {
-    if (
-      !window.confirm(
-        "Cancel this signing request? Recipients will no longer be able to sign, and this can't be undone."
-      )
-    ) {
-      return;
-    }
     setIsVoiding(true);
     try {
       await signingApi.voidDocument(documentId);
       const data = await signingApi.getStatus(documentId);
       setStatus(data);
+      setConfirmVoid(false);
       toast.success("Signing request cancelled.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't cancel the document.");
@@ -161,8 +166,10 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
   if (!status) return null;
 
   const signedVersion = status.versions.find((v) => v.digitallySigned);
+  const seal = status.seal;
   const isDone = status.status === "COMPLETED";
-  const isSealing = status.status === "FINALIZING";
+  const isSealing = status.status === "FINALIZING" || seal?.state === "sealing";
+  const isUnsignedComplete = seal?.state === "completed_unsigned";
   const isDeclined = status.status === "DECLINED";
   const isVoided = status.status === "VOIDED";
   const isExpired = status.status === "EXPIRED";
@@ -213,7 +220,9 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
               {isDone
-                ? "Everyone has signed"
+                ? isUnsignedComplete
+                  ? "Everyone has signed (seal incomplete)"
+                  : "Everyone has signed"
                 : isDeclined
                   ? "Someone declined"
                   : isVoided
@@ -226,17 +235,30 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
             </p>
             <p className="text-xs text-muted-foreground">
               {isSealing
-                ? "This usually takes a few seconds."
-                : isVoided
-                  ? "This signing request was cancelled."
-                  : isExpired
-                    ? "The signing deadline has passed."
-                    : `${status.progress.signed} of ${status.progress.total} signed${
-                        status.flowType === "SEQUENTIAL" ? " · in order" : " · any order"
-                      }`}
+                ? seal?.message || "This usually takes a few seconds."
+                : isDone && seal?.message
+                  ? seal.message
+                  : isVoided
+                    ? "This signing request was cancelled."
+                    : isExpired
+                      ? "The signing deadline has passed."
+                      : `${status.progress.signed} of ${status.progress.total} signed${
+                          status.flowType === "SEQUENTIAL" ? " · in order" : " · any order"
+                        }`}
             </p>
           </div>
         </div>
+        {isDone && isUnsignedComplete && (
+          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
+            Cryptographic sealing did not finish. You can still download the signed PDF and certificate; contact support if you need a PKCS#7 seal.
+          </p>
+        )}
+        {isDone && seal?.state === "sealed" && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <ShieldCheck className="size-3.5 shrink-0" />
+            {seal.message}
+          </p>
+        )}
         <Progress
           value={status.progress.total ? (status.progress.signed / status.progress.total) * 100 : 0}
           className="mt-3 h-1.5"
@@ -246,7 +268,7 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
             variant="outline"
             size="sm"
             className="mt-3 text-destructive hover:text-destructive"
-            onClick={handleVoid}
+            onClick={() => setConfirmVoid(true)}
             disabled={isVoiding}
           >
             {isVoiding ? <Spinner className="size-3.5" /> : <Ban className="size-3.5" />}
@@ -397,6 +419,30 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
           </div>
         )}
       </div>
+
+      <AlertDialog open={confirmVoid} onOpenChange={(open) => !open && !isVoiding && setConfirmVoid(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this signing request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Recipients will no longer be able to sign, and this can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isVoiding}>Keep request</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isVoiding}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleVoid();
+              }}
+            >
+              {isVoiding ? "Cancelling…" : "Cancel request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
