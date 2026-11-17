@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { AlertTriangle, ArrowRight, Check, CheckCircle2, FileSignature, PartyPopper, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 const IMAGE_FIELDS = new Set(["SIGNATURE", "INITIALS", "STAMP", "IMAGE"]);
 /** Fields the server fills from the recipient record — the signer never types these. */
 const AUTO_FILLED = new Set(["NAME", "EMAIL", "DATE"]);
+const EMPTY_SIGN_FIELDS: SignViewField[] = [];
 
 function CenteredMessage({
   icon: Icon,
@@ -210,12 +211,22 @@ export default function SignDocument() {
     }
   };
 
+  const fieldsByPage = useMemo(() => {
+    const map = new Map<number, SignViewField[]>();
+    for (const f of view?.fields ?? []) {
+      const list = map.get(f.page);
+      if (list) list.push(f);
+      else map.set(f.page, [f]);
+    }
+    return map;
+  }, [view?.fields]);
+
   const renderOverlay = useCallback(
     (pageNumber: number, size: { width: number; height: number }, scale: number) =>
       view ? (
         <SignFieldOverlay
           pageNumber={pageNumber}
-          fields={view.fields}
+          fields={fieldsByPage.get(pageNumber) ?? EMPTY_SIGN_FIELDS}
           participants={view.participants}
           values={values}
           focusedFieldId={focusedFieldId}
@@ -225,7 +236,7 @@ export default function SignDocument() {
           onFieldClick={openField}
         />
       ) : null,
-    [view, values, focusedFieldId, isDone, openField]
+    [view, fieldsByPage, values, focusedFieldId, isDone, openField]
   );
 
   if (isLoading) {
@@ -290,17 +301,17 @@ export default function SignDocument() {
 
   if (isDone) {
     return (
-      <CenteredMessage icon={PartyPopper} tone="success" title="You're done — thank you">
+      <CenteredMessage icon={CheckCircle2} tone="success" title="Signature saved">
         <p>
-          Your signature on <strong className="text-foreground">{view.document.title}</strong> has been saved.
+          Your signature on <strong className="text-foreground">{view.document.title}</strong> has been recorded.
         </p>
         <p className="mt-2">
           {documentSealing
-            ? "We're sealing the final PDF — this usually takes a few seconds. You'll get a copy by email when it's ready."
+            ? "We're preparing the final PDF. You'll receive a copy by email when it's ready."
             : view.participants.filter(
                   (p) => p.status !== "COMPLETED" && (p.role === "SIGNER" || p.role === "APPROVER")
                 ).length > 0
-              ? "We're waiting on the other people to sign. You'll get a copy by email once everyone is done."
+              ? "Waiting on the remaining signers. You'll get a copy by email when everyone is done."
               : "Everyone has signed. A copy will be emailed to you shortly."}
         </p>
       </CenteredMessage>
@@ -308,50 +319,42 @@ export default function SignDocument() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-muted/40">
-      {/* --- Header --- */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-3 py-2">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <FileSignature className="size-4 text-primary" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-semibold">{view.document.title}</h1>
-          <p className="truncate text-[11px] text-muted-foreground">
-            Signing as {view.recipient.name} · {view.recipient.email}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDeclining(true)}
-          className="hidden text-muted-foreground sm:inline-flex"
-        >
-          Decline
-        </Button>
-      </header>
-
-      {view.document.message && (
-        <div className="shrink-0 border-b border-border bg-card px-3 py-2">
-          <p className="text-xs italic leading-relaxed text-muted-foreground">"{view.document.message}"</p>
-        </div>
-      )}
-
-      {/* --- Progress --- */}
-      <div className="shrink-0 border-b border-border bg-card px-3 py-2">
-        <div className="mb-1.5 flex items-center justify-between text-[11px]">
-          <span className="font-medium">
-            {filledRequired.length} of {requiredFields.length} step
-            {requiredFields.length === 1 ? "" : "s"} done
-          </span>
-          {canFinish && (
-            <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-500">
-              <CheckCircle2 className="size-3" />
-              Ready to finish
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#5c6370]">
+      {/* --- Header + slim progress --- */}
+      <header className="shrink-0 border-b border-border bg-card">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-semibold tracking-tight">{view.document.title}</h1>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {view.recipient.name}
+              {view.document.message ? ` · “${view.document.message.slice(0, 80)}${view.document.message.length > 80 ? "…" : ""}”` : ""}
+            </p>
+          </div>
+          <div className="hidden items-center gap-2 text-[11px] tabular-nums text-muted-foreground sm:flex">
+            <span>
+              {filledRequired.length}/{requiredFields.length}
             </span>
-          )}
+            {canFinish && (
+              <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-500">
+                <CheckCircle2 className="size-3" />
+                Ready
+              </span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeclining(true)}
+            className="hidden text-muted-foreground sm:inline-flex"
+          >
+            Decline
+          </Button>
         </div>
-        <Progress value={requiredFields.length ? (filledRequired.length / requiredFields.length) * 100 : 100} className="h-1" />
-      </div>
+        <Progress
+          value={requiredFields.length ? (filledRequired.length / requiredFields.length) * 100 : 100}
+          className="h-0.5 rounded-none"
+        />
+      </header>
 
       {/* --- Document --- */}
       <div className="min-h-0 flex-1">
@@ -359,7 +362,10 @@ export default function SignDocument() {
       </div>
 
       {/* --- Action bar --- */}
-      <div className="shrink-0 border-t border-border bg-card p-2.5">
+      <div
+        className="shrink-0 border-t border-border bg-card px-3 py-2.5"
+        style={{ paddingBottom: "max(0.625rem, env(safe-area-inset-bottom))" }}
+      >
         <div className="mx-auto flex max-w-3xl items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setDeclining(true)} className="sm:hidden">
             Decline

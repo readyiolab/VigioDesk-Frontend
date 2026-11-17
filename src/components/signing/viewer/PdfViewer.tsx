@@ -141,15 +141,17 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     ? pageOffsets[pageOffsets.length - 1].top + pageOffsets[pageOffsets.length - 1].height
     : 0;
 
+  const visibleRangeRef = useRef(visibleRange);
+  const currentPageRef = useRef(currentPage);
+  visibleRangeRef.current = visibleRange;
+  currentPageRef.current = currentPage;
+  const scrollRafRef = useRef<number | null>(null);
+
   /**
    * Recomputes which pages are on screen, and which page "owns" the viewport.
-   *
-   * Binary-search-free: a linear pass is fine at 500 pages and stays readable.
-   * The current page is whichever covers the viewport's vertical midpoint,
-   * which matches what a reader would call "the page I'm on" better than the
-   * topmost visible one.
+   * rAF-throttled; skips setState when nothing changed.
    */
-  const updateVisible = useCallback(() => {
+  const computeVisible = useCallback(() => {
     const el = scrollRef.current;
     if (!el || !pageOffsets.length) return;
 
@@ -173,16 +175,36 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
     if (start > end) return; // scrolled past the end mid-relayout
 
-    setVisibleRange({
+    const nextRange = {
       start: Math.max(1, start - OVERSCAN),
       end: Math.min(pageOffsets.length, end + OVERSCAN),
-    });
-    setCurrentPage(active);
+    };
+    const prev = visibleRangeRef.current;
+    if (prev.start !== nextRange.start || prev.end !== nextRange.end) {
+      setVisibleRange(nextRange);
+    }
+    if (currentPageRef.current !== active) {
+      setCurrentPage(active);
+    }
   }, [pageOffsets]);
 
+  const onScroll = useCallback(() => {
+    if (scrollRafRef.current != null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      computeVisible();
+    });
+  }, [computeVisible]);
+
   useEffect(() => {
-    updateVisible();
-  }, [updateVisible]);
+    computeVisible();
+  }, [computeVisible]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
 
   const scrollToPage = useCallback(
     (page: number) => {
@@ -312,7 +334,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   }
 
   return (
-    <div className={cn("flex h-full flex-col overflow-hidden bg-muted/40", className)}>
+    <div className={cn("flex h-full flex-col overflow-hidden bg-[#5c6370]", className)}>
       <ViewerToolbar
         currentPage={currentPage}
         pageCount={pageCount}
@@ -347,7 +369,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
         <div
           ref={scrollRef}
-          onScroll={updateVisible}
+          onScroll={onScroll}
           className="relative flex-1 overflow-auto scroll-smooth"
           tabIndex={0}
           role="region"
@@ -393,7 +415,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
                       isVisible={inRange}
                       onSizeReported={reportPageSize}
                       searchTerm={search.term}
-                      overlay={renderPageOverlay?.(pageNumber, pageSizes[i], scale)}
+                      overlay={
+                        inRange && renderPageOverlay
+                          ? renderPageOverlay(pageNumber, pageSizes[i], scale)
+                          : undefined
+                      }
                     />
                   </div>
                 );

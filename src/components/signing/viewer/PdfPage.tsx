@@ -116,11 +116,14 @@ function PdfPageImpl({
     <div
       data-page-number={pageNumber}
       className={cn(
-        "relative mx-auto bg-white shadow-lg ring-1 ring-black/5 transition-shadow",
-        "dark:ring-white/10",
+        "relative mx-auto bg-white",
         className
       )}
-      style={{ width: boxWidth, height: boxHeight }}
+      style={{
+        width: boxWidth,
+        height: boxHeight,
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.06)",
+      }}
     >
       {isVisible ? (
         <>
@@ -133,13 +136,13 @@ function PdfPageImpl({
         </>
       ) : (
         // Placeholder keeps the scrollbar honest while the page is unrendered.
-        <div className="flex h-full w-full items-center justify-center bg-muted/30">
-          <span className="text-xs font-medium text-muted-foreground">{pageNumber}</span>
+        <div className="flex h-full w-full items-center justify-center bg-[#e8eaed]">
+          <span className="text-[11px] font-medium tabular-nums text-slate-500">{pageNumber}</span>
         </div>
       )}
 
       {!isRendered && isVisible && !renderError && (
-        <div className="absolute inset-0 animate-shimmer bg-muted/40" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[#eef0f3]" aria-hidden="true" />
       )}
 
       {renderError && (

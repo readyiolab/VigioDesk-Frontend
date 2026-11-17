@@ -32,7 +32,7 @@ const Thumbnail = memo(function Thumbnail({
   pageNumber: number;
   isActive: boolean;
   hasFields: boolean;
-  onSelect: () => void;
+  onSelect: (page: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLButtonElement>(null);
@@ -92,34 +92,34 @@ const Thumbnail = memo(function Thumbnail({
   return (
     <button
       ref={wrapperRef}
-      onClick={onSelect}
+      onClick={() => onSelect(pageNumber)}
       aria-label={`Go to page ${pageNumber}`}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group relative flex w-full flex-col items-center gap-1 rounded-lg p-1.5 transition-colors",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        isActive ? "bg-primary/10" : "hover:bg-muted"
+        "group relative flex w-full flex-col items-center gap-1 rounded p-1 transition-colors",
+        "focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:outline-none",
+        isActive ? "bg-white/10" : "hover:bg-white/5"
       )}
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded border-2 bg-white shadow-sm transition-colors",
-          isActive ? "border-primary" : "border-transparent group-hover:border-border"
+          "relative overflow-hidden bg-white transition-colors",
+          isActive ? "outline outline-1 outline-offset-1 outline-sky-300" : "outline outline-1 outline-transparent group-hover:outline-white/30"
         )}
         style={{ width: THUMB_WIDTH, minHeight: 60 }}
       >
         <canvas ref={canvasRef} className="block" />
         {hasFields && (
           <span
-            className="absolute right-1 top-1 size-2 rounded-full bg-primary ring-2 ring-white"
+            className="absolute right-1 top-1 size-1.5 rounded-full bg-sky-400"
             aria-label="This page has fields"
           />
         )}
       </div>
       <span
         className={cn(
-          "text-[11px] font-medium tabular-nums",
-          isActive ? "text-primary" : "text-muted-foreground"
+          "text-[10px] font-medium tabular-nums",
+          isActive ? "text-white" : "text-white/60"
         )}
       >
         {pageNumber}
@@ -128,7 +128,7 @@ const Thumbnail = memo(function Thumbnail({
   );
 });
 
-export function ThumbnailSidebar({
+export const ThumbnailSidebar = memo(function ThumbnailSidebar({
   pdf,
   pageCount,
   currentPage,
@@ -140,7 +140,7 @@ export function ThumbnailSidebar({
   return (
     <aside
       data-thumbnail-scroll
-      className="w-36 shrink-0 overflow-y-auto border-r border-border bg-muted/30 p-1"
+      className="w-32 shrink-0 overflow-y-auto border-r border-border bg-[#4a505a] p-1.5"
       aria-label="Page thumbnails"
     >
       {Array.from({ length: pageCount }, (_, i) => (
@@ -150,9 +150,9 @@ export function ThumbnailSidebar({
           pageNumber={i + 1}
           isActive={currentPage === i + 1}
           hasFields={pagesWithFields?.has(i + 1) ?? false}
-          onSelect={() => onPageSelect(i + 1)}
+          onSelect={onPageSelect}
         />
       ))}
     </aside>
   );
-}
+});

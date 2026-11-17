@@ -54,9 +54,11 @@ import { FieldPalette } from "@/components/signing/designer/FieldPalette";
 import { PageFieldOverlay } from "@/components/signing/designer/PageFieldOverlay";
 import { PropertiesPanel } from "@/components/signing/designer/PropertiesPanel";
 import { RecipientPanel } from "@/components/signing/designer/RecipientPanel";
-import { useFieldDesigner } from "@/components/signing/designer/useFieldDesigner";
+import { useFieldDesigner, type DesignerField } from "@/components/signing/designer/useFieldDesigner";
 import { SendDialog } from "@/components/signing/send/SendDialog";
 import { StatusTracker } from "@/components/signing/send/StatusTracker";
+
+const EMPTY_FIELDS: DesignerField[] = [];
 
 const STATUS_LABEL: Record<SignDocumentStatus, string> = {
   CONVERTING: "Converting Word to PDF",
@@ -167,44 +169,36 @@ function WizardSteps({
   return (
     <nav
       aria-label="Signing setup steps"
-      className={cn("flex items-center gap-1 sm:gap-2", className)}
+      className={cn("flex items-center gap-3 sm:gap-4", className)}
     >
-      {WIZARD_STEPS.map((step, i) => {
+      {WIZARD_STEPS.map((step) => {
         const done = step.n < activeStep;
         const current = step.n === activeStep;
         return (
-          <div key={step.n} className="flex items-center gap-1 sm:gap-2">
-            {i > 0 && (
-              <span
-                className={cn(
-                  "hidden h-px w-4 sm:block sm:w-6",
-                  done || current ? "bg-primary/40" : "bg-border"
-                )}
-                aria-hidden="true"
-              />
+          <span
+            key={step.n}
+            className={cn(
+              "inline-flex items-center gap-1.5 text-[11px] font-medium sm:text-xs",
+              current && "text-foreground",
+              done && "text-muted-foreground",
+              !done && !current && "text-muted-foreground/50"
             )}
+            aria-current={current ? "step" : undefined}
+          >
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium sm:text-xs",
-                current && "bg-primary/10 text-primary",
+                "flex size-5 items-center justify-center text-[10px] font-semibold tabular-nums",
+                current && "border-b-2 border-foreground text-foreground",
                 done && "text-muted-foreground",
-                !done && !current && "text-muted-foreground/60"
+                !done && !current && "text-muted-foreground/50"
               )}
-              aria-current={current ? "step" : undefined}
             >
-              <span
-                className={cn(
-                  "flex size-4 items-center justify-center rounded-full text-[10px] font-bold tabular-nums",
-                  current && "bg-primary text-primary-foreground",
-                  done && "bg-muted text-muted-foreground",
-                  !done && !current && "bg-muted/60 text-muted-foreground/60"
-                )}
-              >
-                {done ? <Check className="size-2.5" aria-hidden="true" /> : step.n}
-              </span>
-              <span className="hidden sm:inline">{step.label}</span>
+              {done ? <Check className="size-3" aria-hidden="true" /> : step.n}
             </span>
-          </div>
+            <span className={cn("hidden sm:inline", current && "border-b-2 border-foreground pb-px")}>
+              {step.label}
+            </span>
+          </span>
         );
       })}
     </nav>
@@ -243,6 +237,28 @@ export default function DocumentEditor() {
 
   const initialFields = useMemo(() => document?.fields ?? [], [document]);
   const designer = useFieldDesigner(id, initialFields, !readOnly);
+  const {
+    fields,
+    fieldsByPage,
+    pagesWithFields,
+    selectedIds,
+    selectedFields,
+    setSelectedIds,
+    saveState,
+    canUndo,
+    canRedo,
+    addField,
+    updateField,
+    moveSelection,
+    deleteSelection,
+    duplicateSelection,
+    toggleLock,
+    clearRecipient,
+    beginTransaction,
+    undo,
+    redo,
+    save,
+  } = designer;
 
   useEffect(() => {
     let cancelled = false;
@@ -309,21 +325,21 @@ export default function DocumentEditor() {
     (type: SignFieldType) => {
       // Place near the top of the visible page and stagger so rapid taps don't
       // stack every field on the exact same spot (common on mobile click-to-place).
-      const onPage = designer.fields.filter((f) => f.page === currentPage).length;
+      const onPage = fields.filter((f) => f.page === currentPage).length;
       const x = 0.5 + ((onPage % 5) - 2) * 0.04;
       const y = 0.28 + Math.floor(onPage / 5) * 0.08;
-      designer.addField(type, currentPage, x, Math.min(y, 0.75), activeRecipientId);
+      addField(type, currentPage, x, Math.min(y, 0.75), activeRecipientId);
       setFieldsOpen(false);
       if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
         toast.message("Field added — drag it into place on the page.");
       }
     },
-    [designer, currentPage, activeRecipientId]
+    [fields, addField, currentPage, activeRecipientId]
   );
 
   const handleSelect = useCallback(
     (fieldId: string, additive: boolean) => {
-      designer.setSelectedIds((current) =>
+      setSelectedIds((current) =>
         additive
           ? current.includes(fieldId)
             ? current.filter((i) => i !== fieldId)
@@ -333,7 +349,24 @@ export default function DocumentEditor() {
             : [fieldId]
       );
     },
-    [designer]
+    [setSelectedIds]
+  );
+
+  const handleClearSelection = useCallback(() => setSelectedIds([]), [setSelectedIds]);
+
+  const handleDropField = useCallback(
+    (type: SignFieldType, page: number, x: number, y: number) => {
+      addField(type, page, x, y, activeRecipientId);
+    },
+    [addField, activeRecipientId]
+  );
+
+  const handleFieldContextMenu = useCallback(
+    (e: React.MouseEvent, fieldId: string) => {
+      e.preventDefault();
+      setSelectedIds((current) => (current.includes(fieldId) ? current : [fieldId]));
+    },
+    [setSelectedIds]
   );
 
   // Designer keyboard shortcuts. The viewer registers its own set; these are
@@ -348,41 +381,41 @@ export default function DocumentEditor() {
 
       if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault();
-        designer.undo();
+        undo();
       } else if ((mod && e.key.toLowerCase() === "y") || (mod && e.shiftKey && e.key.toLowerCase() === "z")) {
         e.preventDefault();
-        designer.redo();
+        redo();
       } else if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
-        designer.duplicateSelection();
+        duplicateSelection();
       } else if (mod && e.key.toLowerCase() === "s") {
         // Autosave already handles this, but muscle memory says Ctrl+S — and
         // letting the browser open a Save-Page dialog here would be jarring.
         e.preventDefault();
-        designer.save();
+        void save();
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (designer.selectedIds.length) {
+        if (selectedIds.length) {
           e.preventDefault();
-          designer.deleteSelection();
+          deleteSelection();
         }
       } else if (e.key === "Escape") {
-        designer.setSelectedIds([]);
+        setSelectedIds([]);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [designer, readOnly]);
+  }, [readOnly, undo, redo, duplicateSelection, save, selectedIds, deleteSelection, setSelectedIds]);
 
   const fieldCountByRecipient = useMemo(() => {
     const map = new Map<string, number>();
-    for (const f of designer.fields) {
+    for (const f of fields) {
       if (f.recipientId) map.set(f.recipientId, (map.get(f.recipientId) ?? 0) + 1);
     }
     return map;
-  }, [designer.fields]);
+  }, [fields]);
 
-  const unassignedCount = designer.fields.filter((f) => !f.recipientId).length;
+  const unassignedCount = fields.filter((f) => !f.recipientId).length;
 
   /**
    * Why the document can't be sent yet, in plain language — or null when it can.
@@ -426,15 +459,15 @@ export default function DocumentEditor() {
   const openSend = useCallback(async () => {
     // Flush any pending field edits so the server sends the current design, not
     // the last autosaved state.
-    if (designer.saveState === "dirty" || designer.saveState === "saving") {
-      await designer.save();
+    if (saveState === "dirty" || saveState === "saving") {
+      await save();
     }
     setShowSend(true);
-  }, [designer]);
+  }, [saveState, save]);
 
   const handleSelfSign = useCallback(async () => {
-    if (designer.saveState === "dirty" || designer.saveState === "saving") {
-      await designer.save();
+    if (saveState === "dirty" || saveState === "saving") {
+      await save();
     }
     setIsSelfSending(true);
     try {
@@ -446,15 +479,15 @@ export default function DocumentEditor() {
     } finally {
       setIsSelfSending(false);
     }
-  }, [designer, id, navigate]);
+  }, [saveState, save, id, navigate]);
 
   const openSaveTemplate = useCallback(async () => {
-    if (designer.saveState === "dirty" || designer.saveState === "saving") {
-      await designer.save();
+    if (saveState === "dirty" || saveState === "saving") {
+      await save();
     }
     setTemplateName(document?.title || "Untitled template");
     setTemplateDialogOpen(true);
-  }, [designer, document?.title]);
+  }, [saveState, save, document?.title]);
 
   const confirmSaveTemplate = useCallback(async () => {
     setIsSavingTemplate(true);
@@ -476,26 +509,36 @@ export default function DocumentEditor() {
     (pageNumber: number, size: { width: number; height: number }, scale: number) => (
       <PageFieldOverlay
         pageNumber={pageNumber}
-        fields={designer.fieldsByPage.get(pageNumber) ?? []}
+        fields={fieldsByPage.get(pageNumber) ?? EMPTY_FIELDS}
         recipients={recipients}
-        selectedIds={designer.selectedIds}
+        selectedIds={selectedIds}
         pageWidth={size.width * scale}
         pageHeight={size.height * scale}
         readOnly={readOnly}
         activeRecipientId={activeRecipientId}
         onSelect={handleSelect}
-        onClearSelection={() => designer.setSelectedIds([])}
-        onBeginTransaction={designer.beginTransaction}
-        onMove={designer.moveSelection}
-        onResize={designer.updateField}
-        onDropField={(type, page, x, y) => designer.addField(type, page, x, y, activeRecipientId)}
-        onContextMenu={(e, fieldId) => {
-          e.preventDefault();
-          if (!designer.selectedIds.includes(fieldId)) handleSelect(fieldId, false);
-        }}
+        onClearSelection={handleClearSelection}
+        onBeginTransaction={beginTransaction}
+        onMove={moveSelection}
+        onResize={updateField}
+        onDropField={handleDropField}
+        onContextMenu={handleFieldContextMenu}
       />
     ),
-    [designer, recipients, readOnly, activeRecipientId, handleSelect]
+    [
+      fieldsByPage,
+      recipients,
+      selectedIds,
+      readOnly,
+      activeRecipientId,
+      handleSelect,
+      handleClearSelection,
+      beginTransaction,
+      moveSelection,
+      updateField,
+      handleDropField,
+      handleFieldContextMenu,
+    ]
   );
 
   const recipientPanelProps = {
@@ -509,7 +552,7 @@ export default function DocumentEditor() {
     onRecipientsChange: setRecipients,
     onFlowTypeChange: handleFlowTypeChange,
     onActiveChange: setActiveRecipientId,
-    onRecipientRemoved: designer.clearRecipient,
+    onRecipientRemoved: clearRecipient,
     onSelfSignModeChange: (enabled: boolean) => {
       setSearchParams(
         (prev) => {
@@ -524,13 +567,13 @@ export default function DocumentEditor() {
   } as const;
 
   const propertiesPanelProps = {
-    selected: designer.selectedFields,
+    selected: selectedFields,
     recipients,
     readOnly,
-    onUpdate: designer.updateField,
-    onDuplicate: designer.duplicateSelection,
-    onDelete: designer.deleteSelection,
-    onToggleLock: designer.toggleLock,
+    onUpdate: updateField,
+    onDuplicate: duplicateSelection,
+    onDelete: deleteSelection,
+    onToggleLock: toggleLock,
   } as const;
 
   if (isLoading) {
@@ -593,7 +636,7 @@ export default function DocumentEditor() {
             </Tooltip>
           )}
 
-          <SaveIndicator state={designer.saveState} />
+          <SaveIndicator state={saveState} />
 
           {isDraft && (
             <Tooltip>
@@ -616,7 +659,7 @@ export default function DocumentEditor() {
             <div className="hidden items-center gap-0.5 sm:flex">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" onClick={designer.undo} disabled={!designer.canUndo} aria-label="Undo">
+                  <Button variant="ghost" size="icon-sm" onClick={undo} disabled={!canUndo} aria-label="Undo">
                     <Undo2 />
                   </Button>
                 </TooltipTrigger>
@@ -624,7 +667,7 @@ export default function DocumentEditor() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" onClick={designer.redo} disabled={!designer.canRedo} aria-label="Redo">
+                  <Button variant="ghost" size="icon-sm" onClick={redo} disabled={!canRedo} aria-label="Redo">
                     <Redo2 />
                   </Button>
                 </TooltipTrigger>
@@ -688,9 +731,9 @@ export default function DocumentEditor() {
             <PdfViewer
               ref={viewerRef}
               source={fileUrl}
-              className="min-h-0 flex-1 pb-14 lg:pb-0"
+              className="min-h-0 flex-1 pb-16 lg:pb-0"
               renderPageOverlay={renderPageOverlay}
-              pagesWithFields={designer.pagesWithFields}
+              pagesWithFields={pagesWithFields}
               onPageChange={setCurrentPage}
               onPageCountChange={(count) => {
                 if (document.pageCount !== count) {
@@ -699,7 +742,10 @@ export default function DocumentEditor() {
               }}
             />
 
-            <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-around gap-1 border-t border-border bg-card/95 px-2 py-2 backdrop-blur-sm lg:hidden">
+            <div
+              className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-around gap-1 border-t border-border bg-card px-2 py-2 lg:hidden"
+              style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+            >
               <Button
                 variant="outline"
                 size="sm"
@@ -731,7 +777,7 @@ export default function DocumentEditor() {
               >
                 <Settings2 className="size-3.5" />
                 Settings
-                {designer.selectedIds.length > 0 && (
+                {selectedIds.length > 0 && (
                   <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
                 )}
               </Button>
@@ -743,12 +789,12 @@ export default function DocumentEditor() {
             <div
               className={cn(
                 "min-h-0 overflow-y-auto",
-                designer.selectedIds.length > 0 ? "max-h-[45%]" : "flex-1"
+                selectedIds.length > 0 ? "max-h-[45%]" : "flex-1"
               )}
             >
               <RecipientPanel {...recipientPanelProps} className="border-b-0" />
             </div>
-            {designer.selectedIds.length > 0 ? (
+            {selectedIds.length > 0 ? (
               <div className="min-h-0 flex-1 overflow-hidden border-t border-border">
                 <PropertiesPanel {...propertiesPanelProps} className="h-full w-full border-0" />
               </div>
@@ -816,7 +862,7 @@ export default function DocumentEditor() {
           fileUrl={fileUrl}
           viewerRef={viewerRef}
           renderPageOverlay={renderPageOverlay}
-          pagesWithFields={designer.pagesWithFields}
+          pagesWithFields={pagesWithFields}
           onPageChange={setCurrentPage}
         />
       )}

@@ -325,39 +325,89 @@ export function useFieldDesigner(documentId: string, initialFields: SignField[],
     [fields, selectedIds]
   );
 
+  const fieldsByPagePrev = useRef(new Map<number, DesignerField[]>());
   const fieldsByPage = useMemo(() => {
-    const map = new Map<number, DesignerField[]>();
+    const grouped = new Map<number, DesignerField[]>();
     for (const f of fields) {
-      const list = map.get(f.page);
+      const list = grouped.get(f.page);
       if (list) list.push(f);
-      else map.set(f.page, [f]);
+      else grouped.set(f.page, [f]);
     }
-    return map;
+    const next = new Map<number, DesignerField[]>();
+    for (const [page, list] of grouped) {
+      const prev = fieldsByPagePrev.current.get(page);
+      if (
+        prev &&
+        prev.length === list.length &&
+        prev.every((field, i) => field === list[i])
+      ) {
+        next.set(page, prev);
+      } else {
+        next.set(page, list);
+      }
+    }
+    fieldsByPagePrev.current = next;
+    return next;
   }, [fields]);
 
-  const pagesWithFields = useMemo(() => new Set(fieldsByPage.keys()), [fieldsByPage]);
+  const pagesWithFieldsPrev = useRef<Set<number>>(new Set());
+  const pagesWithFields = useMemo(() => {
+    const keys = [...fieldsByPage.keys()];
+    const prev = pagesWithFieldsPrev.current;
+    if (prev.size === keys.length && keys.every((k) => prev.has(k))) return prev;
+    const next = new Set(keys);
+    pagesWithFieldsPrev.current = next;
+    return next;
+  }, [fieldsByPage]);
 
-  return {
-    fields,
-    fieldsByPage,
-    pagesWithFields,
-    selectedIds,
-    selectedFields,
-    setSelectedIds,
-    saveState,
-    // Derived from state, so the toolbar's disabled state is always accurate.
-    canUndo: history.past.length > 0,
-    canRedo: history.future.length > 0,
-    addField,
-    updateField,
-    moveSelection,
-    deleteSelection,
-    duplicateSelection,
-    toggleLock,
-    clearRecipient,
-    beginTransaction,
-    undo,
-    redo,
-    save,
-  };
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+
+  // Stable API object so consumers can depend on individual methods without
+  // re-binding overlays on every field drag frame.
+  return useMemo(
+    () => ({
+      fields,
+      fieldsByPage,
+      pagesWithFields,
+      selectedIds,
+      selectedFields,
+      setSelectedIds,
+      saveState,
+      canUndo,
+      canRedo,
+      addField,
+      updateField,
+      moveSelection,
+      deleteSelection,
+      duplicateSelection,
+      toggleLock,
+      clearRecipient,
+      beginTransaction,
+      undo,
+      redo,
+      save,
+    }),
+    [
+      fields,
+      fieldsByPage,
+      pagesWithFields,
+      selectedIds,
+      selectedFields,
+      saveState,
+      canUndo,
+      canRedo,
+      addField,
+      updateField,
+      moveSelection,
+      deleteSelection,
+      duplicateSelection,
+      toggleLock,
+      clearRecipient,
+      beginTransaction,
+      undo,
+      redo,
+      save,
+    ]
+  );
 }

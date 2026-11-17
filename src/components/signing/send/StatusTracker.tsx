@@ -175,65 +175,47 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
   const isExpired = status.status === "EXPIRED";
   const canVoid = status.status === "SENT" || status.status === "FINALIZING";
 
+  const statusChip = isDone
+    ? isUnsignedComplete
+      ? { label: "Complete", className: "bg-amber-500/10 text-amber-800 dark:text-amber-400" }
+      : { label: "Complete", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" }
+    : isDeclined
+      ? { label: "Declined", className: "bg-destructive/10 text-destructive" }
+      : isVoided
+        ? { label: "Cancelled", className: "bg-muted text-muted-foreground" }
+        : isExpired
+          ? { label: "Expired", className: "bg-amber-500/10 text-amber-800 dark:text-amber-400" }
+          : isSealing
+            ? { label: "Sealing", className: "bg-sky-500/10 text-sky-700 dark:text-sky-400" }
+            : { label: "In progress", className: "bg-muted text-muted-foreground" };
+
   return (
-    <div className="mx-auto h-full max-w-2xl space-y-5 overflow-y-auto p-4 sm:p-6">
+    <div className="mx-auto h-full max-w-2xl space-y-4 overflow-y-auto p-4 sm:p-5">
       {/* --- Headline --- */}
-      <div
-        className={cn(
-          "rounded-2xl border p-4",
-          isDone
-            ? "border-emerald-500/30 bg-emerald-500/5"
-            : isDeclined || isVoided
-              ? "border-destructive/30 bg-destructive/5"
-              : isExpired
-                ? "border-amber-500/30 bg-amber-500/5"
-                : isSealing
-                  ? "border-sky-500/30 bg-sky-500/5"
-                  : "border-border bg-card"
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-xl",
-              isDone
-                ? "bg-emerald-500/10"
-                : isDeclined || isVoided
-                  ? "bg-destructive/10"
-                  : isExpired
-                    ? "bg-amber-500/10"
-                    : isSealing
-                      ? "bg-sky-500/10"
-                      : "bg-primary/10"
-            )}
-          >
-            {isDone ? (
-              <FileCheck className="size-5 text-emerald-600 dark:text-emerald-500" />
-            ) : isDeclined || isVoided ? (
-              <XCircle className="size-5 text-destructive" />
-            ) : isExpired ? (
-              <Clock className="size-5 text-amber-600 dark:text-amber-500" />
-            ) : (
-              <Clock className={cn("size-5", isSealing ? "animate-pulse text-sky-600" : "text-primary")} />
-            )}
-          </div>
+      <div className="space-y-3 border-b border-border pb-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">
-              {isDone
-                ? isUnsignedComplete
-                  ? "Everyone has signed (seal incomplete)"
-                  : "Everyone has signed"
-                : isDeclined
-                  ? "Someone declined"
-                  : isVoided
-                    ? "Cancelled"
-                    : isExpired
-                      ? "Expired"
-                      : isSealing
-                        ? "Sealing the signed PDF…"
-                        : "Waiting for signatures"}
-            </p>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold tracking-tight">
+                {isDone
+                  ? isUnsignedComplete
+                    ? "Everyone has signed"
+                    : "Everyone has signed"
+                  : isDeclined
+                    ? "Someone declined"
+                    : isVoided
+                      ? "Cancelled"
+                      : isExpired
+                        ? "Expired"
+                        : isSealing
+                          ? "Sealing the signed PDF"
+                          : "Waiting for signatures"}
+              </p>
+              <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", statusChip.className)}>
+                {statusChip.label}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
               {isSealing
                 ? seal?.message || "This usually takes a few seconds."
                 : isDone && seal?.message
@@ -247,27 +229,34 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
                         }`}
             </p>
           </div>
+          {isDone ? (
+            <FileCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-500" />
+          ) : isDeclined || isVoided ? (
+            <XCircle className="size-4 shrink-0 text-destructive" />
+          ) : (
+            <Clock className={cn("size-4 shrink-0", isSealing ? "animate-pulse text-sky-600" : "text-muted-foreground")} />
+          )}
         </div>
         {isDone && isUnsignedComplete && (
-          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
-            Cryptographic sealing did not finish. You can still download the signed PDF and certificate; contact support if you need a PKCS#7 seal.
+          <p className="border border-amber-500/25 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-800 dark:text-amber-400">
+            Cryptographic sealing did not finish. You can still download the signed PDF and certificate.
           </p>
         )}
         {isDone && seal?.state === "sealed" && (
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-            <ShieldCheck className="size-3.5 shrink-0" />
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 shrink-0 text-emerald-600" />
             {seal.message}
           </p>
         )}
         <Progress
           value={status.progress.total ? (status.progress.signed / status.progress.total) * 100 : 0}
-          className="mt-3 h-1.5"
+          className="h-1"
         />
         {canVoid && (
           <Button
             variant="outline"
             size="sm"
-            className="mt-3 text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive"
             onClick={() => setConfirmVoid(true)}
             disabled={isVoiding}
           >

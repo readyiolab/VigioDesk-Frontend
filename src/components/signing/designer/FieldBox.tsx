@@ -191,36 +191,37 @@ function FieldBoxImpl({
         }
       }}
       className={cn(
-        "group absolute flex items-center justify-center gap-1 rounded-sm text-xs font-medium select-none",
-        "transition-shadow duration-100",
+        "group absolute flex items-center justify-center gap-1 rounded-[2px] text-[11px] font-medium select-none",
         readOnly || field.locked ? "cursor-default" : "cursor-move",
-        isSelected ? "z-20 shadow-md" : "z-10 hover:shadow-sm",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        isSelected ? "z-20" : "z-10",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       )}
       style={{
         left: `${field.x * 100}%`,
         top: `${field.y * 100}%`,
         width: `${field.width * 100}%`,
         height: `${field.height * 100}%`,
-        backgroundColor: `${color}22`,
-        border: `${isSelected ? 2 : 1}px ${field.recipientId ? "solid" : "dashed"} ${color}`,
+        backgroundColor: field.recipientId ? `${color}14` : `${color}0a`,
+        border: `1px solid ${color}`,
+        boxShadow: isSelected ? `0 0 0 1px ${color}` : undefined,
+        borderLeftWidth: field.recipientId ? 1 : 3,
         color,
       }}
     >
-      {!compact && <Icon className="size-3 shrink-0" aria-hidden="true" />}
+      {!compact && <Icon className="size-3 shrink-0 opacity-80" aria-hidden="true" />}
       {compact ? (
-        <Icon className="size-3 shrink-0" aria-hidden="true" />
+        <Icon className="size-3 shrink-0 opacity-80" aria-hidden="true" />
       ) : (
-        <span className="truncate px-0.5">{field.label || meta.label}</span>
+        <span className="truncate px-0.5 opacity-90">{field.label || meta.label}</span>
       )}
 
       {field.required && (
-        <span className="absolute -right-0.5 -top-0.5 text-[10px] font-bold leading-none text-destructive" aria-hidden="true">
+        <span className="absolute right-0.5 top-0 text-[9px] font-bold leading-none text-destructive" aria-hidden="true">
           *
         </span>
       )}
       {field.locked && (
-        <Lock className="absolute -left-1 -top-1 size-3 rounded-full bg-background p-px" aria-hidden="true" />
+        <Lock className="absolute left-0.5 top-0.5 size-2.5 text-current opacity-70" aria-hidden="true" />
       )}
 
       {isSelected && !readOnly && !field.locked &&
@@ -228,10 +229,8 @@ function FieldBoxImpl({
           <span
             key={handle.id}
             onPointerDown={(e) => startResize(e, handle)}
-            className={cn(
-              "absolute size-2 rounded-full border border-white bg-primary shadow-sm",
-              handle.className
-            )}
+            className={cn("absolute size-1.5 border border-white", handle.className)}
+            style={{ backgroundColor: color }}
             aria-hidden="true"
           />
         ))}

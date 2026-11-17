@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FIELD_META } from "@/lib/signing/fieldMeta";
@@ -26,7 +27,7 @@ const IMAGE_FIELDS = new Set(["SIGNATURE", "INITIALS", "STAMP", "IMAGE"]);
  * else's (context only, muted, inert). Conflating them is how signers end up
  * confused about what is being asked of them.
  */
-export function SignFieldOverlay({
+function SignFieldOverlayImpl({
   pageNumber,
   fields,
   participants,
@@ -37,11 +38,11 @@ export function SignFieldOverlay({
   readOnly,
   onFieldClick,
 }: SignFieldOverlayProps) {
+  const pageFields = fields[0]?.page === pageNumber ? fields : fields.filter((f) => f.page === pageNumber);
+
   return (
     <div className="absolute inset-0">
-      {fields
-        .filter((f) => f.page === pageNumber)
-        .map((field) => {
+      {pageFields.map((field) => {
           const meta = FIELD_META[field.type];
           const Icon = meta.icon;
           const owner = participants.find((p) => p.id === field.recipientId);
@@ -49,6 +50,7 @@ export function SignFieldOverlay({
           const isFilled = Boolean(value);
           const isImage = IMAGE_FIELDS.has(field.type);
           const isFocused = focusedFieldId === field.id;
+          const ownerColor = owner?.color ?? "#2563eb";
 
           // Someone else's field: show what they entered, but never invite
           // interaction. Signing is per-person.
@@ -56,14 +58,14 @@ export function SignFieldOverlay({
             return (
               <div
                 key={field.id}
-                className="absolute flex items-center justify-center overflow-hidden rounded-sm"
+                className="absolute flex items-center justify-center overflow-hidden rounded-[2px]"
                 style={{
                   left: `${field.x * 100}%`,
                   top: `${field.y * 100}%`,
                   width: `${field.width * 100}%`,
                   height: `${field.height * 100}%`,
-                  backgroundColor: isFilled ? "transparent" : `${owner?.color ?? "#94a3b8"}0f`,
-                  border: isFilled ? "none" : `1px dashed ${owner?.color ?? "#94a3b8"}55`,
+                  backgroundColor: isFilled ? "transparent" : `${ownerColor}0a`,
+                  border: isFilled ? "none" : `1px solid ${ownerColor}40`,
                 }}
                 aria-hidden="true"
               >
@@ -90,12 +92,10 @@ export function SignFieldOverlay({
               onClick={() => onFieldClick(field)}
               aria-label={`${meta.label}${field.required ? ", required" : ", optional"}${isFilled ? ", completed" : ", not yet filled"}`}
               className={cn(
-                "group absolute flex items-center justify-center overflow-hidden rounded-sm transition-all",
+                "group absolute flex items-center justify-center overflow-hidden rounded-[2px]",
                 !readOnly && "cursor-pointer",
-                // Amber pulse matches the "Go to next field" CTA so signers can
-                // spot the target on long contracts without hunting for blue boxes.
-                isFocused && "z-20 ring-[3px] ring-offset-2 ring-amber-400 animate-pulse-ring shadow-[0_0_0_4px_rgba(251,191,36,0.35)]",
-                !isFilled && !readOnly && "hover:brightness-95"
+                isFocused && "z-20",
+                !isFilled && !readOnly && "hover:brightness-[0.98]"
               )}
               style={{
                 left: `${field.x * 100}%`,
@@ -105,13 +105,13 @@ export function SignFieldOverlay({
                 backgroundColor: isFilled
                   ? "transparent"
                   : isFocused
-                    ? "rgba(251, 191, 36, 0.28)"
-                    : `${field.isMine ? "#2563eb" : "#94a3b8"}1f`,
+                    ? "rgba(245, 158, 11, 0.18)"
+                    : `${ownerColor}14`,
                 border: isFilled
                   ? "none"
                   : isFocused
-                    ? "2px solid #f59e0b"
-                    : `2px solid ${owner?.color ?? "#2563eb"}`,
+                    ? "2px solid #d97706"
+                    : `1px solid ${ownerColor}`,
               }}
             >
               {isFilled ? (
@@ -126,24 +126,59 @@ export function SignFieldOverlay({
                   </span>
                 )
               ) : (
-                <span className="flex items-center gap-1 truncate px-1 text-[10px] font-semibold" style={{ color: owner?.color }}>
-                  <Icon className="size-3 shrink-0" />
-                  {/* Below ~70px the label and icon collide; the icon alone still reads. */}
-                  {pageWidth * field.width > 70 && <span className="truncate">{field.label || meta.label}</span>}
+                <span
+                  className="flex items-center gap-1 truncate px-1 text-[10px] font-medium"
+                  style={{ color: isFocused ? "#b45309" : ownerColor }}
+                >
+                  <Icon className="size-3 shrink-0 opacity-80" />
+                  {pageWidth * field.width > 70 && (
+                    <span className="truncate">{field.label || meta.label}</span>
+                  )}
                 </span>
               )}
 
               {isFilled && (
-                <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white">
-                  <Check className="size-2 text-white" strokeWidth={4} />
+                <span className="absolute right-0.5 top-0.5 text-emerald-600" aria-hidden="true">
+                  <Check className="size-2.5" strokeWidth={3} />
                 </span>
               )}
               {!isFilled && field.required && (
-                <span className="absolute -right-0.5 -top-0.5 text-[10px] font-bold leading-none text-destructive">*</span>
+                <span className="absolute right-0.5 top-0 text-[9px] font-bold leading-none text-destructive">
+                  *
+                </span>
               )}
             </button>
           );
-        })}
+      })}
     </div>
   );
 }
+
+function signOverlayPropsEqual(prev: SignFieldOverlayProps, next: SignFieldOverlayProps) {
+  if (
+    prev.pageNumber !== next.pageNumber ||
+    prev.pageWidth !== next.pageWidth ||
+    prev.pageHeight !== next.pageHeight ||
+    prev.readOnly !== next.readOnly ||
+    prev.onFieldClick !== next.onFieldClick ||
+    prev.participants !== next.participants ||
+    prev.fields !== next.fields
+  ) {
+    return false;
+  }
+
+  if (prev.focusedFieldId !== next.focusedFieldId) {
+    const prevFocusedHere = prev.fields.some((f) => f.id === prev.focusedFieldId);
+    const nextFocusedHere = next.fields.some((f) => f.id === next.focusedFieldId);
+    if (prevFocusedHere || nextFocusedHere) return false;
+  }
+
+  for (const field of next.fields) {
+    if ((prev.values[field.id] ?? field.value ?? "") !== (next.values[field.id] ?? field.value ?? "")) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export const SignFieldOverlay = memo(SignFieldOverlayImpl, signOverlayPropsEqual);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { SignFieldType, SignRecipient } from "@/lib/signing/types";
 import { FieldBox } from "./FieldBox";
@@ -32,7 +32,7 @@ interface PageFieldOverlayProps {
  * DPI-independent — the same drop lands identically whether the user is at 50%
  * or 400%, and matches what pdf-lib will do at finalization.
  */
-export function PageFieldOverlay({
+function PageFieldOverlayImpl({
   pageNumber,
   fields,
   recipients,
@@ -40,7 +40,7 @@ export function PageFieldOverlay({
   pageWidth,
   pageHeight,
   readOnly,
-  activeRecipientId,
+  activeRecipientId: _activeRecipientId,
   onSelect,
   onClearSelection,
   onBeginTransaction,
@@ -67,9 +67,8 @@ export function PageFieldOverlay({
     <div
       className={cn(
         "absolute inset-0",
-        // Must not intercept text selection on the page when there's nothing to
-        // drop — pointer-events stay off the container, on for the boxes.
-        isDragOver && "bg-primary/5 ring-2 ring-inset ring-primary/40"
+        // Quiet inset edge only — no pill badge over the page.
+        isDragOver && "bg-sky-500/[0.04] ring-1 ring-inset ring-sky-500/50"
       )}
       onDragOver={(e) => {
         if (readOnly) return;
@@ -104,14 +103,38 @@ export function PageFieldOverlay({
           onContextMenu={onContextMenu}
         />
       ))}
-
-      {isDragOver && activeRecipientId && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
-            Drop to place on page {pageNumber}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
+
+function pageOverlayPropsEqual(prev: PageFieldOverlayProps, next: PageFieldOverlayProps) {
+  if (
+    prev.pageNumber !== next.pageNumber ||
+    prev.pageWidth !== next.pageWidth ||
+    prev.pageHeight !== next.pageHeight ||
+    prev.readOnly !== next.readOnly ||
+    prev.activeRecipientId !== next.activeRecipientId ||
+    prev.fields !== next.fields ||
+    prev.recipients !== next.recipients ||
+    prev.onSelect !== next.onSelect ||
+    prev.onClearSelection !== next.onClearSelection ||
+    prev.onBeginTransaction !== next.onBeginTransaction ||
+    prev.onMove !== next.onMove ||
+    prev.onResize !== next.onResize ||
+    prev.onDropField !== next.onDropField ||
+    prev.onContextMenu !== next.onContextMenu
+  ) {
+    return false;
+  }
+
+  const idsOnPage = new Set(next.fields.map((f) => f.id));
+  const prevRelevant = prev.selectedIds.filter((id) => idsOnPage.has(id));
+  const nextRelevant = next.selectedIds.filter((id) => idsOnPage.has(id));
+  if (prevRelevant.length !== nextRelevant.length) return false;
+  for (let i = 0; i < nextRelevant.length; i++) {
+    if (prevRelevant[i] !== nextRelevant[i]) return false;
+  }
+  return true;
+}
+
+export const PageFieldOverlay = memo(PageFieldOverlayImpl, pageOverlayPropsEqual);
