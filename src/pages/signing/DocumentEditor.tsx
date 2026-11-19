@@ -149,7 +149,7 @@ function SentTrackingLayout({
 
       <div
         className={cn(
-          "min-h-0 w-full shrink-0 overflow-y-auto bg-card p-4 lg:w-96 lg:border-l lg:border-border",
+          "min-h-0 w-full shrink-0 overflow-y-auto bg-card lg:w-[26rem] lg:border-l lg:border-border",
           mobileTab === "document" && "hidden lg:block"
         )}
       >
