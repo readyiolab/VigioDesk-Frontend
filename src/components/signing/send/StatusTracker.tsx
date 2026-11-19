@@ -290,7 +290,7 @@ export function StatusTracker({ documentId }: StatusTrackerProps) {
               Download signed PDF
             </Button>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Includes the signed pages plus a Certificate of Completion at the end.
+              Your signed document pages only. Use Certificate only for the completion record.
             </p>
             <Button
               variant="outline"

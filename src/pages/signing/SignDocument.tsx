@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Check, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { PdfViewer, type PdfViewerHandle } from "@/components/signing/viewer/PdfViewer";
 import { SignFieldOverlay } from "@/components/signing/sign/SignFieldOverlay";
 import { SignatureModal } from "@/components/signing/sign/SignatureModal";
@@ -29,14 +30,16 @@ function CenteredMessage({
   tone = "neutral",
   title,
   children,
+  actions,
 }: {
   icon: typeof AlertTriangle;
   tone?: "neutral" | "error" | "success";
   title: string;
   children?: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
       <div
         className={cn(
           "flex size-14 items-center justify-center rounded-2xl",
@@ -58,12 +61,15 @@ function CenteredMessage({
         <h1 className="text-lg font-semibold">{title}</h1>
         <div className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">{children}</div>
       </div>
+      {actions ? <div className="flex w-full max-w-sm flex-col gap-2">{actions}</div> : null}
     </div>
   );
 }
 
 export default function SignDocument() {
   const { token = "" } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const viewerRef = useRef<PdfViewerHandle>(null);
 
   const [view, setView] = useState<SignView | null>(null);
@@ -239,6 +245,17 @@ export default function SignDocument() {
     [view, fieldsByPage, values, focusedFieldId, isDone, openField]
   );
 
+  // Self-sign / logged-in senders: leave the dead-end success screen and open
+  // the document status page once sealing has been kicked off.
+  useEffect(() => {
+    if (!isDone || !user || !view?.document.id) return;
+    const docId = view.document.id;
+    const timer = window.setTimeout(() => {
+      navigate(`/sign/${docId}`, { replace: true });
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [isDone, user, view?.document.id, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -300,20 +317,62 @@ export default function SignDocument() {
   }
 
   if (isDone) {
+    const remaining = view.participants.filter(
+      (p) => p.status !== "COMPLETED" && (p.role === "SIGNER" || p.role === "APPROVER")
+    ).length;
+    const docPath = `/sign/${view.document.id}`;
+    const canReturnToWorkspace = Boolean(user);
+
     return (
-      <CenteredMessage icon={CheckCircle2} tone="success" title="Signature saved">
+      <CenteredMessage
+        icon={CheckCircle2}
+        tone="success"
+        title="Signature saved"
+        actions={
+          <>
+            {canReturnToWorkspace ? (
+              <Button asChild className="w-full">
+                <Link to={docPath} replace>
+                  Back to document
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild className="w-full">
+                <Link to="/esign" replace>
+                  Done
+                </Link>
+              </Button>
+            )}
+            {canReturnToWorkspace ? (
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/sign" replace>
+                  All documents
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/" replace>
+                  Go to home
+                </Link>
+              </Button>
+            )}
+          </>
+        }
+      >
         <p>
-          Your signature on <strong className="text-foreground">{view.document.title}</strong> has been recorded.
+          Your signature on <strong className="text-foreground">{view.document.title}</strong> has been
+          recorded.
         </p>
         <p className="mt-2">
           {documentSealing
             ? "We're preparing the final PDF. You'll receive a copy by email when it's ready."
-            : view.participants.filter(
-                  (p) => p.status !== "COMPLETED" && (p.role === "SIGNER" || p.role === "APPROVER")
-                ).length > 0
+            : remaining > 0
               ? "Waiting on the remaining signers. You'll get a copy by email when everyone is done."
               : "Everyone has signed. A copy will be emailed to you shortly."}
         </p>
+        {canReturnToWorkspace && (
+          <p className="mt-2 text-[11px] text-muted-foreground">Taking you back to the document…</p>
+        )}
       </CenteredMessage>
     );
   }
