@@ -79,6 +79,11 @@ export interface SignView {
   };
   participants: SignViewParticipant[];
   fields: SignViewField[];
+  branding?: {
+    name: string;
+    primaryColor: string;
+    logoUrl: string | null;
+  };
   requiresOtp: boolean;
   requiresAccessCode?: boolean;
   isVerified: boolean;

@@ -22,10 +22,10 @@ import {
 import { signingApi } from "@/services/signingApi";
 import type { SignAuthMethod, SignRecipient } from "@/lib/signing/types";
 
-/** Auth options shown in the UI. SMS_OTP is intentionally omitted until the backend supports it. */
-const AUTH_OPTIONS: { value: Exclude<SignAuthMethod, "SMS_OTP">; label: string; hint: string }[] = [
+const AUTH_OPTIONS: { value: SignAuthMethod; label: string; hint: string }[] = [
   { value: "NONE", label: "No extra check", hint: "They open the link and sign." },
   { value: "EMAIL_OTP", label: "Email code", hint: "They enter a one-time code we email them." },
+  { value: "SMS_OTP", label: "SMS code", hint: "They enter a one-time code we text to their phone." },
   { value: "ACCESS_CODE", label: "Access code", hint: "They enter a code you choose before signing." },
 ];
 
@@ -46,7 +46,7 @@ export function AddRecipientModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<SignRecipient["role"]>("SIGNER");
-  const [authMethod, setAuthMethod] = useState<Exclude<SignAuthMethod, "SMS_OTP">>("NONE");
+  const [authMethod, setAuthMethod] = useState<SignAuthMethod>("NONE");
   const [accessCode, setAccessCode] = useState("");
 
   const [errors, setErrors] = useState<{
@@ -114,7 +114,9 @@ export function AddRecipientModal({
       newErrors.email = "Enter a valid email address (e.g. name@example.com)";
     }
 
-    // Phone is optional (SMS OTP is not offered yet).
+    if (authMethod === "SMS_OTP" && !phone.trim()) {
+      newErrors.phone = "Phone number is required for SMS verification";
+    }
     if (phone.trim()) {
       const phoneDigits = phone.replace(/\D/g, "");
       const nationalDigits =
@@ -291,7 +293,7 @@ export function AddRecipientModal({
               </p>
             ) : (
               <p className="text-[10px] text-muted-foreground leading-tight">
-                Optional for now — used later for phone delivery.
+                {authMethod === "SMS_OTP" ? "Required for SMS codes." : "Optional unless using SMS verification."}
               </p>
             )}
           </div>
@@ -314,14 +316,14 @@ export function AddRecipientModal({
             </Select>
           </div>
 
-          {/* Auth method — SMS_OTP hidden until backend supports it */}
+          {/* Auth method */}
           <div className="space-y-1">
             <Label htmlFor="modal-r-auth" className="text-xs font-medium">
               Extra check before signing
             </Label>
             <Select
               value={authMethod}
-              onValueChange={(v) => setAuthMethod(v as Exclude<SignAuthMethod, "SMS_OTP">)}
+              onValueChange={(v) => setAuthMethod(v as SignAuthMethod)}
             >
               <SelectTrigger id="modal-r-auth">
                 <SelectValue />

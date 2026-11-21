@@ -227,6 +227,39 @@ export const signingApi = {
       body: JSON.stringify({ recipients }),
     }),
 
+  bulkTemplate: (
+    id: string,
+    body: {
+      rows: { email: string; name?: string; merges?: Record<string, string> }[];
+      autoSend?: boolean;
+    }
+  ): Promise<{
+    batchId: string;
+    created: { id: string; email: string; status: string }[];
+    errors: { email: string; error: string }[];
+  }> =>
+    apiFetch(`/documents/templates/${id}/bulk`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  detectFields: (
+    documentId: string
+  ): Promise<{
+    fields: Array<{
+      id: string;
+      type: string;
+      label: string;
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      required: boolean;
+      source: string;
+    }>;
+  }> => apiFetch(`/documents/${documentId}/detect-fields`, { method: "POST" }),
+
   // --- Audit ---
 
   getAudit: (documentId: string, page = 1, limit = 50): Promise<Paginated<SignAuditEntry>> =>

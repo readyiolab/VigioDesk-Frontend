@@ -33,6 +33,10 @@ function ContactAddressCard() {
   const [form, setForm] = React.useState({
     phone: "",
     company: "",
+    brandName: "",
+    brandColor: "#2563eb",
+    brandLogoUrl: "",
+    emailFromName: "",
     addressLine1: "",
     addressLine2: "",
     city: "",
@@ -49,6 +53,10 @@ function ContactAddressCard() {
         setForm({
           phone: p.phone || "",
           company: p.company || "",
+          brandName: p.brandName || "",
+          brandColor: p.brandColor || "#2563eb",
+          brandLogoUrl: p.brandLogoUrl || "",
+          emailFromName: p.emailFromName || "",
           addressLine1: p.addressLine1 || "",
           addressLine2: p.addressLine2 || "",
           city: p.city || "",
@@ -64,8 +72,12 @@ function ContactAddressCard() {
   const save = async () => {
     setSaving(true);
     try {
-      await apiService.updateTrackingProfile(form);
-      toast.success("Contact details saved");
+      await apiService.updateTrackingProfile({
+        ...form,
+        brandLogoUrl: form.brandLogoUrl.trim() || null,
+        brandColor: form.brandColor.trim() || null,
+      });
+      toast.success("Profile saved");
     } catch (e: any) {
       toast.error(e.message || "Could not save");
     } finally {
@@ -77,54 +89,97 @@ function ContactAddressCard() {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   return (
-    <div className="rounded-2xl border bg-card p-6 shadow-sm">
-      <h2 className="text-lg font-bold mb-1">Contact &amp; address</h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Optional billing / mailing details for your account.
-      </p>
-      {loading ? (
-        <Spinner className="h-5 w-5" />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label>Phone</Label>
-            <Input value={form.phone} onChange={set("phone")} />
+    <div className="space-y-4">
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-bold mb-1">eSign branding</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Logo, color, and name shown on signing emails and the public signer page.
+        </p>
+        {loading ? (
+          <Spinner className="h-5 w-5" />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Brand name</Label>
+              <Input value={form.brandName} onChange={set("brandName")} placeholder="Your company" />
+            </div>
+            <div className="space-y-1">
+              <Label>Email from name</Label>
+              <Input value={form.emailFromName} onChange={set("emailFromName")} placeholder="Optional" />
+            </div>
+            <div className="space-y-1">
+              <Label>Brand color</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="color"
+                  value={form.brandColor || "#2563eb"}
+                  onChange={set("brandColor")}
+                  className="h-9 w-12 cursor-pointer p-1"
+                />
+                <Input value={form.brandColor} onChange={set("brandColor")} placeholder="#2563eb" />
+              </div>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Logo URL</Label>
+              <Input
+                value={form.brandLogoUrl}
+                onChange={set("brandLogoUrl")}
+                placeholder="https://…"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label>Company</Label>
-            <Input value={form.company} onChange={set("company")} />
+        )}
+      </div>
+
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-bold mb-1">Contact &amp; address</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Optional billing / mailing details for your account.
+        </p>
+        {loading ? (
+          <Spinner className="h-5 w-5" />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input value={form.phone} onChange={set("phone")} />
+            </div>
+            <div className="space-y-1">
+              <Label>Company</Label>
+              <Input value={form.company} onChange={set("company")} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Address line 1</Label>
+              <Input value={form.addressLine1} onChange={set("addressLine1")} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Address line 2</Label>
+              <Input value={form.addressLine2} onChange={set("addressLine2")} />
+            </div>
+            <div className="space-y-1">
+              <Label>City</Label>
+              <Input value={form.city} onChange={set("city")} />
+            </div>
+            <div className="space-y-1">
+              <Label>State</Label>
+              <Input value={form.state} onChange={set("state")} />
+            </div>
+            <div className="space-y-1">
+              <Label>Postal code</Label>
+              <Input value={form.postalCode} onChange={set("postalCode")} />
+            </div>
+            <div className="space-y-1">
+              <Label>Country</Label>
+              <Input value={form.country} onChange={set("country")} />
+            </div>
+            <div className="sm:col-span-2">
+              <Button onClick={save} disabled={saving}>
+                {saving ? "Saving…" : "Save profile"}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label>Address line 1</Label>
-            <Input value={form.addressLine1} onChange={set("addressLine1")} />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label>Address line 2</Label>
-            <Input value={form.addressLine2} onChange={set("addressLine2")} />
-          </div>
-          <div className="space-y-1">
-            <Label>City</Label>
-            <Input value={form.city} onChange={set("city")} />
-          </div>
-          <div className="space-y-1">
-            <Label>State</Label>
-            <Input value={form.state} onChange={set("state")} />
-          </div>
-          <div className="space-y-1">
-            <Label>Postal code</Label>
-            <Input value={form.postalCode} onChange={set("postalCode")} />
-          </div>
-          <div className="space-y-1">
-            <Label>Country</Label>
-            <Input value={form.country} onChange={set("country")} />
-          </div>
-          <div className="sm:col-span-2">
-            <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save contact details"}
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

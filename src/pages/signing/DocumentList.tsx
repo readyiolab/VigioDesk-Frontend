@@ -105,6 +105,10 @@ export default function DocumentList() {
   const [useTemplateId, setUseTemplateId] = useState<string | null>(null);
   const [useEmails, setUseEmails] = useState<string[]>([]);
   const [isUsingTemplate, setIsUsingTemplate] = useState(false);
+  const [bulkTemplateId, setBulkTemplateId] = useState<string | null>(null);
+  const [bulkCsv, setBulkCsv] = useState("");
+  const [bulkAutoSend, setBulkAutoSend] = useState(false);
+  const [isBulkSending, setIsBulkSending] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<{
     page: number;
@@ -631,6 +635,19 @@ export default function DocumentList() {
                   <Button size="sm" variant="outline" onClick={() => openUseTemplate(tpl)}>
                     Use template
                   </Button>
+                  {tpl.recipientCount === 1 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setBulkTemplateId(tpl.id);
+                        setBulkCsv("name,email\n");
+                        setBulkAutoSend(false);
+                      }}
+                    >
+                      Bulk send
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -644,6 +661,104 @@ export default function DocumentList() {
             </div>
           )}
         </>
+      )}
+
+      {bulkTemplateId && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          onPointerDown={(e) => e.target === e.currentTarget && !isBulkSending && setBulkTemplateId(null)}
+        >
+          <div className="w-full max-w-lg animate-fade-in-up rounded-t-2xl bg-card p-4 shadow-xl sm:rounded-2xl">
+            <h2 className="text-sm font-semibold">Bulk send from template</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Paste CSV with <code className="text-[11px]">name,email</code> headers (optional merge
+              columns). Creates one document per row for single-signer templates.
+            </p>
+            <textarea
+              className="mt-3 h-40 w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
+              value={bulkCsv}
+              onChange={(e) => setBulkCsv(e.target.value)}
+            />
+            <label className="mt-2 flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={bulkAutoSend}
+                onChange={(e) => setBulkAutoSend(e.target.checked)}
+              />
+              Send invitations immediately
+            </label>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={isBulkSending}
+                onClick={() => setBulkTemplateId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={isBulkSending}
+                onClick={() => {
+                  void (async () => {
+                    const lines = bulkCsv
+                      .split(/\r?\n/)
+                      .map((l) => l.trim())
+                      .filter(Boolean);
+                    if (lines.length < 2) {
+                      toast.error("Add a header row and at least one recipient.");
+                      return;
+                    }
+                    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+                    const emailIdx = headers.indexOf("email");
+                    const nameIdx = headers.indexOf("name");
+                    if (emailIdx < 0) {
+                      toast.error("CSV needs an email column.");
+                      return;
+                    }
+                    const rows = lines.slice(1).map((line) => {
+                      const cols = line.split(",").map((c) => c.trim());
+                      const merges: Record<string, string> = {};
+                      headers.forEach((h, i) => {
+                        if (h && h !== "email" && h !== "name" && cols[i]) merges[h] = cols[i];
+                      });
+                      return {
+                        email: cols[emailIdx] || "",
+                        name: nameIdx >= 0 ? cols[nameIdx] : undefined,
+                        merges: Object.keys(merges).length ? merges : undefined,
+                      };
+                    }).filter((r) => r.email);
+
+                    setIsBulkSending(true);
+                    try {
+                      const result = await signingApi.bulkTemplate(bulkTemplateId, {
+                        rows,
+                        autoSend: bulkAutoSend,
+                      });
+                      toast.success(
+                        `Created ${result.created.length} document${result.created.length === 1 ? "" : "s"}${
+                          result.errors.length ? ` (${result.errors.length} failed)` : ""
+                        }.`
+                      );
+                      setBulkTemplateId(null);
+                      setMainTab("documents");
+                      void load();
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Bulk send failed.");
+                    } finally {
+                      setIsBulkSending(false);
+                    }
+                  })();
+                }}
+              >
+                {isBulkSending ? <Spinner className="size-4" /> : null}
+                Run bulk send
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {useTemplateId && (

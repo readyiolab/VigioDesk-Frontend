@@ -381,8 +381,30 @@ export default function SignDocument() {
     <div className="flex h-dvh flex-col overflow-hidden bg-[#5c6370]">
       {/* --- Header + slim progress --- */}
       <header className="shrink-0 border-b border-border bg-card">
+        {view.branding?.primaryColor ? (
+          <div className="h-0.5 w-full" style={{ backgroundColor: view.branding.primaryColor }} />
+        ) : null}
         <div className="flex items-center gap-3 px-3 py-2">
+          {view.branding?.logoUrl ? (
+            <img
+              src={view.branding.logoUrl}
+              alt=""
+              className="size-7 shrink-0 rounded-md object-cover"
+            />
+          ) : view.branding?.name ? (
+            <span
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-bold text-white"
+              style={{ backgroundColor: view.branding.primaryColor || "#2563eb" }}
+            >
+              {view.branding.name.charAt(0).toUpperCase()}
+            </span>
+          ) : null}
           <div className="min-w-0 flex-1">
+            {view.branding?.name ? (
+              <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {view.branding.name}
+              </p>
+            ) : null}
             <h1 className="truncate text-sm font-semibold tracking-tight">{view.document.title}</h1>
             <p className="truncate text-[11px] text-muted-foreground">
               {view.recipient.name}

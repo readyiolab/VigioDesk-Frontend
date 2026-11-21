@@ -429,7 +429,9 @@ export default function DocumentEditor() {
     const withoutFields = signers.filter(
       (r) => r.role === "SIGNER" && (fieldCountByRecipient.get(r.id) ?? 0) === 0
     );
-    const sms = recipients.filter((r) => r.authMethod === "SMS_OTP");
+    const smsMissingPhone = recipients.filter(
+      (r) => r.authMethod === "SMS_OTP" && !String(r.phone || "").trim()
+    );
 
     if (recipients.length === 0) return "Add at least one person who needs to sign.";
     if (signers.length === 0) return "Add at least one signer or approver.";
@@ -437,8 +439,8 @@ export default function DocumentEditor() {
       return `Place at least one field for ${withoutFields.map((r) => r.name).join(", ")}.`;
     if (unassignedCount > 0)
       return `${unassignedCount} field${unassignedCount === 1 ? " is" : "s are"} unassigned — assign or delete ${unassignedCount === 1 ? "it" : "them"}.`;
-    if (sms.length > 0)
-      return `SMS verification isn't available yet — switch ${sms.map((r) => r.name).join(", ")} to email code or access code.`;
+    if (smsMissingPhone.length > 0)
+      return `Add a phone number for ${smsMissingPhone.map((r) => r.name).join(", ")} to use SMS verification.`;
     if (isSelfSign) {
       const actionable = signers.filter((r) => r.role === "SIGNER" || r.role === "APPROVER");
       if (actionable.length !== 1 || !user?.email || actionable[0].email.toLowerCase() !== user.email.toLowerCase()) {
@@ -637,6 +639,46 @@ export default function DocumentEditor() {
           )}
 
           <SaveIndicator state={saveState} />
+
+          {!readOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const { fields: suggested } = await signingApi.detectFields(id);
+                        if (!suggested.length) {
+                          toast.message("No fields detected — place them from the palette.");
+                          return;
+                        }
+                        const active = activeRecipientId || recipients[0]?.id || null;
+                        for (const s of suggested) {
+                          addField(
+                            s.type as SignFieldType,
+                            s.page,
+                            s.x + s.width / 2,
+                            s.y + s.height / 2,
+                            active
+                          );
+                        }
+                        toast.success(`Added ${suggested.length} suggested field${suggested.length === 1 ? "" : "s"}.`);
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Couldn't detect fields.");
+                      }
+                    })();
+                  }}
+                  aria-label="Detect fields"
+                >
+                  Auto-detect
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Suggest signature and form fields from the PDF</TooltipContent>
+            </Tooltip>
+          )}
 
           {isDraft && (
             <Tooltip>
